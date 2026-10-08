@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -58,7 +59,7 @@ var (
 )
 
 func main() {
-	var src string
+	var words []string
 	noLinks, rawMD, fresh := false, false, false
 	for _, a := range os.Args[1:] {
 		switch a {
@@ -87,28 +88,37 @@ func main() {
 			usage(os.Stdout)
 			return
 		default:
-			if strings.HasPrefix(a, "-") && src == "" {
+			if strings.HasPrefix(a, "-") && len(a) > 1 && len(words) == 0 {
 				fmt.Fprintf(os.Stderr, "wr: unknown option: %s\n", a)
 				usage(os.Stderr)
 				os.Exit(2)
 			}
-			src = a
+			words = append(words, a)
 		}
-	}
-	if src == "" {
-		usage(os.Stderr)
-		os.Exit(2)
 	}
 
 	cfg, cfgErr := loadConfig()
 	if noLinks {
 		cfg.Links = "hidden"
 	}
-	cacheMaxAge = time.Duration(cfg.CacheDays) * 24 * time.Hour
+	applyRuntime(cfg)
+
+	// What to open: an address, a file, search words, or (nothing) the homepage.
+	input := strings.Join(words, " ")
+	src, _ := normalizeInput(input, cfg.SearchEngine)
+	if input == "" && cfg.Homepage != "" {
+		src, _ = normalizeInput(cfg.Homepage, cfg.SearchEngine)
+	}
+
+	interactive := !rawMD && isTerminal(os.Stdout) && isTerminal(os.Stdin)
+	if src == "" && !interactive {
+		usage(os.Stderr)
+		os.Exit(2)
+	}
 
 	// The interactive UI only runs on a terminal. With --md or in a pipe it
 	// prints and exits (always downloading fresh).
-	if !rawMD && isTerminal(os.Stdout) && isTerminal(os.Stdin) {
+	if interactive {
 		if err := runTUI(src, cfg, fresh, cfgErr); err != nil {
 			fmt.Fprintf(os.Stderr, "wr: %v\n", err)
 			os.Exit(1)
@@ -129,10 +139,21 @@ func main() {
 		return
 	}
 	width := cfg.Width
-	if cols, err := strconv.Atoi(os.Getenv("COLUMNS")); err == nil && cols > 20 {
-		width = min(width, cols)
+	if cols, err := strconv.Atoi(os.Getenv("COLUMNS")); err == nil && cols > 20 && (width == 0 || cols < width) {
+		width = cols
+	}
+	if width == 0 {
+		width = 100
 	}
 	fmt.Println(strings.Join(renderDoc(md, width, cfg).Lines, "\n"))
+}
+
+// applyRuntime pushes the settings that live in package-level state.
+func applyRuntime(cfg Config) {
+	cacheMaxAge = time.Duration(cfg.CacheDays) * 24 * time.Hour
+	cacheOn = cfg.Cache
+	setAccent(cfg.Accent)
+	setScrollSpeed(cfg.ScrollSpeed)
 }
 
 var linkRe = regexp.MustCompile(`!?\[([^\]]*)\]\([^)]*\)`)
@@ -142,33 +163,80 @@ func stripLinks(md string) string { return linkRe.ReplaceAllString(md, "$1") }
 
 // load downloads, converts and (for a URL) stores the result in the cache.
 func load(src string) (string, error) {
-	body, err := fetch(src)
+	body, ctype, err := fetch(src)
 	if err != nil {
 		return "", err
 	}
-	md, err := toMarkdown(body, src)
+	md, err := convert(body, src, ctype)
 	if err != nil {
 		return "", err
 	}
-	if isHTTP(src) {
+	if cacheOn && isHTTP(src) {
 		_ = cachePut(src, md) // the cache is optional: if it fails, nothing happens
 	}
 	return md, nil
 }
 
+// mediaType is the Content-Type without parameters, lowercased.
+func mediaType(ctype string) string {
+	mt, _, _ := strings.Cut(ctype, ";")
+	return strings.ToLower(strings.TrimSpace(mt))
+}
+
+// unsupportedType reports content wr cannot show as text (images, PDFs, ...).
+func unsupportedType(mt string) bool {
+	switch {
+	case mt == "", strings.HasPrefix(mt, "text/"), strings.Contains(mt, "json"), strings.Contains(mt, "xml"):
+		return false
+	}
+	return true
+}
+
+// fence wraps text in a code fence long enough not to be closed by its content.
+func fence(lang, text string) string {
+	n := 3
+	for _, run := range regexp.MustCompile("`+").FindAllString(text, -1) {
+		n = max(n, len(run)+1)
+	}
+	f := strings.Repeat("`", n)
+	return f + lang + "\n" + strings.TrimRight(text, "\n") + "\n" + f + "\n"
+}
+
+// convert turns a downloaded document into Markdown according to its type:
+// HTML is extracted, Markdown is used as is, and plain text or JSON are shown
+// in a code block.
+func convert(body []byte, src, ctype string) (string, error) {
+	mt := mediaType(ctype)
+	ext := strings.ToLower(filepath.Ext(strings.TrimSuffix(strings.SplitN(src, "?", 2)[0], "/")))
+	switch {
+	case unsupportedType(mt):
+		return "", fmt.Errorf("cannot show %s here (press x to open it in your browser)", mt)
+	case mt == "text/markdown" || mt == "text/x-markdown" || ((mt == "text/plain" || mt == "") && (ext == ".md" || ext == ".markdown")):
+		return sanitize(string(body)), nil
+	case strings.Contains(mt, "json"):
+		return sanitize(fence("json", string(body))), nil
+	case mt == "text/plain" || (mt == "" && ext == ".txt"):
+		return sanitize(fence("", string(body))), nil
+	case strings.Contains(mt, "xml") && !strings.Contains(mt, "xhtml"):
+		return sanitize(fence("xml", string(body))), nil
+	}
+	return toMarkdown(body, src)
+}
+
 func usage(w io.Writer) {
-	fmt.Fprintln(w, "usage: wr [-L] [--md] [--fresh] URL|file.html")
+	fmt.Fprintln(w, "usage: wr [-L] [--md] [--fresh] [URL | file | search words...]")
 	fmt.Fprintln(w, "  -L, --no-links  no links (text only)")
 	fmt.Fprintln(w, "  --md            print the Markdown uncolored (always fetches fresh)")
 	fmt.Fprintln(w, "  --fresh         ignore the cache and download again")
 	fmt.Fprintln(w, "  --clear-cache   delete the cache (~/.cache/wr)")
 	fmt.Fprintln(w, "  --config        create (if missing) and print the config file path")
-	fmt.Fprintln(w, "On a terminal the interactive reader opens: m = menu, / = search, q = quit.")
+	fmt.Fprintln(w, "With no argument wr opens its start page. Words that are not an address or a file")
+	fmt.Fprintln(w, "are searched on the web. In the reader: o = open, m = menu, q = quit.")
 }
 
 // ---- download ----
 
-func fetch(src string) ([]byte, error) {
+func fetch(src string) ([]byte, string, error) {
 	var r io.Reader
 	var ctype string
 	if isHTTP(src) {
@@ -176,17 +244,21 @@ func fetch(src string) ([]byte, error) {
 		req.Header.Set("User-Agent", userAgent)
 		resp, err := (&http.Client{Timeout: 20 * time.Second}).Do(req)
 		if err != nil {
-			return nil, fmt.Errorf("could not download: %w", err)
+			return nil, "", fmt.Errorf("could not download: %w", err)
 		}
 		defer resp.Body.Close()
 		if resp.StatusCode >= 400 {
-			return nil, fmt.Errorf("could not download: HTTP %d", resp.StatusCode)
+			return nil, "", fmt.Errorf("could not download: HTTP %d", resp.StatusCode)
 		}
-		r, ctype = io.LimitReader(resp.Body, maxBytes), resp.Header.Get("Content-Type")
+		ctype = resp.Header.Get("Content-Type")
+		if mt := mediaType(ctype); unsupportedType(mt) {
+			return nil, ctype, fmt.Errorf("cannot show %s here (press x to open it in your browser)", mt)
+		}
+		r = io.LimitReader(resp.Body, maxBytes)
 	} else {
-		f, err := os.Open(strings.TrimPrefix(src, "file://"))
+		f, err := os.Open(localPath(src))
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		defer f.Close()
 		r = io.LimitReader(f, maxBytes)
@@ -194,9 +266,10 @@ func fetch(src string) ([]byte, error) {
 	// convert to UTF-8 according to the header / <meta charset>
 	utf8r, err := charset.NewReader(r, ctype)
 	if err != nil {
-		return nil, err
+		return nil, ctype, err
 	}
-	return io.ReadAll(utf8r)
+	body, err := io.ReadAll(utf8r)
+	return body, ctype, err
 }
 
 // ---- HTML -> Markdown ----

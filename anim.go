@@ -29,6 +29,15 @@ const (
 // fraction of a line takes a little longer before the ticks stop.
 var scrollSpring = harmonica.NewSpring(harmonica.FPS(60), 28, 1)
 
+// setScrollSpeed picks how stiff the scroll spring is (how quickly it catches up).
+func setScrollSpeed(name string) {
+	freq := map[string]float64{"slow": 18, "normal": 28, "fast": 42}[name]
+	if freq == 0 {
+		freq = 28
+	}
+	scrollSpring = harmonica.NewSpring(harmonica.FPS(60), freq, 1)
+}
+
 type spring struct{ pos, vel, target float64 }
 
 // step advances the spring n fixed 1/60 s frames (n > 1 catches up after a

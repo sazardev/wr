@@ -21,12 +21,12 @@ const paragraph = "alpha beta gamma delta epsilon zeta eta theta iota kappa lamb
 // a fake clipboard that records what would be copied.
 func selModel(t *testing.T) (*model, *[]string) {
 	t.Helper()
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	isolateAll(t)
 	cfg := defaultConfig()
 	cfg.Animations, cfg.Width = false, 40
 	m := newModel("https://t.test/x", cfg, false, nil)
 	m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
-	m.Update(loadedMsg{md: selDoc})
+	m.Update(loadedMsg{src: m.src, md: selDoc})
 
 	var mu sync.Mutex
 	var copied []string
@@ -206,7 +206,7 @@ func TestYankCopiesTheSelectionAgain(t *testing.T) {
 func TestDraggingPastTheEdgeScrolls(t *testing.T) {
 	m, _ := selModel(t)
 	// a long document so there is something to scroll to
-	m.Update(loadedMsg{md: longDoc()})
+	m.Update(loadedMsg{src: m.src, md: longDoc()})
 	l := m.viewY() + 2
 	click(m, point{l, 2})
 	before := m.y
@@ -233,7 +233,7 @@ func TestSelectionClearedOnRebuild(t *testing.T) {
 
 func TestWheelStillScrolls(t *testing.T) {
 	m, _ := selModel(t)
-	m.Update(loadedMsg{md: longDoc()})
+	m.Update(loadedMsg{src: m.src, md: longDoc()})
 	m.Update(tea.MouseWheelMsg{X: 10, Y: 5, Button: tea.MouseWheelDown})
 	if m.y == 0 {
 		t.Error("the wheel must keep scrolling")

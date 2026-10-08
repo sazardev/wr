@@ -9,16 +9,23 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
-// Floating panels: menu, index, help and confirmation. They all use the
-// 16-color palette (bright blue for the frame and the selection), so they
-// follow the terminal theme.
+// Floating panels: the menu, address bar, settings, shortcuts, history and
+// bookmarks, section index and confirmations. They use the accent color for
+// their frame and selection, so they follow your theme and your choice.
 
 type boxRow struct{ label, hint string }
+
+func boolInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
+}
 
 // box draws a panel `width` columns wide. sel < 0 means no selection.
 func box(title string, rows []boxRow, sel, width int) []string {
 	inner := width - 4
-	border := "\x1b[94m"
+	border := "\x1b[" + accentFG + "m"
 	titleStr := " " + title + " "
 	top := border + "╭─\x1b[1m" + titleStr + "\x1b[22m" +
 		strings.Repeat("─", max(width-3-ansi.StringWidth(titleStr), 0)) + "╮\x1b[0m"
@@ -40,7 +47,7 @@ func box(title string, rows []boxRow, sel, width int) []string {
 		gap = max(gap, 0)
 		var content string
 		if i == sel {
-			content = "\x1b[30;104m" + ansi.Strip(label) + strings.Repeat(" ", gap) + ansi.Strip(hintStr) + "\x1b[0m"
+			content = "\x1b[30;" + accentBG + "m" + ansi.Strip(label) + strings.Repeat(" ", gap) + ansi.Strip(hintStr) + "\x1b[0m"
 		} else {
 			content = label + strings.Repeat(" ", gap) + "\x1b[90m" + hintStr + "\x1b[0m"
 		}
@@ -48,13 +55,6 @@ func box(title string, rows []boxRow, sel, width int) []string {
 		out = append(out, border+"│\x1b[0m "+content+strings.Repeat(" ", pad)+" "+border+"│\x1b[0m")
 	}
 	return append(out, border+"╰"+strings.Repeat("─", width-2)+"╯\x1b[0m")
-}
-
-func boolInt(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
 }
 
 // window keeps the selected row visible when there is not enough height.
@@ -76,15 +76,19 @@ func window(rows []boxRow, sel, maxRows int) ([]boxRow, int) {
 // panelWidth adapts the panel to the terminal width.
 func (m *model) panelWidth(want int) int { return min(max(m.w-2, 24), want) }
 
-// compose puts the panel centered over the body, replacing those rows
-// completely so document colors never mix with the panel's. When animations
-// are on, the panel opens like a shutter from its middle row.
+// compose puts the panel centered over the body.
 func (m *model) compose(body, panel []string) []string {
+	return m.composeAt(body, panel, max((len(body)-len(panel))/2, 0))
+}
+
+// composeAt puts the panel at a given row, replacing those rows completely so
+// document colors never mix with the panel's. When panel animations are on,
+// the panel opens like a shutter from its middle row.
+func (m *model) composeAt(body, panel []string, fullTop int) []string {
 	w := ansi.StringWidth(panel[0])
 	x := max((m.w-w)/2, 0)
-	fullTop := max((len(body)-len(panel))/2, 0)
 	start, count := 0, len(panel)
-	if m.cfg.Animations {
+	if m.anim(m.cfg.AnimPanels) {
 		p := easeOutCubic(progressSince(m.panelStart, m.now, panelDur))
 		count = min(max(int(math.Ceil(p*float64(len(panel)))), 1), len(panel))
 		start = (len(panel) - count) / 2
@@ -99,6 +103,20 @@ func (m *model) compose(body, panel []string) []string {
 	return body
 }
 
+func (m *model) bodyH() int { _, _, h, _ := m.geometry(); return h }
+
+// helpRows turns a hint into up to two dim rows under a panel's list.
+func helpRows(text string, inner int) []boxRow {
+	rows := []boxRow{{"", ""}}
+	for i, l := range strings.Split(ansi.Wrap(text, max(inner, 8), ""), "\n") {
+		if i >= 2 {
+			break
+		}
+		rows = append(rows, boxRow{"\x1b[90m" + l + "\x1b[0m", ""})
+	}
+	return rows
+}
+
 // ---- menu ----
 
 type menuItem struct {
@@ -106,26 +124,28 @@ type menuItem struct {
 	run         func(m *model) tea.Cmd
 }
 
-func onOff(b bool) string {
-	if b {
-		return "on"
-	}
-	return "off"
-}
-
 func (m *model) menuItems() []menuItem {
 	pages, size := cacheStats()
-	nextLinks := map[string]string{"footnotes": "inline", "inline": "hidden", "hidden": "footnotes"}
-	style := "braille"
-	if !m.cfg.Braille {
-		style = "simple"
+	k := func(a action) string { return keyHint(&m.cfg, a) }
+	bookmark := "Bookmark this page"
+	if m.bookmarked {
+		bookmark = "Remove bookmark"
 	}
 	return []menuItem{
-		{"Reload page", "r", func(m *model) tea.Cmd { return m.reload() }},
-		{"Section index", "t", func(m *model) tea.Cmd { return m.openTOC() }},
+		{"Open address or search…", k(actOpen), func(m *model) tea.Cmd { m.openOmni(); return nil }},
+		{"Back", k(actBack), func(m *model) tea.Cmd { return m.goBack() }},
+		{"Forward", k(actForward), func(m *model) tea.Cmd { return m.goForward() }},
+		{"History…", k(actHistory), func(m *model) tea.Cmd { return m.openList(listHistory) }},
+		{"Bookmarks…", k(actBookmarks), func(m *model) tea.Cmd { return m.openList(listBookmarks) }},
+		{bookmark, k(actBookmark), func(m *model) tea.Cmd { return m.toggleBookmark() }},
+		{"Section index", k(actIndex), func(m *model) tea.Cmd { return m.openTOC() }},
+		{"Reload page", k(actReload), func(m *model) tea.Cmd { return m.reload() }},
+		{"Settings…", k(actSettings), func(m *model) tea.Cmd { m.mode, m.sel = modeSettings, 0; return nil }},
+		{"Keyboard shortcuts…", "", func(m *model) tea.Cmd { m.mode, m.sel = modeKeys, 0; return nil }},
+		{"Open in your browser", k(actExternal), func(m *model) tea.Cmd { return m.openExternalNow() }},
 		{"Clear cache for this page", "", func(m *model) tea.Cmd {
 			if !isHTTP(m.src) {
-				return m.setToast("local file: nothing is cached for it", true)
+				return m.setToast("nothing is cached for this page", true)
 			}
 			if err := cacheDelete(m.src); err != nil {
 				return m.setToast(err.Error(), true)
@@ -133,39 +153,28 @@ func (m *model) menuItems() []menuItem {
 			return m.setToast("✓ cache cleared for this page", false)
 		}},
 		{"Clear all cache", fmt.Sprintf("%d pages · %s", pages, humanSize(size)), func(m *model) tea.Cmd {
-			m.mode = modeConfirm
+			m.mode, m.confirm = modeConfirm, confirmCache
 			return nil
 		}},
-		{"Links: " + m.cfg.Links, "change", func(m *model) tea.Cmd {
-			m.cfg.Links = nextLinks[m.cfg.Links]
-			m.rebuild()
-			return m.setToast("links: "+m.cfg.Links, false)
-		}},
-		{"Style: " + style, "change", func(m *model) tea.Cmd {
-			m.cfg.Braille = !m.cfg.Braille
-			m.rebuild()
-			return nil
-		}},
-		{"Animations: " + onOff(m.cfg.Animations), "change", func(m *model) tea.Cmd {
-			m.cfg.Animations = !m.cfg.Animations
-			return m.setToast("animations: "+onOff(m.cfg.Animations), false)
-		}},
-		{"Settings", "opens your editor", func(m *model) tea.Cmd { return m.openConfig() }},
-		{"Keyboard shortcuts", "", func(m *model) tea.Cmd { m.mode = modeHelp; return nil }},
-		{"Quit", "q", func(m *model) tea.Cmd { return tea.Quit }},
+		{"Edit the config file…", "", func(m *model) tea.Cmd { return m.openConfig() }},
+		{"Quit", k(actQuit), func(m *model) tea.Cmd { return tea.Quit }},
 	}
 }
 
 func (m *model) menuBox() []string {
-	_, _, bodyH, _ := m.geometry()
 	items := m.menuItems()
 	rows := make([]boxRow, len(items))
 	for i, it := range items {
-		n := (i + 1) % 10 // 1-9, then 0: the number is the shortcut
-		rows[i] = boxRow{fmt.Sprintf("%d  %s", n, it.label), it.hint}
+		label := it.label
+		if i < 10 { // 1-9 then 0: the number is the shortcut
+			label = fmt.Sprintf("%d  %s", (i+1)%10, it.label)
+		} else {
+			label = "   " + it.label
+		}
+		rows[i] = boxRow{label, it.hint}
 	}
-	vis, sel := window(rows, m.sel, bodyH-2)
-	return box("wr", vis, sel, m.panelWidth(54))
+	vis, sel := window(rows, m.sel, m.bodyH()-2)
+	return box("wr", vis, sel, m.panelWidth(58))
 }
 
 func (m *model) keyMenu(k string) (tea.Model, tea.Cmd) {
@@ -175,7 +184,7 @@ func (m *model) keyMenu(k string) (tea.Model, tea.Cmd) {
 		return m, items[i].run(m)
 	}
 	switch k {
-	case "esc", "m", "q", "?", "tab":
+	case "esc", "m", "q", "?":
 		m.mode = modeRead
 	case "up", "k":
 		m.sel = (m.sel - 1 + len(items)) % len(items)
@@ -200,15 +209,7 @@ func (m *model) keyMenu(k string) (tea.Model, tea.Cmd) {
 // ---- confirmation ----
 
 func (m *model) confirmBox() []string {
-	pages, size := cacheStats()
-	rows := []boxRow{
-		{"Clear all cache?", ""},
-		{fmt.Sprintf("%d pages · %s on disk", pages, humanSize(size)), ""},
-		{"", ""},
-		{"y / enter  clear", ""},
-		{"esc        cancel", ""},
-	}
-	return box("Confirm", rows, -1, m.panelWidth(44))
+	return box("Confirm", m.confirmText(), -1, m.panelWidth(48))
 }
 
 // ---- section index ----
@@ -227,13 +228,12 @@ func (m *model) openTOC() tea.Cmd {
 }
 
 func (m *model) tocBox() []string {
-	_, _, bodyH, _ := m.geometry()
 	heads := m.doc.Heads
 	rows := make([]boxRow, len(heads))
 	for i, h := range heads {
 		rows[i] = boxRow{strings.Repeat("  ", max(h.Level-1, 0)) + h.Text, ""}
 	}
-	vis, sel := window(rows, m.sel, min(bodyH-2, 16))
+	vis, sel := window(rows, m.sel, min(m.bodyH()-2, 16))
 	return box(fmt.Sprintf("Index %d/%d", m.sel+1, len(heads)), vis, sel, m.panelWidth(76))
 }
 
@@ -262,22 +262,121 @@ func (m *model) keyTOC(k string) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// ---- help ----
+// ---- settings ----
 
-func (m *model) helpBox() []string {
-	_, _, bodyH, _ := m.geometry()
-	rows := []boxRow{
-		{"j k ↓ ↑", "one line"},
-		{"space  b", "page down / up"},
-		{"d  u", "half page"},
-		{"g  G", "top / bottom"},
-		{"]  [", "next / previous section"},
-		{"t", "section index"},
-		{"/", "search (n / N: next / previous)"},
-		{"r", "reload the page"},
-		{"m", "menu (cache, style, links, ...)"},
-		{"q", "quit"},
+func (m *model) settingsBox() []string {
+	opts := m.settingsOptions()
+	m.sel = min(max(m.sel, 0), len(opts)-1)
+	width := m.panelWidth(66)
+	var rows []boxRow
+	selRow, last := 0, ""
+	for i, o := range opts {
+		if o.group != last {
+			rows = append(rows, boxRow{"\x1b[1;" + accentFG + "m" + o.group + "\x1b[0m", ""})
+			last = o.group
+		}
+		val := o.get(&m.cfg)
+		if i == m.sel {
+			selRow = len(rows)
+			if o.kind == optAction {
+				val = "↵"
+				if o.label == "Start page" {
+					val = "↵ " + o.get(&m.cfg)
+				}
+			} else {
+				val = "‹ " + val + " ›"
+			}
+		} else if o.kind == optAction && o.label != "Start page" {
+			val = ""
+		}
+		rows = append(rows, boxRow{"  " + o.label, val})
 	}
-	vis, _ := window(rows, -1, bodyH-2)
-	return box("Shortcuts", vis, -1, m.panelWidth(58))
+	help := helpRows(opts[m.sel].help, width-4)
+	vis, sel := window(rows, selRow, m.bodyH()-2-len(help))
+	return box("Settings", append(vis, help...), sel, width)
+}
+
+// ---- keyboard shortcuts ----
+
+func (m *model) keysBox() []string {
+	width := m.panelWidth(66)
+	m.sel = min(max(m.sel, 0), len(actionList)-1)
+	var rows []boxRow
+	selRow, last := 0, ""
+	for i, a := range actionList {
+		if a.group != last {
+			rows = append(rows, boxRow{"\x1b[1;" + accentFG + "m" + a.group + "\x1b[0m", ""})
+			last = a.group
+		}
+		keys := keyList(&m.cfg, a.id)
+		if m.capture == string(a.id) {
+			keys = "press a key…"
+			if m.captureAdd {
+				keys = "press another key…"
+			}
+		}
+		if i == m.sel {
+			selRow = len(rows)
+		}
+		rows = append(rows, boxRow{"  " + a.label, keys})
+	}
+	help := helpRows("enter change · a add a key · x unbind · d default · R reset all", width-4)
+	if m.capture != "" {
+		help = helpRows("esc cancels", width-4)
+	}
+	vis, sel := window(rows, selRow, m.bodyH()-2-len(help))
+	return box("Keyboard shortcuts", append(vis, help...), sel, width)
+}
+
+// ---- address bar ----
+
+func (m *model) omniBox() []string {
+	width := m.panelWidth(84)
+	items := m.omniItems()
+	m.omni.sel = min(max(m.omni.sel, 0), max(len(items)-1, 0))
+	prompt := acc("›") + " " + m.omni.input + "\x1b[7m \x1b[0m"
+	if m.omni.input == "" {
+		prompt = acc("›") + " \x1b[7m \x1b[0m\x1b[90m type an address, or words to search the web\x1b[0m"
+	}
+	rows := []boxRow{{prompt, ""}}
+	for _, it := range items {
+		rows = append(rows, boxRow{it.label, it.hint})
+	}
+	if len(items) == 0 {
+		rows = append(rows, boxRow{"\x1b[90mno bookmarks or history yet\x1b[0m", ""})
+	}
+	vis, sel := window(rows[1:], m.omni.sel, max(m.bodyH()-5, 3))
+	if len(items) == 0 {
+		sel = -1
+	}
+	return box("Open", append(rows[:1], vis...), sel+1, width)
+}
+
+// ---- history and bookmarks ----
+
+func (m *model) listBox() []string {
+	width := m.panelWidth(90)
+	title := "History"
+	help := "enter open · ctrl+d remove · ctrl+x clear all"
+	if m.list.kind == listBookmarks {
+		title, help = "Bookmarks", "enter open · ctrl+d remove"
+	}
+	prompt := acc("/") + " " + m.list.filter + "\x1b[7m \x1b[0m"
+	if m.list.filter == "" {
+		prompt += "\x1b[90m type to filter\x1b[0m"
+	}
+	rows := m.listRows()
+	n := len(rows)
+	m.list.sel = min(max(m.list.sel, 0), max(n-1, 0))
+	helpR := helpRows(help, width-4)
+	vis, sel := window(rows, m.list.sel, max(m.bodyH()-3-len(helpR), 3))
+	if n == 0 {
+		msg := "nothing here yet"
+		if m.list.filter != "" {
+			msg = "nothing matches"
+		}
+		vis, sel = []boxRow{{"\x1b[90m" + msg + "\x1b[0m", ""}}, -1
+	}
+	all := append([]boxRow{{prompt, ""}}, vis...)
+	return box(fmt.Sprintf("%s · %d", title, len(m.list.all)), append(all, helpR...), sel+1, width)
 }

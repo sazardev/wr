@@ -21,15 +21,24 @@ func longDoc() string {
 // newTestModel builds a model with animations off (deterministic frames).
 func newTestModel(t *testing.T, w, h int) *model {
 	t.Helper()
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	isolateAll(t)
 	cfg := defaultConfig()
 	cfg.Animations = false
 	return loaded(newModel("https://t.test/x", cfg, false, nil), w, h)
 }
 
+// isolateAll points every per-user directory at a temp dir so tests never touch
+// the real cache, config or history.
+func isolateAll(t *testing.T) {
+	t.Helper()
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+}
+
 func loaded(m *model, w, h int) *model {
 	m.Update(tea.WindowSizeMsg{Width: w, Height: h})
-	m.Update(loadedMsg{md: longDoc()})
+	m.Update(loadedMsg{src: m.src, md: longDoc()})
 	return m
 }
 
@@ -254,11 +263,28 @@ func TestTOCOverlayAndJump(t *testing.T) {
 	}
 }
 
+// pickMenu opens the menu and chooses the entry with that label.
+func pickMenu(t *testing.T, m *model, label string) {
+	t.Helper()
+	m.mode, m.sel = modeMenu, -1
+	for i, it := range m.menuItems() {
+		if strings.Contains(it.label, label) {
+			m.sel = i
+		}
+	}
+	if m.sel < 0 {
+		t.Fatalf("no menu entry %q", label)
+	}
+	press(m, "enter")
+}
+
 func TestMenuOpensAndCloses(t *testing.T) {
-	m := newTestModel(t, 100, 30)
+	m := newTestModel(t, 100, 40)
 	press(m, "m")
 	v := ansi.Strip(m.render())
-	for _, want := range []string{"Reload page", "Clear cache for this page", "Clear all cache", "Links:", "Style:", "Animations:", "Settings", "Quit"} {
+	for _, want := range []string{"Open address or search", "Back", "Forward", "History", "Bookmarks", "Bookmark this page",
+		"Section index", "Reload page", "Settings", "Keyboard shortcuts", "Open in your browser",
+		"Clear cache for this page", "Clear all cache", "Edit the config file", "Quit"} {
 		if !strings.Contains(v, want) {
 			t.Errorf("the menu does not show %q", want)
 		}
@@ -273,7 +299,7 @@ func TestMenuClearAllCacheWithConfirmation(t *testing.T) {
 	m := newTestModel(t, 100, 30)
 	_ = cachePut("https://t.test/a", "one")
 	_ = cachePut("https://t.test/b", "two")
-	press(m, "m", "4") // "Clear all cache" opens the confirmation
+	pickMenu(t, m, "Clear all cache")
 	if m.mode != modeConfirm {
 		t.Fatalf("mode=%v", m.mode)
 	}
@@ -281,7 +307,8 @@ func TestMenuClearAllCacheWithConfirmation(t *testing.T) {
 	if n, _ := cacheStats(); n != 2 {
 		t.Fatalf("cancelling cleared the cache (n=%d)", n)
 	}
-	press(m, "m", "4", "y")
+	pickMenu(t, m, "Clear all cache")
+	press(m, "y")
 	if n, _ := cacheStats(); n != 0 {
 		t.Errorf("confirming must clear (n=%d)", n)
 	}
@@ -294,7 +321,7 @@ func TestMenuClearPageCache(t *testing.T) {
 	m := newTestModel(t, 100, 30)
 	_ = cachePut("https://t.test/x", "content")
 	_ = cachePut("https://t.test/other", "other")
-	press(m, "m", "3")
+	pickMenu(t, m, "Clear cache for this page")
 	if _, _, ok := cacheGet("https://t.test/x"); ok {
 		t.Error("did not clear this page's cache")
 	}
@@ -303,43 +330,25 @@ func TestMenuClearPageCache(t *testing.T) {
 	}
 }
 
-func TestMenuTogglesRebuildDocument(t *testing.T) {
-	m := newTestModel(t, 100, 30)
-	if !strings.Contains(strings.Join(m.doc.Plain, ""), "⣿") {
-		t.Fatal("the default style must be braille")
-	}
-	press(m, "m", "6") // Style
-	if strings.Contains(strings.Join(m.doc.Plain, ""), "⣿") || m.cfg.Braille {
-		t.Error("toggling the style must remove the braille")
-	}
-	press(m, "m", "5") // Links: footnotes -> inline
-	if m.cfg.Links != "inline" {
-		t.Errorf("links=%q", m.cfg.Links)
-	}
-	press(m, "m", "7") // Animations
-	if !m.cfg.Animations {
-		t.Error("the animations toggle did not flip")
-	}
-}
-
 func TestMenuNumbersAreShortcuts(t *testing.T) {
-	m := newTestModel(t, 100, 30)
+	m := newTestModel(t, 100, 40)
 	press(m, "m")
 	v := ansi.Strip(m.render())
-	for _, want := range []string{"1  Reload page", "4  Clear all cache", "9  Keyboard shortcuts", "0  Quit"} {
+	for _, want := range []string{"1  Open address", "2  Back", "5  Bookmarks", "9  Settings", "0  Keyboard shortcuts"} {
 		if !strings.Contains(v, want) {
 			t.Errorf("missing %q", want)
 		}
 	}
-	if _, cmd := m.Update(tea.KeyPressMsg{Code: '0', Text: "0"}); cmd == nil {
-		t.Error("0 must run Quit")
+	press(m, "9")
+	if m.mode != modeSettings {
+		t.Errorf("9 must open Settings (mode %v)", m.mode)
 	}
 }
 
 func TestNewerVersionIsNotAppliedUntilAsked(t *testing.T) {
 	m := newTestModel(t, 100, 30)
 	m.fromCache = true
-	m.Update(fetchedMsg{md: "# Other\n\nnew content\n"})
+	m.Update(fetchedMsg{src: m.src, md: "# Other\n\nnew content\n"})
 	if m.newer == "" || strings.Contains(strings.Join(m.doc.Plain, ""), "new content") {
 		t.Fatal("a newer version must not replace what you are reading")
 	}
@@ -353,7 +362,7 @@ func TestNewerVersionIsNotAppliedUntilAsked(t *testing.T) {
 }
 
 func TestLoadingAndErrorScreens(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	isolateAll(t)
 	cfg := defaultConfig()
 	cfg.Animations = false
 	m := newModel("https://t.test/x", cfg, false, nil)
@@ -380,7 +389,7 @@ func TestResizeRebuildsKeepingPosition(t *testing.T) {
 }
 
 func TestConfigTogglesFooterAndScrollbar(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	isolateAll(t)
 	cfg := defaultConfig()
 	cfg.Footer, cfg.Scrollbar, cfg.Animations = false, false, false
 	m := loaded(newModel("https://t.test/x", cfg, false, nil), 80, 20)
@@ -396,7 +405,8 @@ func TestConfigTogglesFooterAndScrollbar(t *testing.T) {
 func TestPanelsAreRectangular(t *testing.T) {
 	m := newTestModel(t, 100, 30)
 	for name, box := range map[string][]string{
-		"menu": m.menuBox(), "toc": m.tocBox(), "help": m.helpBox(), "confirm": m.confirmBox(),
+		"menu": m.menuBox(), "toc": m.tocBox(), "settings": m.settingsBox(), "keys": m.keysBox(),
+		"omni": m.omniBox(), "list": m.listBox(), "confirm": m.confirmBox(),
 	} {
 		w := ansi.StringWidth(box[0])
 		for i, l := range box {
@@ -427,9 +437,10 @@ func TestPanelsFitSmallTerminals(t *testing.T) {
 }
 
 func TestMenuWindowKeepsSelectionVisible(t *testing.T) {
-	m := newTestModel(t, 60, 9) // body is only 6 rows: the 10-item menu must scroll
+	m := newTestModel(t, 60, 9) // body is only 6 rows: the long menu must scroll
 	press(m, "m")
-	for i := 0; i < 9; i++ {
+	n := len(m.menuItems())
+	for i := 0; i < n-1; i++ {
 		press(m, "down")
 	}
 	if v := ansi.Strip(m.render()); !strings.Contains(v, "Quit") {
@@ -441,7 +452,7 @@ func TestMenuWindowKeepsSelectionVisible(t *testing.T) {
 
 func animModel(t *testing.T, w, h int) *model {
 	t.Helper()
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	isolateAll(t)
 	cfg := defaultConfig() // animations on
 	return loaded(newModel("https://t.test/x", cfg, false, nil), w, h)
 }
@@ -579,7 +590,7 @@ func TestToastTypesOut(t *testing.T) {
 }
 
 func TestLoadingWaveAnimates(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	isolateAll(t)
 	m := newModel("https://t.test/x", defaultConfig(), false, nil)
 	m.Update(tea.WindowSizeMsg{Width: 90, Height: 24})
 	m.now = m.t0.Add(100 * time.Millisecond)

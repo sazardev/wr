@@ -214,3 +214,103 @@ func TestCodeGutterColumnIsRecorded(t *testing.T) {
 		t.Fatal("no code body line recorded")
 	}
 }
+
+func TestDocLinksRecordPositionAndDestination(t *testing.T) {
+	d := render(t, "see [the docs](https://a.test/d) and [more](https://a.test/m) now\n", 80, nil)
+	if len(d.Links) < 2 {
+		t.Fatalf("links=%v urls=%v", d.Links, d.URLs)
+	}
+	l := d.Links[0]
+	got := string([]rune(d.Plain[l.Line])[l.From:l.To])
+	if got != "the docs" || d.URLs[l.ID] != "https://a.test/d" {
+		t.Errorf("first link: %q -> %q", got, d.URLs[l.ID])
+	}
+	l2 := d.Links[1]
+	if got := string([]rune(d.Plain[l2.Line])[l2.From:l2.To]); got != "more" || d.URLs[l2.ID] != "https://a.test/m" {
+		t.Errorf("second link: %q -> %q", got, d.URLs[l2.ID])
+	}
+}
+
+func TestWrappedLinkBecomesSeveralSpansOfOneLink(t *testing.T) {
+	md := "[" + strings.Repeat("word ", 30) + "](https://a.test/long)\n"
+	d := render(t, md, 30, func(c *Config) { c.Links = "hidden" })
+	var spans []LinkSpan
+	for _, l := range d.Links {
+		if d.URLs[l.ID] == "https://a.test/long" {
+			spans = append(spans, l)
+		}
+	}
+	if len(spans) < 3 {
+		t.Fatalf("a link wrapped over several lines needs a span per line: %v", spans)
+	}
+	for _, s := range spans {
+		if s.ID != spans[0].ID || s.To <= s.From {
+			t.Errorf("bad span %+v", s)
+		}
+	}
+	// consecutive lines
+	for i := 1; i < len(spans); i++ {
+		if spans[i].Line != spans[i-1].Line+1 {
+			t.Errorf("spans must be on consecutive lines: %v", spans)
+		}
+	}
+}
+
+func TestFootnoteListUrlsAreClickableToo(t *testing.T) {
+	d := render(t, "go [here](https://a.test/p)\n", 80, nil) // footnotes mode
+	n := 0
+	for _, l := range d.Links {
+		if d.URLs[l.ID] == "https://a.test/p" {
+			n++
+			if strings.HasPrefix(d.Plain[l.Line], "[1]") && string([]rune(d.Plain[l.Line])[l.From:l.To]) != "https://a.test/p" {
+				t.Errorf("the footnote link must cover the URL: %q", d.Plain[l.Line])
+			}
+		}
+	}
+	if n != 2 {
+		t.Errorf("expected the inline link and the footnote URL (2 spans), got %d", n)
+	}
+}
+
+func TestLinksAreClickableInEveryLinkMode(t *testing.T) {
+	for _, mode := range linkModes {
+		d := render(t, "see [x](https://a.test/x)\n", 80, func(c *Config) { c.Links = mode })
+		found := false
+		for _, l := range d.Links {
+			if d.URLs[l.ID] == "https://a.test/x" {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("mode %s: the link must stay clickable", mode)
+		}
+	}
+}
+
+func TestAnchorAndAutoLinksAreRecorded(t *testing.T) {
+	d := render(t, "jump [there](#sec) or visit <https://auto.test/page>\n", 80, nil)
+	var urls []string
+	for _, l := range d.Links {
+		urls = append(urls, d.URLs[l.ID])
+	}
+	joined := strings.Join(urls, " ")
+	if !strings.Contains(joined, "#sec") || !strings.Contains(joined, "https://auto.test/page") {
+		t.Errorf("urls: %v", urls)
+	}
+	if strings.Contains(strings.Join(d.Plain, "\n"), "there[") {
+		t.Error("an in-page anchor gets no footnote number")
+	}
+}
+
+func TestLinkMarkersNeverReachTheScreen(t *testing.T) {
+	d := render(t, sample, 60, nil)
+	for i, l := range d.Lines {
+		if strings.Contains(l, "\x1b_") {
+			t.Fatalf("an APC marker leaked into line %d: %q", i, l)
+		}
+	}
+	// and the visible text is exactly what it was without link tracking
+	if got := strings.Join(d.Plain, "\n"); !strings.Contains(got, "link[1]") {
+		t.Errorf("text changed:\n%s", got)
+	}
+}

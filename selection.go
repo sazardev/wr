@@ -198,12 +198,12 @@ func (m *model) mouseDown(x, y int) tea.Cmd {
 		from, to := wordBounds(m.doc.Plain[p.line], p.col)
 		m.mouseSel.a, m.mouseSel.b = point{p.line, from}, point{p.line, max(to-1, from)}
 		m.mouseSel.active, m.mouseSel.dragging = to > from, false
-		return m.copySelection()
+		return m.copyIfSet()
 	case 3: // line
 		n := utf8.RuneCountInString(m.doc.Plain[p.line])
 		m.mouseSel.a, m.mouseSel.b = point{p.line, 0}, point{p.line, max(n-1, 0)}
 		m.mouseSel.active, m.mouseSel.dragging = n > 0, false
-		return m.copySelection()
+		return m.copyIfSet()
 	}
 	m.mouseSel.a, m.mouseSel.b = p, p
 	m.mouseSel.active, m.mouseSel.dragging = false, true
@@ -230,7 +230,20 @@ func (m *model) mouseDrag(x, y int) {
 func (m *model) mouseUp() tea.Cmd {
 	m.mouseSel.dragging = false
 	if !m.mouseSel.active {
-		return nil // a plain click: nothing selected
+		// a plain click: nothing selected, but it may have landed on a link
+		if id, ok := m.linkAt(m.mouseSel.a); ok {
+			return m.openLink(id)
+		}
+		return nil
+	}
+	return m.copyIfSet()
+}
+
+// copyIfSet copies the selection right away unless copy-on-select is off (then
+// the selection stays highlighted and y copies it).
+func (m *model) copyIfSet() tea.Cmd {
+	if !m.cfg.CopyOnSelect {
+		return nil
 	}
 	return m.copySelection()
 }

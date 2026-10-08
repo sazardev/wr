@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -10,7 +11,7 @@ import (
 func TestConfigDefaultsWhenMissing(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	cfg, err := loadConfig()
-	if err != nil || cfg != defaultConfig() {
+	if err != nil || !reflect.DeepEqual(cfg, defaultConfig()) {
 		t.Fatalf("cfg=%+v err=%v", cfg, err)
 	}
 }
@@ -25,7 +26,7 @@ func TestConfigPartialOverridesAndClamps(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Width != 200 || cfg.Braille || cfg.Links != "footnotes" || cfg.CacheDays != 1 || !cfg.Scrollbar {
+	if cfg.Width != 400 || cfg.Braille || cfg.Links != "footnotes" || cfg.CacheDays != 1 || !cfg.Scrollbar {
 		t.Errorf("cfg=%+v", cfg)
 	}
 }
@@ -36,7 +37,7 @@ func TestConfigBrokenFileFallsBackToDefaults(t *testing.T) {
 	_ = os.MkdirAll(filepath.Join(dir, "wr"), 0o755)
 	_ = os.WriteFile(filepath.Join(dir, "wr", "config.toml"), []byte("this is not toml ==="), 0o644)
 	cfg, err := loadConfig()
-	if err == nil || cfg != defaultConfig() {
+	if err == nil || !reflect.DeepEqual(cfg, defaultConfig()) {
 		t.Fatalf("must warn and use the defaults: cfg=%+v err=%v", cfg, err)
 	}
 }
@@ -53,7 +54,7 @@ func TestEnsureConfigFileCreatesCommentedDefaults(t *testing.T) {
 	}
 	// the template must read back as the default configuration
 	cfg, err := loadConfig()
-	if err != nil || cfg != defaultConfig() {
+	if err != nil || !reflect.DeepEqual(cfg, defaultConfig()) {
 		t.Errorf("the template differs from the defaults: %+v %v", cfg, err)
 	}
 	// and it never overwrites an existing file

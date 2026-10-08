@@ -17,24 +17,40 @@ import (
 type mode int
 
 const (
-	modeRead mode = iota
-	modeSearch
-	modeMenu // from here on the mode is a floating panel
+	modeRead   mode = iota
+	modeSearch      // typing a search in the page
+	modeHints       // typing a link label
+	modeOmni        // from here on the mode is a floating panel: the address bar
+	modeMenu
 	modeConfirm
 	modeTOC
-	modeHelp
+	modeSettings
+	modeKeys
+	modeList // history or bookmarks
 )
 
-func (m mode) isPanel() bool { return m >= modeMenu }
+func (m mode) isPanel() bool { return m >= modeOmni }
+
+type confirmKind int
+
+const (
+	confirmCache confirmKind = iota
+	confirmHistory
+	confirmSettings
+)
 
 type (
 	loadedMsg struct {
+		id        int
+		src       string
 		md        string
 		fromCache bool
 		saved     time.Time
 		err       error
 	}
 	fetchedMsg struct {
+		id    int
+		src   string
 		md    string
 		err   error
 		apply bool // apply when done (explicit reload) or just announce it
@@ -45,9 +61,14 @@ type (
 )
 
 type model struct {
-	src   string
-	cfg   Config
-	fresh bool
+	src    string // the page being read ("" = the start page)
+	cfg    Config
+	fresh  bool
+	keymap map[string]action
+
+	// settings that came from a flag and must not be saved
+	linksFromFlag bool
+	fileLinks     string
 
 	w, h int
 	md   string
@@ -58,8 +79,22 @@ type model struct {
 	scroll spring // displayed position: follows y with spring physics
 
 	mode, prevMode mode
-	sel            int // selection in menu / index
+	sel            int // selection in menus and panels
 	input          string
+
+	// browsing
+	back, fwd  []navEntry
+	navID      int
+	pending    *navReq
+	focusID    int // keyboard-focused link (-1 = none)
+	hints      []hintLabel
+	hintInput  string
+	omni       omniState
+	list       listState
+	confirm    confirmKind
+	capture    string // action waiting for a key to bind
+	captureAdd bool
+	bookmarked bool
 
 	fromCache  bool
 	saved      time.Time
@@ -88,7 +123,11 @@ type model struct {
 
 func newModel(src string, cfg Config, fresh bool, cfgErr error) *model {
 	now := time.Now()
-	m := &model{src: src, cfg: cfg, fresh: fresh, loading: true, now: now, t0: now}
+	m := &model{src: src, cfg: cfg, fresh: fresh, loading: true, now: now, t0: now, focusID: -1}
+	m.keymap = buildKeymap(&m.cfg)
+	if file, err := loadConfig(); err == nil && file.Links != cfg.Links {
+		m.linksFromFlag, m.fileLinks = true, file.Links
+	}
 	if cfgErr != nil {
 		m.toast, m.toastWarn = cfgErr.Error()+" (using defaults)", true
 	}
@@ -110,25 +149,6 @@ func animTick(fast bool) tea.Cmd {
 	return tea.Tick(d, func(t time.Time) tea.Msg { return animTickMsg(t) })
 }
 
-func loadCmd(src string, fresh bool) tea.Cmd {
-	return func() tea.Msg {
-		if isHTTP(src) && !fresh {
-			if md, saved, ok := cacheGet(src); ok {
-				return loadedMsg{md: sanitize(md), fromCache: true, saved: saved}
-			}
-		}
-		md, err := load(src)
-		return loadedMsg{md: md, err: err, saved: time.Now()}
-	}
-}
-
-func fetchCmd(src string, apply bool) tea.Cmd {
-	return func() tea.Msg {
-		md, err := load(src)
-		return fetchedMsg{md: md, err: err, apply: apply}
-	}
-}
-
 func (m *model) setToast(s string, warn bool) tea.Cmd {
 	m.toastID++
 	m.toast, m.toastWarn, m.toastStart = s, warn, m.now
@@ -141,7 +161,7 @@ func (m *model) setToast(s string, warn bool) tea.Cmd {
 }
 
 func (m *model) Init() tea.Cmd {
-	cmds := []tea.Cmd{loadCmd(m.src, m.fresh)}
+	cmds := []tea.Cmd{m.startNav(navInitial, m.src, 0, m.fresh)}
 	if m.toast != "" {
 		cmds = append(cmds, m.setToast(m.toast, m.toastWarn))
 	}
@@ -150,20 +170,20 @@ func (m *model) Init() tea.Cmd {
 
 // ---- animation scheduling ----
 
+// anim reports whether one kind of animation is on (the master switch and its own).
+func (m *model) anim(flag bool) bool { return m.cfg.Animations && flag }
+
 // animating reports whether anything on screen is still moving, and whether it
 // needs smooth (60 fps) frames or just the slow spinner tick.
 func (m *model) animating() (active, fast bool) {
 	spinner := m.loading || m.refreshing
-	if !m.cfg.Animations {
-		return spinner, false
-	}
 	_, toastDone := typed(m.toast, m.toastStart, m.now, typeSpeed)
 	switch {
-	case !m.scroll.settled(),
-		progressSince(m.revealStart, m.now, revealDur) < 1,
-		m.mode.isPanel() && progressSince(m.panelStart, m.now, panelDur) < 1,
-		!toastDone,
-		m.loading && m.doc == nil:
+	case m.anim(m.cfg.AnimScroll) && !m.scroll.settled(),
+		m.anim(m.cfg.AnimReveal) && progressSince(m.revealStart, m.now, revealDur) < 1,
+		m.anim(m.cfg.AnimPanels) && m.mode.isPanel() && progressSince(m.panelStart, m.now, panelDur) < 1,
+		m.anim(m.cfg.AnimNotices) && !toastDone,
+		m.anim(m.cfg.AnimLoading) && m.loading && m.doc == nil:
 		return true, true
 	}
 	return spinner, false
@@ -179,7 +199,7 @@ func (m *model) afterUpdate(cmd tea.Cmd) tea.Cmd {
 		m.prevMode = m.mode
 	}
 	m.scroll.target = float64(m.y)
-	if !m.cfg.Animations {
+	if !m.anim(m.cfg.AnimScroll) {
 		m.scroll.snap()
 	}
 	if active, fast := m.animating(); active && !m.animRunning {
@@ -203,7 +223,11 @@ func (m *model) geometry() (contentW, left, bodyH, footerH int) {
 	if m.w < 60 {
 		margin = 1 // narrow terminals: don't waste columns
 	}
-	contentW = max(min(m.cfg.Width, usable-2*margin), 20)
+	maxW := m.cfg.Width
+	if maxW == 0 {
+		maxW = usable // "full width"
+	}
+	contentW = max(min(maxW, usable-2*margin), 20)
 	left = margin
 	if m.cfg.Center {
 		left = max((usable-contentW)/2, margin)
@@ -211,7 +235,7 @@ func (m *model) geometry() (contentW, left, bodyH, footerH int) {
 	switch {
 	case !m.cfg.Footer || m.h < 4:
 		footerH = 0
-	case m.h >= 8:
+	case m.cfg.FooterRule && m.h >= 8:
 		footerH = 2 // rule + row
 	default:
 		footerH = 1 // just the row
@@ -231,7 +255,7 @@ func (m *model) clampY() { m.y = min(max(m.y, 0), m.maxY()) }
 
 // viewPos is the (fractional) displayed scroll position.
 func (m *model) viewPos() float64 {
-	if !m.cfg.Animations {
+	if !m.anim(m.cfg.AnimScroll) {
 		return float64(m.y)
 	}
 	return math.Min(math.Max(m.scroll.pos, 0), float64(m.maxY()))
@@ -257,6 +281,9 @@ func (m *model) rebuild() {
 	m.scroll.target = float64(m.y)
 	m.scroll.snap()
 	m.mouseSel.clear()
+	if m.focusID >= len(m.doc.URLs) {
+		m.focusID = -1
+	}
 	m.refreshMatches()
 }
 
@@ -316,21 +343,23 @@ func (m *model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case loadedMsg:
-		m.loading = false
-		if msg.err != nil {
-			m.loadErr = msg.err
+		if msg.id != m.navID { // an older request that was overtaken
 			return m, nil
 		}
-		m.md, m.fromCache, m.saved = msg.md, msg.fromCache, msg.saved
-		m.rebuild()
-		m.revealStart = m.now
-		if msg.fromCache && isHTTP(m.src) { // background refresh
-			m.refreshing = true
-			return m, fetchCmd(m.src, false)
+		if msg.err != nil {
+			m.pending, m.loading = nil, false
+			if m.doc == nil {
+				m.loadErr = msg.err
+				return m, nil
+			}
+			return m, m.setToast("could not open "+hostOf(msg.src)+": "+msg.err.Error(), true)
 		}
-		return m, nil
+		return m, m.commitNav(msg)
 
 	case fetchedMsg:
+		if msg.src != m.src {
+			return m, nil // you have moved on
+		}
 		m.refreshing = false
 		switch {
 		case msg.err != nil && msg.apply:
@@ -344,7 +373,7 @@ func (m *model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.setToast("✓ page reloaded", false)
 		case msg.md != m.md:
 			m.newer = msg.md
-			return m, m.setToast("● a newer version is ready: press r to view it", false)
+			return m, m.setToast("● a newer version is ready: press "+keyHint(&m.cfg, actReload)+" to view it", false)
 		}
 		return m, nil // already up to date: no need to announce it
 
@@ -353,7 +382,8 @@ func (m *model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if err != nil {
 			return m, m.setToast(err.Error(), true)
 		}
-		m.cfg = cfg
+		m.cfg, m.keymap = cfg, buildKeymap(&cfg)
+		applyRuntime(cfg)
 		m.rebuild()
 		return m, m.setToast("✓ settings reloaded", false)
 
@@ -361,9 +391,9 @@ func (m *model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.mode == modeRead && m.doc != nil {
 			switch msg.Mouse().Button {
 			case tea.MouseWheelUp:
-				m.y -= 3
+				m.y -= m.cfg.WheelLines
 			case tea.MouseWheelDown:
-				m.y += 3
+				m.y += m.cfg.WheelLines
 			}
 			m.clampY()
 		}
@@ -371,8 +401,16 @@ func (m *model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.MouseClickMsg:
 		m.toast = "" // a click dismisses a notice too
-		if mo := tea.Mouse(msg); mo.Button == tea.MouseLeft && m.mode == modeRead && m.doc != nil {
-			return m, m.mouseDown(mo.X, mo.Y)
+		mo := tea.Mouse(msg)
+		switch mo.Button {
+		case tea.MouseBackward:
+			return m, m.goBack()
+		case tea.MouseForward:
+			return m, m.goForward()
+		case tea.MouseLeft:
+			if m.mode == modeRead && m.doc != nil {
+				return m, m.mouseDown(mo.X, mo.Y)
+			}
 		}
 		return m, nil
 
@@ -389,6 +427,19 @@ func (m *model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case tea.PasteMsg:
+		switch m.mode {
+		case modeOmni:
+			m.omniAppend(msg.Content)
+		case modeSearch:
+			m.input += strings.NewReplacer("\n", " ", "\r", " ").Replace(msg.Content)
+			m.liveSearch()
+		case modeList:
+			m.list.filter += strings.NewReplacer("\n", " ", "\r", " ").Replace(msg.Content)
+			m.list.sel = 0
+		}
+		return m, nil
+
 	case tea.KeyPressMsg:
 		return m.key(msg)
 	}
@@ -397,62 +448,90 @@ func (m *model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	k := msg.String()
-	m.toast = "" // any key dismisses a notice at once
-	if k == "ctrl+c" {
+	if m.capture == "" && k == "ctrl+c" {
 		return m, tea.Quit
 	}
+	m.toast = "" // any key dismisses a notice at once
 	switch m.mode {
 	case modeSearch:
 		return m.keySearch(msg)
+	case modeHints:
+		return m.keyHints(k)
+	case modeOmni:
+		return m.keyOmni(msg)
 	case modeMenu:
 		return m.keyMenu(k)
 	case modeConfirm:
-		switch k {
-		case "y", "Y", "enter":
-			m.mode = modeRead
-			pages, _ := cacheStats()
-			_ = cacheClear()
-			return m, m.setToast(fmt.Sprintf("✓ cache cleared (%d pages)", pages), false)
-		default:
-			m.mode = modeRead
-		}
-		return m, nil
+		return m.keyConfirm(k)
 	case modeTOC:
 		return m.keyTOC(k)
-	case modeHelp:
-		m.mode = modeRead
-		return m, nil
+	case modeSettings:
+		return m.keySettings(k)
+	case modeKeys:
+		return m.keyKeys(msg)
+	case modeList:
+		return m.keyList(msg)
 	}
 	return m.keyRead(k)
 }
 
+func (m *model) keyConfirm(k string) (tea.Model, tea.Cmd) {
+	switch k {
+	case "y", "Y", "enter":
+		m.mode = modeRead
+		switch m.confirm {
+		case confirmHistory:
+			_ = historyClear()
+			m.list.all = nil
+			return m, m.setToast("✓ history cleared", false)
+		case confirmSettings:
+			keys := m.cfg.Keys
+			m.cfg = defaultConfig()
+			m.cfg.Keys = keys
+			m.linksFromFlag = false
+			return m, tea.Batch(m.applyConfigRebuild(), m.setToast("✓ settings reset", false))
+		}
+		pages, _ := cacheStats()
+		_ = cacheClear()
+		return m, m.setToast(fmt.Sprintf("✓ cache cleared (%d pages)", pages), false)
+	}
+	if m.confirm == confirmHistory { // came from the history panel: go back to it
+		m.mode = modeList
+	} else {
+		m.mode = modeRead
+	}
+	return m, nil
+}
+
+func (m *model) applyConfigRebuild() tea.Cmd { return m.applyConfig(true) }
+
 func (m *model) keyRead(k string) (tea.Model, tea.Cmd) {
 	_, _, bodyH, _ := m.geometry()
-	switch k {
-	case "q":
-		return m, tea.Quit
-	case "esc":
-		m.query, m.matches = "", nil // only clears the search and selection: quit with q
+	if k == "esc" { // clears the search, the selection and the link focus; quit with q
+		m.query, m.matches, m.focusID = "", nil, -1
 		m.mouseSel.clear()
-	case "y":
-		return m, m.copySelection()
-	case "j", "down", "enter":
+		return m, nil
+	}
+	switch m.keymap[k] {
+	case actQuit:
+		return m, tea.Quit
+	case actDown:
 		m.y++
-	case "k", "up":
+	case actUp:
 		m.y--
-	case "space", " ", "f", "pgdown", "ctrl+f":
+	case actPageDown:
 		m.y += max(bodyH-1, 1)
-	case "b", "pgup", "ctrl+b":
+	case actPageUp:
 		m.y -= max(bodyH-1, 1)
-	case "d", "ctrl+d":
+	case actHalfDown:
 		m.y += bodyH / 2
-	case "u", "ctrl+u":
+	case actHalfUp:
 		m.y -= bodyH / 2
-	case "g", "home":
+	case actTop:
 		m.y = 0
-	case "G", "end":
+	case actBottom:
 		m.y = m.maxY()
-	case "]":
+	case actNextSec:
 		if m.doc != nil {
 			for _, h := range m.doc.Heads {
 				if h.Line > m.y {
@@ -461,7 +540,7 @@ func (m *model) keyRead(k string) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
-	case "[":
+	case actPrevSec:
 		if m.doc != nil {
 			for i := len(m.doc.Heads) - 1; i >= 0; i-- {
 				if m.doc.Heads[i].Line < m.y {
@@ -470,18 +549,49 @@ func (m *model) keyRead(k string) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
-	case "/":
+	case actSearch:
 		m.mode, m.input, m.searchY = modeSearch, "", m.y
-	case "n":
+	case actNextMatch:
 		m.step(1)
-	case "N":
+	case actPrevMatch:
 		m.step(-1)
-	case "t":
+	case actIndex:
 		return m, m.openTOC()
-	case "r":
+	case actReload:
 		return m, m.reload()
-	case "m", "?", "tab":
+	case actMenu:
 		m.mode, m.sel = modeMenu, 0
+	case actSettings:
+		m.mode, m.sel = modeSettings, 0
+	case actYank:
+		return m, m.copySelection()
+	case actOpen:
+		m.openOmni()
+	case actBack:
+		return m, m.goBack()
+	case actForward:
+		return m, m.goForward()
+	case actHome:
+		return m, m.startNav(navPush, "", 0, false)
+	case actHistory:
+		return m, m.openList(listHistory)
+	case actBookmarks:
+		return m, m.openList(listBookmarks)
+	case actBookmark:
+		return m, m.toggleBookmark()
+	case actExternal:
+		return m, m.openExternalNow()
+	case actFollow:
+		return m, m.enterHints()
+	case actNextLink:
+		m.moveFocus(1)
+	case actPrevLink:
+		m.moveFocus(-1)
+	case actActivate:
+		if m.focusID >= 0 {
+			return m, m.openLink(m.focusID)
+		}
+		m.y++
 	}
 	m.clampY()
 	return m, nil
@@ -548,8 +658,8 @@ func (m *model) liveSearch() {
 }
 
 func (m *model) reload() tea.Cmd {
-	if !isHTTP(m.src) {
-		return m.setToast("only a URL can be reloaded", true)
+	if m.src == "" || !isHTTP(m.src) { // the start page and local files are read again in place
+		return m.startNav(navReplace, m.src, m.y, true)
 	}
 	if m.newer != "" {
 		m.md, m.fromCache, m.saved, m.newer = m.newer, false, time.Now(), ""
@@ -558,12 +668,15 @@ func (m *model) reload() tea.Cmd {
 		return m.setToast("✓ newer version applied", false)
 	}
 	m.refreshing = true
-	return fetchCmd(m.src, true)
+	return fetchCmd(m.navID, m.src, true)
 }
 
 // ---- View ----
 
 func (m *model) host() string {
+	if m.src == "" {
+		return "wr"
+	}
 	if u, err := url.Parse(m.src); err == nil && u.Host != "" {
 		return u.Host
 	}
@@ -575,7 +688,7 @@ func (m *model) host() string {
 func (m *model) View() tea.View {
 	v := tea.NewView(m.render())
 	v.AltScreen = true
-	v.WindowTitle = "wr · " + m.host()
+	v.WindowTitle = "wr · " + m.title()
 	if m.cfg.Mouse {
 		v.MouseMode = tea.MouseModeCellMotion
 	}
@@ -591,14 +704,20 @@ func (m *model) render() string {
 	}
 	body := m.body()
 	switch m.mode {
+	case modeOmni:
+		body = m.composeAt(body, m.omniBox(), 1)
 	case modeMenu:
 		body = m.compose(body, m.menuBox())
 	case modeConfirm:
 		body = m.compose(body, m.confirmBox())
 	case modeTOC:
 		body = m.compose(body, m.tocBox())
-	case modeHelp:
-		body = m.compose(body, m.helpBox())
+	case modeSettings:
+		body = m.compose(body, m.settingsBox())
+	case modeKeys:
+		body = m.compose(body, m.keysBox())
+	case modeList:
+		body = m.compose(body, m.listBox())
 	}
 	return strings.Join(append(body, m.footer()...), "\n")
 }
@@ -624,14 +743,21 @@ func (m *model) spin() string {
 // loadingScreen: the braille wave and what is being fetched.
 func (m *model) loadingScreen(rows []string, bodyH int) {
 	row := max(bodyH/2-1, 0)
-	if m.cfg.Animations && m.cfg.Braille {
+	host := m.host()
+	if m.pending != nil {
+		host = hostOf(m.pending.src)
+		if m.pending.src == "" {
+			host = "wr"
+		}
+	}
+	if m.anim(m.cfg.AnimLoading) && m.cfg.Braille {
 		rows[row] = m.center(wave(min(max(m.w/3, 8), 36), m.elapsed()))
 	} else {
-		rows[row] = m.center("\x1b[94m" + m.spin() + "\x1b[0m")
+		rows[row] = m.center(acc(m.spin()))
 	}
 	if row+2 < len(rows) {
 		dots := strings.Repeat(".", int(m.elapsed()*3)%4)
-		rows[row+2] = m.center("\x1b[90mfetching \x1b[0m\x1b[1m" + m.host() + "\x1b[0m\x1b[90m" + dots + "\x1b[0m")
+		rows[row+2] = m.center("\x1b[90mfetching \x1b[0m\x1b[1m" + host + "\x1b[0m\x1b[90m" + dots + "\x1b[0m")
 	}
 }
 
@@ -645,7 +771,10 @@ func (m *model) body() []string {
 	if m.doc == nil {
 		switch {
 		case m.loadErr != nil:
-			rows[bodyH/2] = m.center("\x1b[91m✗ " + m.loadErr.Error() + "\x1b[0m  \x1b[90m(q to quit)\x1b[0m")
+			rows[bodyH/2] = m.center("\x1b[91m✗ " + m.loadErr.Error() + "\x1b[0m")
+			if bodyH/2+2 < bodyH {
+				rows[bodyH/2+2] = m.center("\x1b[90m" + keyHint(&m.cfg, actOpen) + " open another page · " + keyHint(&m.cfg, actHome) + " start page · " + keyHint(&m.cfg, actQuit) + " quit\x1b[0m")
+			}
 		case m.loading:
 			m.loadingScreen(rows, bodyH)
 		}
@@ -669,6 +798,24 @@ func (m *model) body() []string {
 		}
 	}
 
+	// the focused link, and the labels of hint mode
+	focus := map[int][]span{}
+	if m.focusID >= 0 {
+		for _, l := range m.doc.Links {
+			if l.ID == m.focusID && l.Line >= y && l.Line < y+bodyH {
+				focus[l.Line] = append(focus[l.Line], span{l.From, l.To})
+			}
+		}
+	}
+	labels := map[int][]hintLabel{}
+	if m.mode == modeHints {
+		for _, h := range m.hints {
+			if strings.HasPrefix(h.label, m.hintInput) && h.span.Line >= y && h.span.Line < y+bodyH {
+				labels[h.span.Line] = append(labels[h.span.Line], h)
+			}
+		}
+	}
+
 	var sb []string
 	if m.cfg.Scrollbar {
 		if m.cfg.Braille {
@@ -680,7 +827,7 @@ func (m *model) body() []string {
 
 	// reveal animation: the page wipes in from the top with a bright scan line
 	visible, scanRow := bodyH, -1
-	if m.cfg.Animations {
+	if m.anim(m.cfg.AnimReveal) {
 		if p := progressSince(m.revealStart, m.now, revealDur); p < 1 {
 			visible = int(math.Ceil(easeOutCubic(p) * float64(bodyH)))
 			scanRow = visible
@@ -707,8 +854,14 @@ func (m *model) body() []string {
 				}
 				line = highlightLine(line, sp, c)
 			}
+			if sp, ok := focus[idx]; ok {
+				line = markSpans(line, sp, func(int) (string, string) { return "\x1b[30;" + accentBG + "m", "\x1b[39;49m" })
+			}
 			if ss, ok := m.mouseSel.spanOn(idx, len([]rune(m.doc.Plain[idx]))); ok {
 				line = selectLine(line, ss)
+			}
+			for _, h := range labels[idx] {
+				line = overlayLabel(line, h.span.From, h.label, m.doc.Plain[idx])
 			}
 			line = ansi.Truncate(line, cw, "")
 		}
@@ -746,15 +899,15 @@ func (m *model) footer() []string {
 	return []string{m.rule(), m.footerRow()}
 }
 
-// rule is a thin line with a blue-to-cyan gradient (16-color palette).
+// rule is a thin line with a gradient in the accent color.
 func (m *model) rule() string {
 	glyph := "─"
 	if m.cfg.Braille {
 		glyph = "⣀"
 	}
 	third := m.w / 3
-	return "\x1b[34m" + strings.Repeat(glyph, third) +
-		"\x1b[94m" + strings.Repeat(glyph, third) +
+	return "\x1b[" + accentDim + "m" + strings.Repeat(glyph, third) +
+		"\x1b[" + accentFG + "m" + strings.Repeat(glyph, third) +
 		"\x1b[96m" + strings.Repeat(glyph, m.w-2*third) + "\x1b[0m"
 }
 
@@ -769,12 +922,15 @@ func (m *model) footerRow() string {
 }
 
 // progressText is the right side of the footer: what needs your attention
-// (a newer version, search results), then the progress bar and percentage.
+// (a bookmark star, a newer version, search results), then the progress.
 func (m *model) progressText() string {
 	chips := ""
-	if m.w >= 70 {
+	if m.cfg.FooterChips && m.w >= 70 {
+		if m.bookmarked {
+			chips += "\x1b[93m★\x1b[0m  "
+		}
 		if m.newer != "" {
-			chips += "\x1b[93m● new version (r)\x1b[0m  "
+			chips += "\x1b[93m● new version (" + keyHint(&m.cfg, actReload) + ")\x1b[0m  "
 		}
 		if len(m.matches) > 0 {
 			q := []rune(m.query)
@@ -783,6 +939,10 @@ func (m *model) progressText() string {
 			}
 			chips += fmt.Sprintf("\x1b[96m«%s» %d/%d\x1b[0m  ", string(q), m.cur+1, len(m.matches))
 		}
+	}
+	mode := m.cfg.FooterProgress
+	if mode == "off" {
+		return chips
 	}
 	pct, scrollable := m.percent()
 	if !scrollable {
@@ -803,22 +963,36 @@ func (m *model) progressText() string {
 	case m.w >= 45:
 		cells = 5
 	}
-	switch {
-	case cells == 0:
-		return chips + label
-	case m.cfg.Braille:
-		return chips + progressBar(cells, pct) + " " + label
+	bar := ""
+	if cells > 0 {
+		if m.cfg.Braille {
+			bar = progressBar(cells, pct)
+		} else {
+			bar = plainBar(cells, pct)
+		}
 	}
-	return chips + plainBar(cells, pct) + " " + label
+	switch mode {
+	case "percent":
+		return chips + label
+	case "bar":
+		if bar == "" {
+			return chips + label
+		}
+		return chips + bar + " "
+	}
+	if bar == "" {
+		return chips + label
+	}
+	return chips + bar + " " + label
 }
 
-func hint(key, desc string) string { return "\x1b[94m" + key + "\x1b[0m \x1b[90m" + desc + "\x1b[0m" }
+func hint(key, desc string) string { return acc(key) + " \x1b[90m" + desc + "\x1b[0m" }
 
 // leftText is the left side of the footer.
 func (m *model) leftText(room int) string {
 	lead := " "
 	if m.loading || m.refreshing {
-		lead = " \x1b[94m" + m.spin() + "\x1b[0m "
+		lead = " " + acc(m.spin()) + " "
 	}
 	switch {
 	case m.mode == modeSearch:
@@ -830,7 +1004,11 @@ func (m *model) leftText(room int) string {
 				count = fmt.Sprintf("\x1b[96m%d results\x1b[0m", len(m.matches))
 			}
 		}
-		return lead + "\x1b[94m/\x1b[0m" + m.input + "\x1b[7m \x1b[0m  " + count + "  " + hint("enter", "accept") + "  " + hint("esc", "cancel")
+		return lead + acc("/") + m.input + "\x1b[7m \x1b[0m  " + count + "  " + hint("enter", "accept") + "  " + hint("esc", "cancel")
+	case m.mode == modeHints:
+		return lead + hint("type a label", "to follow a link") + "  " + m.hintInput + "  " + hint("esc", "cancel")
+	case m.mode == modeOmni:
+		return lead + hint("↑↓", "choose") + "  " + hint("enter", "go") + "  " + hint("esc", "cancel")
 	case m.mode.isPanel():
 		return lead + hint("↑↓", "move") + "  " + hint("enter", "select") + "  " + hint("esc", "close")
 	case m.toast != "":
@@ -839,34 +1017,59 @@ func (m *model) leftText(room int) string {
 			col = "93"
 		}
 		shown := m.toast
-		if m.cfg.Animations {
+		if m.anim(m.cfg.AnimNotices) {
 			shown, _ = typed(m.toast, m.toastStart, m.now, typeSpeed)
 		}
 		return lead + "\x1b[" + col + "m" + shown + "\x1b[0m"
+	case m.focusID >= 0:
+		return lead + acc("→") + " \x1b[96m" + m.focusedURL() + "\x1b[0m"
+	case !m.cfg.FooterHints:
+		return lead
 	}
-	return lead + fitHints(room-ansi.StringWidth(lead), m.cfg.Mouse)
+	return lead + m.hintsText(room-ansi.StringWidth(lead))
 }
 
-// fitHints shows as many shortcuts as the width allows, most important first,
-// in their natural order.
-func fitHints(room int, mouse bool) string {
+// hintsText shows as many shortcuts as the width allows, most important first,
+// in their natural order, with the keys you actually have bound.
+func (m *model) hintsText(room int) string {
 	type h struct {
 		prio      int
 		key, desc string
 	}
-	all := []h{{2, "/", "search"}, {5, "n N", "next"}, {6, "[ ]", "sections"},
-		{3, "t", "index"}, {4, "r", "reload"}, {1, "m", "menu"}, {0, "q", "quit"}}
-	if mouse {
-		all = append(all, h{7, "drag", "copy"})
+	pair := func(a, b action) string {
+		x, y := keyHint(&m.cfg, a), keyHint(&m.cfg, b)
+		switch {
+		case x == "":
+			return y
+		case y == "":
+			return x
+		}
+		return x + " " + y
+	}
+	all := []h{
+		{2, keyHint(&m.cfg, actOpen), "open"},
+		{4, keyHint(&m.cfg, actSearch), "search"},
+		{3, keyHint(&m.cfg, actBack), "back"},
+		{7, keyHint(&m.cfg, actForward), "fwd"},
+		{6, keyHint(&m.cfg, actFollow), "links"},
+		{8, pair(actNextMatch, actPrevMatch), "next"},
+		{9, pair(actNextSec, actPrevSec), "sections"},
+		{5, keyHint(&m.cfg, actIndex), "index"},
+		{10, keyHint(&m.cfg, actReload), "reload"},
+		{1, keyHint(&m.cfg, actMenu), "menu"},
+		{0, keyHint(&m.cfg, actQuit), "quit"},
+	}
+	if m.cfg.Mouse {
+		all = append(all, h{11, "drag", "copy"})
 	}
 	keep := map[int]bool{}
 	used := 0
-	for p := 0; p < len(all); p++ {
+	for p := 0; p <= 11; p++ {
 		for i, it := range all {
-			if it.prio != p {
+			if it.prio != p || it.key == "" {
 				continue
 			}
-			w := len(it.key) + 1 + len(it.desc)
+			w := ansi.StringWidth(it.key) + 1 + len(it.desc)
 			if len(keep) > 0 {
 				w += 2
 			}
@@ -899,7 +1102,7 @@ func plainScrollbar(h, total, view int, top float64) []string {
 	out := make([]string, h)
 	for i := range out {
 		if i >= start && i < start+thumb {
-			out[i] = "\x1b[94m┃\x1b[0m"
+			out[i] = "\x1b[" + accentFG + "m┃\x1b[0m"
 		} else {
 			out[i] = "\x1b[90m│\x1b[0m"
 		}
@@ -909,10 +1112,10 @@ func plainScrollbar(h, total, view int, top float64) []string {
 
 func plainBar(cells int, pct float64) string {
 	filled := min(max(int(float64(cells)*pct/100), 0), cells)
-	return "\x1b[94m" + strings.Repeat("█", filled) + "\x1b[90m" + strings.Repeat("░", cells-filled) + "\x1b[0m"
+	return "\x1b[" + accentFG + "m" + strings.Repeat("█", filled) + "\x1b[90m" + strings.Repeat("░", cells-filled) + "\x1b[0m"
 }
 
-// ---- external editor (settings) ----
+// ---- external editor (config file) ----
 
 func (m *model) openConfig() tea.Cmd {
 	path, err := ensureConfigFile()

@@ -47,7 +47,7 @@ func scrollbar(h, total, view int, top float64) []string {
 		if bits == 0 {
 			out[r] = "\x1b[90m" + string(rune(0x2800|0x47)) + "\x1b[0m" // faint track (left column: ⡇)
 		} else {
-			out[r] = "\x1b[94m" + string(0x2800+bits) + "\x1b[0m"
+			out[r] = "\x1b[" + accentFG + "m" + string(0x2800+bits) + "\x1b[0m"
 		}
 	}
 	return out
@@ -66,7 +66,7 @@ func progressBar(cells int, pct float64) string {
 	steps := len(brailleFill) - 1                              // 6 steps between empty and full
 	units := int(math.Round(pct * float64(cells*steps) / 100)) // total fill units
 	var b strings.Builder
-	b.WriteString("\x1b[94m")
+	b.WriteString("\x1b[" + accentFG + "m")
 	closed := false
 	for i := 0; i < cells; i++ {
 		u := units - i*steps

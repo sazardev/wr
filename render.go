@@ -37,7 +37,13 @@ type Doc struct {
 	Plain []string   // the same without escapes (for searching and copying)
 	Heads []Head     // top-level headings, with their line
 	Meta  []LineMeta // what each line is, so copying can do the right thing
+	Links []LinkSpan // every link, in reading order
+	URLs  []string   // destinations, indexed by LinkSpan.ID
 }
+
+// LinkSpan is where one link sits on screen: a rune range on a line. A link
+// that wraps onto several lines becomes several spans with the same ID.
+type LinkSpan struct{ Line, From, To, ID int }
 
 type LineKind uint8
 
@@ -67,7 +73,13 @@ const (
 	mCont   = "\x1b_k\x1b\\"
 )
 
-var allMarkers = []string{mSoft, mTop, mBottom, mBody, mCont}
+const mLinkEnd = "\x1b_e\x1b\\"
+
+func mLinkStart(id int) string { return "\x1b_l" + strconv.Itoa(id) + "\x1b\\" }
+
+var allMarkers = []string{mSoft, mTop, mBottom, mBody, mCont, mLinkEnd}
+
+var linkStartRe = regexp.MustCompile("\x1b_l[0-9]+\x1b\\\\")
 
 type Glyphs struct {
 	Head    [6]string
@@ -105,13 +117,25 @@ type renderer struct {
 	links   []string
 	linkIdx map[string]int
 	hl      map[ast.Node][]string // code blocks already highlighted (in parallel)
+	urls    []string              // every link destination, for clicking
+	urlIdx  map[string]int
+}
+
+// linkID registers a destination and returns its id.
+func (r *renderer) linkID(dest string) int {
+	if i, ok := r.urlIdx[dest]; ok {
+		return i
+	}
+	r.urls = append(r.urls, dest)
+	r.urlIdx[dest] = len(r.urls) - 1
+	return len(r.urls) - 1
 }
 
 // renderDoc converts Markdown into a document `width` columns wide.
 func renderDoc(md string, width int, cfg Config) *Doc {
 	src := []byte(md)
 	root := mdParser.Parse(text.NewReader(src))
-	r := &renderer{src: src, cfg: cfg, g: plainGlyphs, linkIdx: map[string]int{}}
+	r := &renderer{src: src, cfg: cfg, g: plainGlyphs, linkIdx: map[string]int{}, urlIdx: map[string]int{}}
 	if cfg.Braille {
 		r.g = brailleGlyphs
 	}
@@ -127,9 +151,13 @@ func renderDoc(md string, width int, cfg Config) *Doc {
 			continue
 		}
 		if !first {
-			out = append(out, "")
-			if h, ok := c.(*ast.Heading); ok && h.Level <= 2 {
+			for i := 0; i < cfg.Spacing; i++ {
+				out = append(out, "")
+			}
+			if h, ok := c.(*ast.Heading); ok && h.Level <= 2 && cfg.Spacing > 0 {
 				out = append(out, "") // extra breathing room before h1/h2
+			} else if ok && h.Level <= 2 {
+				out = append(out, "") // even compact keeps one blank line before a section
 			}
 		}
 		if h, ok := c.(*ast.Heading); ok {
@@ -142,7 +170,7 @@ func renderDoc(md string, width int, cfg Config) *Doc {
 	if len(r.links) > 0 && cfg.Links == "footnotes" {
 		out = append(out, "", "", style("1;"+headColor[2], r.g.Head[2]+"Links"), "")
 		for i, u := range r.links {
-			line := style("90", "["+strconv.Itoa(i+1)+"]") + " " + style("36", u)
+			line := style("90", "["+strconv.Itoa(i+1)+"]") + " " + mLinkStart(r.linkID(u)) + style("36", u) + mLinkEnd
 			out = append(out, strings.Split(ansi.Hardwrap(line, width, true), "\n")...)
 		}
 	}
@@ -150,20 +178,74 @@ func renderDoc(md string, width int, cfg Config) *Doc {
 	out = selfContain(out)
 	meta := make([]LineMeta, len(out))
 	plain := make([]string, len(out))
+	var spans []LinkSpan
+	open, start := -1, 0
 	for i, l := range out {
 		if strings.Contains(l, "\x1b_") {
 			meta[i] = metaOf(l)
+			spans = scanLinks(l, i, &open, &start, spans)
 			for _, mk := range allMarkers {
 				l = strings.ReplaceAll(l, mk, "")
 			}
+			l = linkStartRe.ReplaceAllString(l, "")
 			out[i] = l
+		} else if open >= 0 { // a link wrapped across a line without markers
+			spans = scanLinks(l, i, &open, &start, spans)
 		}
 		plain[i] = ansi.Strip(l)
 	}
-	return &Doc{Lines: out, Plain: plain, Heads: heads, Meta: meta}
+	return &Doc{Lines: out, Plain: plain, Heads: heads, Meta: meta, Links: spans, URLs: r.urls}
 }
 
 func style(code, s string) string { return "\x1b[" + code + "m" + s + "\x1b[0m" }
+
+// scanLinks finds the link ranges on one line. A link still open at the end of
+// the line continues on the next one.
+func scanLinks(l string, line int, open, start *int, out []LinkSpan) []LinkSpan {
+	vis, i := 0, 0
+	for i < len(l) {
+		if l[i] == 0x1b && i+1 < len(l) {
+			switch l[i+1] {
+			case '[':
+				j := i + 2
+				for j < len(l) && !(l[j] >= '@' && l[j] <= '~') {
+					j++
+				}
+				i = min(j+1, len(l))
+			case '_': // APC marker: l<id> opens a link, e closes it
+				end := strings.Index(l[i+2:], "\x1b\\")
+				if end < 0 {
+					i = len(l)
+					break
+				}
+				payload := l[i+2 : i+2+end]
+				switch {
+				case strings.HasPrefix(payload, "l"):
+					if id, err := strconv.Atoi(payload[1:]); err == nil {
+						*open, *start = id, vis
+					}
+				case payload == "e":
+					if *open >= 0 && vis > *start {
+						out = append(out, LinkSpan{line, *start, vis, *open})
+					}
+					*open = -1
+				}
+				i += 2 + end + 2
+			default:
+				i++
+			}
+			continue
+		}
+		_, size := utf8.DecodeRuneInString(l[i:])
+		vis++
+		i += size
+	}
+	if *open >= 0 && vis > *start {
+		out = append(out, LinkSpan{line, *start, vis, *open})
+	}
+	*start = 0 // if the link goes on, it begins at the left edge of the next line
+	return out
+}
 
 // metaOf reads the markers planted in a line.
 func metaOf(l string) LineMeta {
@@ -213,7 +295,9 @@ func (r *renderer) blocks(parent ast.Node, w int, tight bool) []string {
 			continue
 		}
 		if !first && !tight {
-			out = append(out, "")
+			for i := 0; i < r.cfg.Spacing; i++ {
+				out = append(out, "")
+			}
 		}
 		out = append(out, ls...)
 		first = false
@@ -299,7 +383,7 @@ func (r *renderer) block(n ast.Node, w int) []string {
 		col := headColor[lvl-1]
 		body := r.inline(n, "1;"+col)
 		ls := wrap(style("1;"+col, r.g.Head[lvl-1])+body, w)
-		if lvl <= 2 {
+		if lvl <= 2 && r.cfg.HeadingRules {
 			rule := strings.Repeat(r.g.Rule[lvl-1], max(w, 1))
 			rcol := "34"
 			if lvl == 2 {
@@ -379,7 +463,7 @@ func (r *renderer) list(l *ast.List, w, depth int) []string {
 		for i, line := range inner {
 			switch {
 			case i == 0:
-				out = append(out, style("94", marker)+" "+line)
+				out = append(out, style(accentFG, marker)+" "+line)
 			case line == "":
 				out = append(out, "")
 			default:
@@ -397,7 +481,10 @@ func (r *renderer) code(lang string, hl []string, w int) []string {
 	if label == "" {
 		label = "text"
 	}
-	out := []string{mTop + style("90", "╭─ ") + style("1", label)}
+	var out []string
+	if r.cfg.CodeFrame {
+		out = append(out, mTop+style("90", "╭─ ")+style("1", label))
+	}
 	inner := max(w-2, 8)
 	for _, ln := range hl {
 		for i, seg := range strings.Split(ansi.Hardwrap(ln, inner, true), "\n") {
@@ -408,7 +495,10 @@ func (r *renderer) code(lang string, hl []string, w int) []string {
 			out = append(out, mk+style("90", gutter)+" "+seg)
 		}
 	}
-	return append(out, mBottom+style("90", "╰─"))
+	if r.cfg.CodeFrame {
+		out = append(out, mBottom+style("90", "╰─"))
+	}
+	return out
 }
 
 var (
@@ -578,7 +668,7 @@ func (r *renderer) table(t *east.Table, w int) []string {
 				cell = row[i]
 			}
 			if header[ri] {
-				cell = style("1;94", ansi.Strip(cell))
+				cell = style("1;"+accentFG, ansi.Strip(cell))
 			}
 			wrapped[i] = wrapRaw(cell, widths[i])
 			height = max(height, len(wrapped[i]))
@@ -673,9 +763,17 @@ func (r *renderer) walkInline(x *inl, n ast.Node) {
 			}
 		case *ast.Link:
 			dest := string(v.Destination)
+			id := -1
+			if dest != "" {
+				id = r.linkID(dest)
+				x.b.WriteString(mLinkStart(id))
+			}
 			x.push("36;4")
 			r.walkInline(x, v)
 			x.pop()
+			if id >= 0 {
+				x.b.WriteString(mLinkEnd)
+			}
 			if dest == "" || strings.HasPrefix(dest, "#") {
 				break
 			}
@@ -692,9 +790,12 @@ func (r *renderer) walkInline(x *inl, n ast.Node) {
 				x.b.WriteString(style("90", " ("+dest+")"))
 			}
 		case *ast.AutoLink:
+			u := string(v.URL(r.src))
+			x.b.WriteString(mLinkStart(r.linkID(u)))
 			x.push("36;4")
-			x.b.WriteString(string(v.URL(r.src)))
+			x.b.WriteString(u)
 			x.pop()
+			x.b.WriteString(mLinkEnd)
 		case *ast.Image:
 			x.b.WriteString(style("90", "[image: ") + nodeText(v, r.src) + style("90", "]"))
 		case *ast.RawHTML:

@@ -21,8 +21,11 @@ const (
 	cacheTmpAge  = time.Hour
 )
 
-// cacheMaxAge is set from cache_days in the configuration.
-var cacheMaxAge = 30 * 24 * time.Hour
+// cacheMaxAge and cacheOn are set from the configuration.
+var (
+	cacheMaxAge = 30 * 24 * time.Hour
+	cacheOn     = true
+)
 
 func isHTTP(src string) bool {
 	return strings.HasPrefix(src, "http://") || strings.HasPrefix(src, "https://")
