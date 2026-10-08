@@ -65,7 +65,8 @@ physics, and designed to cost nothing at rest:
 - **Shutter panels.** The menu, index and dialogs open from their middle row.
 - **Loading wave.** The first visit shows a traveling Braille ripple with a
   color gradient while the page downloads.
-- **Typewriter notices.** Toasts type themselves out.
+- **Quick notices.** Confirmations like "copied" type themselves out in a blink,
+  stay about a second, and vanish the moment you press a key or click.
 - **Zero idle cost.** Frames are only scheduled while something is moving. When
   the screen settles, no tick is requested and the program uses no CPU.
 

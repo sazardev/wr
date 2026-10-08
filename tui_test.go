@@ -628,3 +628,34 @@ func TestPanelRowsAreBlankAroundThePanel(t *testing.T) {
 		t.Fatalf("panel rows not found (%d)", found)
 	}
 }
+
+func TestToastIsShortAndDismissedByInput(t *testing.T) {
+	m := newTestModel(t, 100, 30)
+	m.now = time.Now()
+	m.setToast("✓ copied 5 characters", false)
+	if m.toast == "" {
+		t.Fatal("toast not set")
+	}
+	// the typewriter must finish quickly: a 25-character notice in about 100 ms
+	if d := time.Duration(len([]rune("✓ copied 5 characters"))) * typeSpeed; d > 150*time.Millisecond {
+		t.Errorf("typing a notice takes %v", d)
+	}
+	press(m, "j") // any key dismisses it
+	if m.toast != "" {
+		t.Error("a key press must dismiss the notice immediately")
+	}
+	m.setToast("✓ again", false)
+	m.Update(tea.MouseClickMsg{X: 5, Y: 5, Button: tea.MouseLeft})
+	if m.toast != "" {
+		t.Error("a click must dismiss the notice immediately")
+	}
+}
+
+func TestToastLingerDurations(t *testing.T) {
+	if toastLinger > 1500*time.Millisecond {
+		t.Errorf("a confirmation should be gone in about a second: %v", toastLinger)
+	}
+	if toastWarnLinger <= toastLinger || toastWarnLinger > 3*time.Second {
+		t.Errorf("a warning lingers a little longer, but not long: %v", toastWarnLinger)
+	}
+}

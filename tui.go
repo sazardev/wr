@@ -133,7 +133,11 @@ func (m *model) setToast(s string, warn bool) tea.Cmd {
 	m.toastID++
 	m.toast, m.toastWarn, m.toastStart = s, warn, m.now
 	id := m.toastID
-	return tea.Tick(4*time.Second, func(time.Time) tea.Msg { return toastExpireMsg{id} })
+	linger := toastLinger
+	if warn {
+		linger = toastWarnLinger
+	}
+	return tea.Tick(linger, func(time.Time) tea.Msg { return toastExpireMsg{id} })
 }
 
 func (m *model) Init() tea.Cmd {
@@ -366,6 +370,7 @@ func (m *model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.MouseClickMsg:
+		m.toast = "" // a click dismisses a notice too
 		if mo := tea.Mouse(msg); mo.Button == tea.MouseLeft && m.mode == modeRead && m.doc != nil {
 			return m, m.mouseDown(mo.X, mo.Y)
 		}
@@ -392,6 +397,7 @@ func (m *model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	k := msg.String()
+	m.toast = "" // any key dismisses a notice at once
 	if k == "ctrl+c" {
 		return m, tea.Quit
 	}

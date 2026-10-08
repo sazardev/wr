@@ -17,7 +17,11 @@ const (
 
 	revealDur = 140 * time.Millisecond
 	panelDur  = 120 * time.Millisecond
-	typeSpeed = 9 * time.Millisecond // per character, for toasts
+	typeSpeed = 4 * time.Millisecond // per character, for toasts
+
+	// A notice should confirm and get out of the way (warnings linger a bit).
+	toastLinger     = 1200 * time.Millisecond
+	toastWarnLinger = 2500 * time.Millisecond
 )
 
 // Critically damped (no bounce: bouncing text is unreadable). A one-line step
