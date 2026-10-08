@@ -99,8 +99,8 @@ cd wr
 go build -ldflags="-s -w" -o ~/.local/bin/wr .
 ```
 
-The binary is about 14 MB (chroma bundles all its lexers) and needs nothing else
-at runtime. Tested on Linux (WSL2, CachyOS) with Alacritty and Go 1.27; not
+The binary is about 14 MB when built with `-ldflags="-s -w"` (19 MB with a plain
+`go install`; chroma bundles all its lexers) and needs nothing else at runtime. Tested on Linux (WSL2, CachyOS) with Alacritty and Go 1.27; not
 tested on macOS or native Windows.
 
 Braille needs a font with those glyphs (most modern monospace fonts have them,
