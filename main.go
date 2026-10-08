@@ -87,6 +87,9 @@ func main() {
 		case "-h", "--help":
 			usage(os.Stdout)
 			return
+		case "-V", "--version":
+			fmt.Println(versionLine())
+			return
 		default:
 			if strings.HasPrefix(a, "-") && len(a) > 1 && len(words) == 0 {
 				fmt.Fprintf(os.Stderr, "wr: unknown option: %s\n", a)
@@ -230,6 +233,7 @@ func usage(w io.Writer) {
 	fmt.Fprintln(w, "  --fresh         ignore the cache and download again")
 	fmt.Fprintln(w, "  --clear-cache   delete the cache (~/.cache/wr)")
 	fmt.Fprintln(w, "  --config        create (if missing) and print the config file path")
+	fmt.Fprintln(w, "  -V, --version   print the version")
 	fmt.Fprintln(w, "With no argument wr opens its start page. Words that are not an address or a file")
 	fmt.Fprintln(w, "are searched on the web. In the reader: o = open, m = menu, q = quit.")
 }

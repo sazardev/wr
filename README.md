@@ -155,6 +155,7 @@ wr --md URL        # print the Markdown as is, for pipes (always fetches fresh)
 wr --fresh URL     # ignore the cache and download again
 wr --clear-cache   # delete the cache
 wr --config        # create (if missing) and print the config file path
+wr --version       # print the version
 ```
 
 When the output is not a terminal (`wr URL | less -R`) it prints the rendered
