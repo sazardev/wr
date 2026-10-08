@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/alecthomas/chroma/v2"
 	"github.com/alecthomas/chroma/v2/lexers"
@@ -32,10 +33,41 @@ type Head struct {
 }
 
 type Doc struct {
-	Lines []string // self-contained ANSI lines
-	Plain []string // the same without escapes (for searching)
-	Heads []Head   // top-level headings, with their line
+	Lines []string   // self-contained ANSI lines
+	Plain []string   // the same without escapes (for searching and copying)
+	Heads []Head     // top-level headings, with their line
+	Meta  []LineMeta // what each line is, so copying can do the right thing
 }
+
+type LineKind uint8
+
+const (
+	kindText LineKind = iota
+	kindCodeTop
+	kindCodeBody
+	kindCodeBottom
+)
+
+// LineMeta describes a rendered line for the benefit of text selection: code
+// lines lose their frame when copied, and soft-wrapped lines are re-joined.
+type LineMeta struct {
+	Kind   LineKind
+	Soft   bool // continues the previous line (word wrap), it is not a real break
+	Gutter int  // for code lines: rune column where the "│ " gutter starts
+}
+
+// Invisible markers (APC sequences: zero width, stripped before display). The
+// renderer plants them while building lines and renderDoc turns them into
+// LineMeta and removes them.
+const (
+	mSoft   = "\x1b_s\x1b\\"
+	mTop    = "\x1b_t\x1b\\"
+	mBottom = "\x1b_b\x1b\\"
+	mBody   = "\x1b_c\x1b\\"
+	mCont   = "\x1b_k\x1b\\"
+)
+
+var allMarkers = []string{mSoft, mTop, mBottom, mBody, mCont}
 
 type Glyphs struct {
 	Head    [6]string
@@ -116,14 +148,41 @@ func renderDoc(md string, width int, cfg Config) *Doc {
 	}
 
 	out = selfContain(out)
+	meta := make([]LineMeta, len(out))
 	plain := make([]string, len(out))
 	for i, l := range out {
+		if strings.Contains(l, "\x1b_") {
+			meta[i] = metaOf(l)
+			for _, mk := range allMarkers {
+				l = strings.ReplaceAll(l, mk, "")
+			}
+			out[i] = l
+		}
 		plain[i] = ansi.Strip(l)
 	}
-	return &Doc{Lines: out, Plain: plain, Heads: heads}
+	return &Doc{Lines: out, Plain: plain, Heads: heads, Meta: meta}
 }
 
 func style(code, s string) string { return "\x1b[" + code + "m" + s + "\x1b[0m" }
+
+// metaOf reads the markers planted in a line.
+func metaOf(l string) LineMeta {
+	mt := LineMeta{Soft: strings.Contains(l, mSoft)}
+	for _, c := range []struct {
+		mk   string
+		kind LineKind
+	}{{mTop, kindCodeTop}, {mBottom, kindCodeBottom}, {mBody, kindCodeBody}, {mCont, kindCodeBody}} {
+		if i := strings.Index(l, c.mk); i >= 0 {
+			mt.Kind = c.kind
+			mt.Gutter = utf8.RuneCountInString(ansi.Strip(l[:i]))
+			if c.mk == mCont {
+				mt.Soft = true
+			}
+			break
+		}
+	}
+	return mt
+}
 
 func nodeText(n ast.Node, src []byte) string {
 	var b strings.Builder
@@ -162,7 +221,23 @@ func (r *renderer) blocks(parent ast.Node, w int, tight bool) []string {
 	return out
 }
 
+// wrap word-wraps s. Lines produced by wrapping (not by an explicit line break)
+// are marked as soft continuations, so a copied paragraph comes out as one line.
 func wrap(s string, w int) []string {
+	var out []string
+	for _, part := range strings.Split(s, "\n") {
+		for i, l := range strings.Split(ansi.Wrap(part, max(w, 1), ""), "\n") {
+			if i > 0 {
+				l = mSoft + l
+			}
+			out = append(out, l)
+		}
+	}
+	return out
+}
+
+// wrapRaw wraps without markers (table cells: their lines are not a paragraph).
+func wrapRaw(s string, w int) []string {
 	return strings.Split(ansi.Wrap(s, max(w, 1), ""), "\n")
 }
 
@@ -322,18 +397,18 @@ func (r *renderer) code(lang string, hl []string, w int) []string {
 	if label == "" {
 		label = "text"
 	}
-	out := []string{style("90", "╭─ ") + style("1", label)}
+	out := []string{mTop + style("90", "╭─ ") + style("1", label)}
 	inner := max(w-2, 8)
 	for _, ln := range hl {
 		for i, seg := range strings.Split(ansi.Hardwrap(ln, inner, true), "\n") {
-			gutter := "│" // continuations of a long line use a different stroke
+			gutter, mk := "│", mBody // continuations of a long line use a different stroke
 			if i > 0 {
-				gutter = "┆"
+				gutter, mk = "┆", mCont
 			}
-			out = append(out, style("90", gutter)+" "+seg)
+			out = append(out, mk+style("90", gutter)+" "+seg)
 		}
 	}
-	return append(out, style("90", "╰─"))
+	return append(out, mBottom+style("90", "╰─"))
 }
 
 var (
@@ -505,7 +580,7 @@ func (r *renderer) table(t *east.Table, w int) []string {
 			if header[ri] {
 				cell = style("1;94", ansi.Strip(cell))
 			}
-			wrapped[i] = wrap(cell, widths[i])
+			wrapped[i] = wrapRaw(cell, widths[i])
 			height = max(height, len(wrapped[i]))
 		}
 		for k := 0; k < height; k++ {

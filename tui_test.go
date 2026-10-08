@@ -58,10 +58,10 @@ func press(m *model, keys ...string) {
 
 func lines(m *model) []string { return strings.Split(m.render(), "\n") }
 
-func statusRow(m *model) string {
+// lastRow is the footer row (shortcuts on the left, progress on the right).
+func lastRow(m *model) string {
 	ls := lines(m)
-	_, _, _, fh := m.geometry()
-	return ansi.Strip(ls[len(ls)-fh+map[int]int{1: 0, 2: 0, 3: 1}[fh]])
+	return ansi.Strip(ls[len(ls)-1])
 }
 
 func TestViewFitsTerminal(t *testing.T) {
@@ -86,33 +86,41 @@ func TestTinyTerminalShowsMessage(t *testing.T) {
 	}
 }
 
-func TestFooterHasNoTitleAndShowsPercent(t *testing.T) {
+func TestFooterIsOneRowWithShortcutsAndPercent(t *testing.T) {
 	m := newTestModel(t, 100, 30)
-	st := statusRow(m)
-	if strings.Contains(st, "Document") {
-		t.Errorf("the footer must not show the page title: %q", st)
+	ls := lines(m)
+	row := ansi.Strip(ls[len(ls)-1])
+	for _, bad := range []string{"Document", "t.test", "cached", "ago"} {
+		if strings.Contains(row, bad) {
+			t.Errorf("the footer must not show %q: %q", bad, row)
+		}
 	}
-	if !strings.Contains(st, "t.test") || !strings.Contains(st, "  0%") {
-		t.Errorf("host and percentage expected: %q", st)
+	if !strings.Contains(row, "search") || !strings.Contains(row, "quit") {
+		t.Errorf("shortcuts expected on the left: %q", row)
+	}
+	// the percentage lives on the right of that same row
+	i, j := strings.Index(row, "search"), strings.Index(row, "%")
+	if j < 0 || j < i || !strings.HasSuffix(strings.TrimRight(row, " "), "%") {
+		t.Errorf("the percentage must be at the right end of the shortcuts row: %q", row)
+	}
+	// above the row there is only the thin rule, not a second status line
+	if rule := ansi.Strip(ls[len(ls)-2]); strings.Trim(rule, "⣀") != "" {
+		t.Errorf("only a rule above the footer row: %q", rule)
 	}
 	press(m, "G")
-	if !strings.Contains(statusRow(m), "100%") {
-		t.Errorf("at the end: %q", statusRow(m))
+	if !strings.Contains(lastRow(m), "100%") {
+		t.Errorf("at the end: %q", lastRow(m))
 	}
 	press(m, "g", " ", " ")
-	if s := statusRow(m); strings.Contains(s, "  0%") || strings.Contains(s, "100%") {
+	if s := lastRow(m); strings.Contains(s, "  0%") || strings.Contains(s, "100%") {
 		t.Errorf("in the middle it must be intermediate: %q", s)
 	}
 }
 
 func TestFooterIsResponsive(t *testing.T) {
-	hints := func(w int) string {
-		m := newTestModel(t, w, 30)
-		ls := lines(m)
-		return ansi.Strip(ls[len(ls)-1])
-	}
-	wide, narrow, tiny := hints(140), hints(50), hints(26)
-	if !strings.Contains(wide, "sections") || !strings.Contains(wide, "reload") {
+	row := func(w int) string { return lastRow(newTestModel(t, w, 30)) }
+	wide, narrow, tiny := row(140), row(50), row(26)
+	if !strings.Contains(wide, "sections") || !strings.Contains(wide, "reload") || !strings.Contains(wide, "copy") {
 		t.Errorf("wide: %q", wide)
 	}
 	if strings.Contains(narrow, "sections") || !strings.Contains(narrow, "quit") || !strings.Contains(narrow, "menu") {
@@ -121,17 +129,16 @@ func TestFooterIsResponsive(t *testing.T) {
 	if !strings.Contains(tiny, "quit") {
 		t.Errorf("even a tiny terminal must show how to quit: %q", tiny)
 	}
-	// the progress bar shrinks with the width and the percentage always stays
+	// the progress bar shrinks with the width; the percentage always stays
 	for _, w := range []int{140, 100, 70, 50, 30} {
-		m := newTestModel(t, w, 30)
-		if st := statusRow(m); !strings.Contains(st, "%") {
-			t.Errorf("w=%d lost the percentage: %q", w, st)
+		if r := row(w); !strings.Contains(r, "%") {
+			t.Errorf("w=%d lost the percentage: %q", w, r)
 		}
 	}
 }
 
 func TestFooterHeightAdaptsToTerminalHeight(t *testing.T) {
-	for h, want := range map[int]int{30: 3, 10: 3, 8: 2, 5: 1, 3: 0} {
+	for h, want := range map[int]int{30: 2, 10: 2, 8: 2, 7: 1, 5: 1, 3: 0} {
 		m := newTestModel(t, 80, h)
 		if _, _, _, fh := m.geometry(); fh != want {
 			t.Errorf("h=%d: footer is %d rows, want %d", h, fh, want)
@@ -139,14 +146,22 @@ func TestFooterHeightAdaptsToTerminalHeight(t *testing.T) {
 	}
 }
 
-func TestFooterChipsPrioritizeActionableOverHost(t *testing.T) {
-	m := newTestModel(t, 40, 30)
-	m.fromCache = true
-	m.saved = time.Now().Add(-3 * time.Hour)
+func TestFooterShowsAttentionChipsOnTheRight(t *testing.T) {
+	m := newTestModel(t, 100, 30)
 	m.newer = "# Other\n"
-	st := statusRow(m)
-	if !strings.Contains(st, "new version") {
-		t.Errorf("an actionable chip must survive a narrow footer: %q", st)
+	press(m, "/", "m", "a", "r", "k", "e", "r", "enter")
+	row := lastRow(m)
+	if !strings.Contains(row, "new version") || !strings.Contains(row, "«marker»") {
+		t.Errorf("a newer version and the search count belong on the right: %q", row)
+	}
+	if strings.Index(row, "new version") < strings.Index(row, "quit") {
+		t.Errorf("chips must sit to the right of the shortcuts: %q", row)
+	}
+	// too narrow for chips: the toast announces a newer version instead
+	n := newTestModel(t, 60, 30)
+	n.newer = "# Other\n"
+	if strings.Contains(lastRow(n), "new version") {
+		t.Error("a narrow footer must not squeeze the chips in")
 	}
 }
 
@@ -590,5 +605,26 @@ func TestResizeDoesNotFlyBy(t *testing.T) {
 	m.Update(tea.WindowSizeMsg{Width: 70, Height: 30})
 	if m.scroll.pos != float64(m.y) {
 		t.Errorf("a resize must snap the spring: pos=%v y=%d", m.scroll.pos, m.y)
+	}
+}
+
+func TestPanelRowsAreBlankAroundThePanel(t *testing.T) {
+	m := newTestModel(t, 100, 30)
+	press(m, "m")
+	panel := m.menuBox()
+	w := ansi.StringWidth(panel[0])
+	x := (m.w - w) / 2
+	found := 0
+	for _, l := range lines(m) {
+		p := ansi.Strip(l)
+		if strings.Contains(p, "╭─ wr") || strings.Contains(p, "Reload") || strings.Contains(p, "Quit") {
+			found++
+			if strings.TrimSpace(ansi.Cut(p, 0, x)) != "" || strings.TrimSpace(ansi.Cut(p, x+w, m.w)) != "" {
+				t.Errorf("document text next to the panel: %q", p)
+			}
+		}
+	}
+	if found < 3 {
+		t.Fatalf("panel rows not found (%d)", found)
 	}
 }

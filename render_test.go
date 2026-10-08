@@ -152,3 +152,65 @@ func TestSelfContainRestoresState(t *testing.T) {
 		t.Errorf("l2 %q", out[2])
 	}
 }
+
+func TestRendererMetadataForSelection(t *testing.T) {
+	md := "intro paragraph " + strings.Repeat("word ", 30) + "\n\n```go\nfunc main() {}\n" + strings.Repeat("x", 120) + "\n```\n"
+	d := render(t, md, 40, nil)
+	if len(d.Meta) != len(d.Lines) {
+		t.Fatalf("meta has %d entries for %d lines", len(d.Meta), len(d.Lines))
+	}
+	for i, l := range d.Lines {
+		if strings.Contains(l, "\x1b_") {
+			t.Fatalf("an invisible marker leaked into the displayed line %d: %q", i, l)
+		}
+	}
+	var kinds []LineKind
+	soft := 0
+	for _, m := range d.Meta {
+		kinds = append(kinds, m.Kind)
+		if m.Soft {
+			soft++
+		}
+	}
+	has := func(k LineKind) bool {
+		for _, x := range kinds {
+			if x == k {
+				return true
+			}
+		}
+		return false
+	}
+	if !has(kindCodeTop) || !has(kindCodeBody) || !has(kindCodeBottom) {
+		t.Errorf("code frame lines not recorded: %v", kinds)
+	}
+	if soft < 3 {
+		t.Errorf("wrapped lines must be marked soft (got %d)", soft)
+	}
+}
+
+func TestMarkersAreZeroWidth(t *testing.T) {
+	for _, mk := range allMarkers {
+		if w := ansi.StringWidth("a" + mk + "b"); w != 2 {
+			t.Errorf("marker %q counts as width %d", mk, w-2)
+		}
+		if got := ansi.Strip("a" + mk + "b"); got != "ab" {
+			t.Errorf("marker %q not stripped: %q", mk, got)
+		}
+	}
+}
+
+func TestCodeGutterColumnIsRecorded(t *testing.T) {
+	d := render(t, "> ```go\n> package main\n> ```\n", 60, nil)
+	found := false
+	for i, m := range d.Meta {
+		if m.Kind == kindCodeBody {
+			found = true
+			if r := []rune(d.Plain[i]); string(r[m.Gutter:m.Gutter+1]) != "│" {
+				t.Errorf("gutter column %d does not point at the gutter in %q", m.Gutter, d.Plain[i])
+			}
+		}
+	}
+	if !found {
+		t.Fatal("no code body line recorded")
+	}
+}

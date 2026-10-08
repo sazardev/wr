@@ -120,16 +120,3 @@ func TestSanitizeStripsEscapes(t *testing.T) {
 		t.Fatalf("got %q", got)
 	}
 }
-
-func TestHumanAge(t *testing.T) {
-	for d, want := range map[time.Duration]string{
-		5 * time.Second: "just now",
-		3 * time.Minute: "3 min ago",
-		5 * time.Hour:   "5h ago",
-		72 * time.Hour:  "3d ago",
-	} {
-		if got := humanAge(d); got != want {
-			t.Errorf("%v: got %q want %q", d, got, want)
-		}
-	}
-}

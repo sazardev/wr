@@ -61,17 +61,16 @@ const (
 	curClose = "\x1b[39;49m"
 )
 
-// highlightLine highlights ranges (in visible rune indexes) inside an ANSI
-// line without altering its colors. cur is the index of the "current" range
-// (or -1).
-func highlightLine(line string, spans []span, cur int) string {
+// markSpans wraps ranges (in visible rune indexes) of an ANSI line with the
+// open/close sequences chosen per range, without altering the line's own colors.
+func markSpans(line string, spans []span, styleOf func(i int) (open, closeSeq string)) string {
 	if len(spans) == 0 {
 		return line
 	}
 	var b strings.Builder
 	vis, si := 0, 0
 	inSpan := false
-	open, closeSeq := hlOpen, hlClose
+	var closeSeq string
 	i := 0
 	for i < len(line) {
 		if line[i] == 0x1b && i+1 < len(line) && line[i+1] == '[' {
@@ -85,11 +84,12 @@ func highlightLine(line string, spans []span, cur int) string {
 			continue
 		}
 		_, size := utf8.DecodeRuneInString(line[i:])
+		for !inSpan && si < len(spans) && vis == spans[si][0] && spans[si][1] <= spans[si][0] {
+			si++ // empty range: nothing to mark
+		}
 		if !inSpan && si < len(spans) && vis == spans[si][0] {
-			open, closeSeq = hlOpen, hlClose
-			if si == cur {
-				open, closeSeq = curOpen, curClose
-			}
+			var open string
+			open, closeSeq = styleOf(si)
 			b.WriteString(open)
 			inSpan = true
 		}
@@ -106,4 +106,26 @@ func highlightLine(line string, spans []span, cur int) string {
 		b.WriteString(closeSeq)
 	}
 	return b.String()
+}
+
+// highlightLine highlights search matches. cur is the index of the "current"
+// range (or -1).
+func highlightLine(line string, spans []span, cur int) string {
+	return markSpans(line, spans, func(i int) (string, string) {
+		if i == cur {
+			return curOpen, curClose
+		}
+		return hlOpen, hlClose
+	})
+}
+
+// Selection style: black on bright cyan, distinct from search matches.
+const (
+	selOpen  = "\x1b[30;106m"
+	selClose = "\x1b[39;49m"
+)
+
+// selectLine paints one selected range.
+func selectLine(line string, sp span) string {
+	return markSpans(line, []span{sp}, func(int) (string, string) { return selOpen, selClose })
 }

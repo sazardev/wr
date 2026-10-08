@@ -20,8 +20,7 @@ wr https://example.com/some-article
   broadcast and resilient reconnects, zero dependencies.                   ⡇
                                                                            ⠿
 ⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀
- ⠿  example.com  ↺ cached 2h ago                    ⣷⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀   6%
- / search  n N next  [ ] sections  t index  r reload  m menu  q quit
+ / search  n N next  [ ] sections  t index  r reload  m menu  q quit  drag copy   ⣷⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀   6%
 ```
 
 *(a text capture: in your terminal the colors come from your theme)*
@@ -33,10 +32,15 @@ wr https://example.com/some-article
   Markdown syntax gone.
 - **Code with color.** Highlighted per language (chroma) inside a labeled frame.
   The language is read from `data-language` or `language-xx` classes.
-- **A footer that stays out of the way.** Host, cache state, reading
-  **percentage** and a Braille progress bar. It adapts to the terminal: wide
-  terminals get the full thing, narrow ones drop what does not fit (host,
-  extra shortcuts, bar size), and very short ones collapse it to a single row.
+- **Select and copy.** Drag to select text with the mouse: it is copied to your
+  clipboard when you let go. Double click selects a word, triple click a line.
+  Code blocks copy **without** their frame and margin, and paragraphs that were
+  wrapped on screen come out as the single line they were written as.
+- **A footer that stays out of the way.** One row: shortcuts on the left, your
+  reading **percentage** with a Braille progress bar on the right. It adapts to
+  the terminal: narrow terminals drop the shortcuts that do not fit and shrink
+  the bar, and a very short terminal drops the thin rule above it. Things that
+  need your attention (a newer version, search results) appear next to the bar.
 - **Search** as you type (`/`), smart-case, highlighted matches, `n` / `N` to
   jump between them.
 - **Section index** (`t`) and heading-to-heading jumps (`[` / `]`).
@@ -135,11 +139,25 @@ document and exits, with no interface.
 | `n` `N` | next / previous match |
 | `r` | reload (or apply the newer version already downloaded) |
 | `m` | menu (`1`–`9` and `0` pick an entry directly) |
-| `esc` | clear the search |
+| `y` | copy the current selection again |
+| `esc` | clear the search and the selection |
 | `q` | quit |
 
-The mouse wheel scrolls too. While mouse support is on, hold `Shift` to select
-text (or set `mouse = false`).
+### Mouse
+
+| Gesture | Action |
+|---|---|
+| wheel | scroll |
+| drag | select, and copy on release (drag past the top or bottom edge to scroll) |
+| double click | select a word and copy it |
+| triple click | select a line and copy it |
+| `Shift` + drag | your terminal's own selection, if you prefer it |
+
+Copying uses two routes at once: OSC 52 (works over SSH and in most modern
+terminals) and a system clipboard tool when one is available (`wl-copy`,
+`xclip`, `xsel`, `pbcopy`, and on WSL PowerShell or `clip.exe`), so it works
+even where the terminal ignores OSC 52. Set `mouse = false` to leave the mouse
+entirely to your terminal.
 
 ## Configuration
 
@@ -155,7 +173,7 @@ shown and the defaults are used).
 | `scrollbar` | `true` | scrollbar on the right |
 | `footer` | `true` | footer with progress and shortcuts |
 | `links` | `"footnotes"` | `footnotes` (numbered at the end), `inline` (URL next to the text) or `hidden` |
-| `mouse` | `true` | mouse wheel |
+| `mouse` | `true` | wheel scrolling and drag-to-copy selection |
 | `animations` | `true` | spring scrolling, reveal, panel and loading animations |
 | `cache_days` | `30` | days a page stays in the cache |
 
@@ -226,6 +244,9 @@ startup and, if the terminal does not answer (some multiplexers), waits up to
   languages without a chroma lexer are not colored either.
 - **Search works per line**: a phrase split across two lines of the rendered text
   is not found.
+- **Selection is within the reading column**: it copies what is drawn (a heading
+  keeps its mark, a table keeps its borders), except for the code-block frame
+  and the soft wraps described above.
 - Very unusual Markdown (embedded HTML, footnotes) is simplified.
 
 ## Development
@@ -234,9 +255,9 @@ startup and, if the terminal does not answer (some multiplexers), waits up to
 go test -race ./...
 ```
 
-The test suite covers the renderer, search, cache, config, the model (including
-the spring and reveal animations driven with synthetic ticks) and the real
-Bubble Tea renderer through Charm's terminal emulator.
+The test suite covers the renderer, search, selection and copy, cache, config
+and the model, including the spring, reveal and panel animations driven with
+synthetic ticks. It is deterministic: no timing, no terminal emulator.
 
 ## Security
 

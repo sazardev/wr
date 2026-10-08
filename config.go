@@ -19,7 +19,7 @@ type Config struct {
 	Scrollbar  bool   `toml:"scrollbar"`  // scrollbar on the right
 	Footer     bool   `toml:"footer"`     // footer with progress and shortcuts
 	Links      string `toml:"links"`      // footnotes | inline | hidden
-	Mouse      bool   `toml:"mouse"`      // mouse wheel
+	Mouse      bool   `toml:"mouse"`      // wheel scrolling and drag-to-copy selection
 	Animations bool   `toml:"animations"` // spring scrolling, reveal, panel and loading animations
 	CacheDays  int    `toml:"cache_days"` // days a page stays in the cache
 }
@@ -86,7 +86,9 @@ footer = true
 # the text) or "hidden" (text only).
 links = "footnotes"
 
-# Mouse wheel scrolling. While it is on, hold Shift to select text.
+# Mouse support: wheel scrolling and drag-to-copy selection (double click = word,
+# triple click = line). Hold Shift while dragging to use your terminal's own
+# selection instead. false = the terminal handles the mouse entirely.
 mouse = true
 
 # Spring-physics scrolling, reveal, panel and loading animations. They only run

@@ -82,6 +82,8 @@ type model struct {
 	matches []match
 	cur     int
 	searchY int // position when search typing began (to cancel)
+
+	mouseSel selection // mouse selection (copied to the clipboard on release)
 }
 
 func newModel(src string, cfg Config, fresh bool, cfgErr error) *model {
@@ -205,12 +207,10 @@ func (m *model) geometry() (contentW, left, bodyH, footerH int) {
 	switch {
 	case !m.cfg.Footer || m.h < 4:
 		footerH = 0
-	case m.h >= 10:
-		footerH = 3 // rule + status + hints
-	case m.h >= 7:
-		footerH = 2 // status + hints
+	case m.h >= 8:
+		footerH = 2 // rule + row
 	default:
-		footerH = 1 // compact: status only
+		footerH = 1 // just the row
 	}
 	return contentW, left, max(m.h-footerH, 1), footerH
 }
@@ -252,6 +252,7 @@ func (m *model) rebuild() {
 	m.clampY()
 	m.scroll.target = float64(m.y)
 	m.scroll.snap()
+	m.mouseSel.clear()
 	m.refreshMatches()
 }
 
@@ -364,6 +365,25 @@ func (m *model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case tea.MouseClickMsg:
+		if mo := tea.Mouse(msg); mo.Button == tea.MouseLeft && m.mode == modeRead && m.doc != nil {
+			return m, m.mouseDown(mo.X, mo.Y)
+		}
+		return m, nil
+
+	case tea.MouseMotionMsg:
+		if m.mouseSel.dragging {
+			mo := tea.Mouse(msg)
+			m.mouseDrag(mo.X, mo.Y)
+		}
+		return m, nil
+
+	case tea.MouseReleaseMsg:
+		if m.mouseSel.dragging {
+			return m, m.mouseUp()
+		}
+		return m, nil
+
 	case tea.KeyPressMsg:
 		return m.key(msg)
 	}
@@ -406,7 +426,10 @@ func (m *model) keyRead(k string) (tea.Model, tea.Cmd) {
 	case "q":
 		return m, tea.Quit
 	case "esc":
-		m.query, m.matches = "", nil // only clears the search: quit with q
+		m.query, m.matches = "", nil // only clears the search and selection: quit with q
+		m.mouseSel.clear()
+	case "y":
+		return m, m.copySelection()
 	case "j", "down", "enter":
 		m.y++
 	case "k", "up":
@@ -678,6 +701,9 @@ func (m *model) body() []string {
 				}
 				line = highlightLine(line, sp, c)
 			}
+			if ss, ok := m.mouseSel.spanOn(idx, len([]rune(m.doc.Plain[idx]))); ok {
+				line = selectLine(line, ss)
+			}
 			line = ansi.Truncate(line, cw, "")
 		}
 		row := pad + line
@@ -709,11 +735,9 @@ func (m *model) footer() []string {
 	case 0:
 		return nil
 	case 1:
-		return []string{m.statusLine()}
-	case 2:
-		return []string{m.statusLine(), m.hintLine()}
+		return []string{m.footerRow()}
 	}
-	return []string{m.rule(), m.statusLine(), m.hintLine()}
+	return []string{m.rule(), m.footerRow()}
 }
 
 // rule is a thin line with a blue-to-cyan gradient (16-color palette).
@@ -728,87 +752,68 @@ func (m *model) rule() string {
 		"\x1b[96m" + strings.Repeat(glyph, m.w-2*third) + "\x1b[0m"
 }
 
-type chip struct {
-	order, prio int // display order; importance (lower = kept first)
-	text        string
-}
-
-// fitChips adds chips by importance while they fit, and returns them in display order.
-func fitChips(base string, chips []chip, room int) string {
-	keep := map[int]bool{}
-	used := ansi.StringWidth(base)
-	for prio := 0; prio < 10; prio++ {
-		for _, c := range chips {
-			if c.prio == prio && used+ansi.StringWidth(c.text) <= room {
-				keep[c.order] = true
-				used += ansi.StringWidth(c.text)
-			}
-		}
-	}
-	out := base
-	for _, c := range chips {
-		if keep[c.order] {
-			out += c.text
-		}
-	}
-	return out
-}
-
-func (m *model) statusLine() string {
-	mark := "\x1b[94m●\x1b[0m"
-	if m.cfg.Braille {
-		mark = "\x1b[94m⠿\x1b[0m"
-	}
-	if m.loading || m.refreshing {
-		mark = "\x1b[94m" + m.spin() + "\x1b[0m"
-	}
-	chips := []chip{{0, 3, "\x1b[90m  " + m.host() + "\x1b[0m"}}
-	if m.fromCache && !m.saved.IsZero() {
-		chips = append(chips, chip{1, 2, "\x1b[90m  ↺ cached " + humanAge(time.Since(m.saved)) + "\x1b[0m"})
-	}
-	if m.newer != "" {
-		chips = append(chips, chip{2, 0, "\x1b[93m  ● new version (r)\x1b[0m"})
-	}
-	if len(m.matches) > 0 {
-		chips = append(chips, chip{3, 1, fmt.Sprintf("\x1b[96m  «%s» %d/%d\x1b[0m", m.query, m.cur+1, len(m.matches))})
-	}
-
-	right := ""
-	if pct, scrollable := m.percent(); scrollable {
-		label := fmt.Sprintf("\x1b[1m%3d%%\x1b[0m ", int(math.Round(pct)))
-		cells := 0
-		switch {
-		case m.w >= 110:
-			cells = 16
-		case m.w >= 80:
-			cells = 12
-		case m.w >= 60:
-			cells = 8
-		case m.w >= 45:
-			cells = 5
-		}
-		switch {
-		case cells == 0:
-			right = label
-		case m.cfg.Braille:
-			right = progressBar(cells, pct) + " " + label
-		default:
-			right = plainBar(cells, pct) + " " + label
-		}
-	} else if m.doc != nil && m.w >= 40 {
-		right = "\x1b[90mall visible \x1b[0m"
-	}
+// footerRow is the whole footer: shortcuts (or the current prompt) on the
+// left, reading progress on the right.
+func (m *model) footerRow() string {
+	right := m.progressText()
 	room := max(m.w-ansi.StringWidth(right)-1, 4)
-	left := fitChips(" "+mark, chips, room)
-	left = ansi.Truncate(left, room, "…")
+	left := ansi.Truncate(m.leftText(room), room, "…")
 	gap := max(m.w-ansi.StringWidth(left)-ansi.StringWidth(right), 0)
 	return left + strings.Repeat(" ", gap) + right
 }
 
+// progressText is the right side of the footer: what needs your attention
+// (a newer version, search results), then the progress bar and percentage.
+func (m *model) progressText() string {
+	chips := ""
+	if m.w >= 70 {
+		if m.newer != "" {
+			chips += "\x1b[93m● new version (r)\x1b[0m  "
+		}
+		if len(m.matches) > 0 {
+			q := []rune(m.query)
+			if len(q) > 12 {
+				q = append(q[:11], '…')
+			}
+			chips += fmt.Sprintf("\x1b[96m«%s» %d/%d\x1b[0m  ", string(q), m.cur+1, len(m.matches))
+		}
+	}
+	pct, scrollable := m.percent()
+	if !scrollable {
+		if m.doc != nil && m.w >= 40 {
+			return chips + "\x1b[90mall visible\x1b[0m "
+		}
+		return chips
+	}
+	label := fmt.Sprintf("\x1b[1m%3d%%\x1b[0m ", int(math.Round(pct)))
+	cells := 0
+	switch {
+	case m.w >= 110:
+		cells = 16
+	case m.w >= 80:
+		cells = 12
+	case m.w >= 60:
+		cells = 8
+	case m.w >= 45:
+		cells = 5
+	}
+	switch {
+	case cells == 0:
+		return chips + label
+	case m.cfg.Braille:
+		return chips + progressBar(cells, pct) + " " + label
+	}
+	return chips + plainBar(cells, pct) + " " + label
+}
+
 func hint(key, desc string) string { return "\x1b[94m" + key + "\x1b[0m \x1b[90m" + desc + "\x1b[0m" }
 
-func (m *model) hintLine() string {
-	var s string
+// leftText is the left side of the footer.
+func (m *model) leftText(room int) string {
+	lead := " "
+	if m.loading || m.refreshing {
+		lead = " \x1b[94m" + m.spin() + "\x1b[0m "
+	}
 	switch {
 	case m.mode == modeSearch:
 		count := "\x1b[90mtype to search\x1b[0m"
@@ -819,9 +824,9 @@ func (m *model) hintLine() string {
 				count = fmt.Sprintf("\x1b[96m%d results\x1b[0m", len(m.matches))
 			}
 		}
-		s = " \x1b[94m/\x1b[0m" + m.input + "\x1b[7m \x1b[0m  " + count + "  " + hint("enter", "accept") + "  " + hint("esc", "cancel")
+		return lead + "\x1b[94m/\x1b[0m" + m.input + "\x1b[7m \x1b[0m  " + count + "  " + hint("enter", "accept") + "  " + hint("esc", "cancel")
 	case m.mode.isPanel():
-		s = " " + hint("↑↓", "move") + "  " + hint("enter", "select") + "  " + hint("esc", "close")
+		return lead + hint("↑↓", "move") + "  " + hint("enter", "select") + "  " + hint("esc", "close")
 	case m.toast != "":
 		col := "92"
 		if m.toastWarn {
@@ -831,22 +836,23 @@ func (m *model) hintLine() string {
 		if m.cfg.Animations {
 			shown, _ = typed(m.toast, m.toastStart, m.now, typeSpeed)
 		}
-		s = " \x1b[" + col + "m" + shown + "\x1b[0m"
-	default:
-		s = " " + fitHints(m.w-2)
+		return lead + "\x1b[" + col + "m" + shown + "\x1b[0m"
 	}
-	return m.pad(ansi.Truncate(s, m.w, "…"))
+	return lead + fitHints(room-ansi.StringWidth(lead), m.cfg.Mouse)
 }
 
 // fitHints shows as many shortcuts as the width allows, most important first,
 // in their natural order.
-func fitHints(room int) string {
+func fitHints(room int, mouse bool) string {
 	type h struct {
 		prio      int
 		key, desc string
 	}
 	all := []h{{2, "/", "search"}, {5, "n N", "next"}, {6, "[ ]", "sections"},
 		{3, "t", "index"}, {4, "r", "reload"}, {1, "m", "menu"}, {0, "q", "quit"}}
+	if mouse {
+		all = append(all, h{7, "drag", "copy"})
+	}
 	keep := map[int]bool{}
 	used := 0
 	for p := 0; p < len(all); p++ {

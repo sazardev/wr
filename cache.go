@@ -120,18 +120,6 @@ func cacheClear() error {
 	return os.RemoveAll(dir)
 }
 
-func humanAge(d time.Duration) string {
-	switch {
-	case d < time.Minute:
-		return "just now"
-	case d < time.Hour:
-		return fmt.Sprintf("%d min ago", int(d.Minutes()))
-	case d < 48*time.Hour:
-		return fmt.Sprintf("%dh ago", int(d.Hours()))
-	}
-	return fmt.Sprintf("%dd ago", int(d.Hours()/24))
-}
-
 // cacheDelete removes the entry for one URL.
 func cacheDelete(src string) error {
 	dir, err := cacheDir()
