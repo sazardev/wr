@@ -17,63 +17,76 @@ func isolate(t *testing.T) string {
 
 func TestCacheRoundTrip(t *testing.T) {
 	isolate(t)
-	if _, _, ok := cacheGet("https://a.test/x", false); ok {
-		t.Fatal("hit en cache vacia")
+	if _, _, ok := cacheGet("https://a.test/x"); ok {
+		t.Fatal("hit on an empty cache")
 	}
-	if err := cachePut("https://a.test/x", false, "# Hola\n\ncuerpo\n"); err != nil {
+	if err := cachePut("https://a.test/x", "# Hello\n\nbody\n"); err != nil {
 		t.Fatal(err)
 	}
-	md, saved, ok := cacheGet("https://a.test/x", false)
-	if !ok || md != "# Hola\n\ncuerpo\n" {
+	md, saved, ok := cacheGet("https://a.test/x")
+	if !ok || md != "# Hello\n\nbody\n" {
 		t.Fatalf("ok=%v md=%q", ok, md)
 	}
 	if time.Since(saved) > time.Minute {
-		t.Fatalf("fecha incorrecta: %v", saved)
+		t.Fatalf("wrong date: %v", saved)
 	}
 }
 
-func TestCacheSeparatesNoLinks(t *testing.T) {
+func TestCacheDeleteAndStats(t *testing.T) {
 	isolate(t)
-	_ = cachePut("https://a.test/x", false, "con [enlaces](u)")
-	_ = cachePut("https://a.test/x", true, "sin enlaces")
-	a, _, _ := cacheGet("https://a.test/x", false)
-	b, _, _ := cacheGet("https://a.test/x", true)
-	if a == b || !strings.Contains(a, "enlaces](u)") || b != "sin enlaces" {
-		t.Fatalf("a=%q b=%q", a, b)
+	_ = cachePut("https://a.test/1", "one")
+	_ = cachePut("https://a.test/2", "two two")
+	if n, size := cacheStats(); n != 2 || size <= 0 {
+		t.Fatalf("stats: n=%d size=%d", n, size)
+	}
+	if err := cacheDelete("https://a.test/1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, ok := cacheGet("https://a.test/1"); ok {
+		t.Fatal("the deleted entry is still there")
+	}
+	if _, _, ok := cacheGet("https://a.test/2"); !ok {
+		t.Fatal("deleted the wrong entry")
+	}
+	if err := cacheDelete("https://a.test/no-existe"); err != nil {
+		t.Fatalf("deleting something missing is not an error: %v", err)
+	}
+	if got := humanSize(2048); got != "2 KB" {
+		t.Fatalf("humanSize: %q", got)
 	}
 }
 
 func TestCacheRejectsMismatchedOrTamperedEntries(t *testing.T) {
 	dir := isolate(t)
-	_ = cachePut("https://a.test/x", false, "ok")
-	path := cachePath(dir, "https://a.test/x", false)
+	_ = cachePut("https://a.test/x", "ok")
+	path := cachePath(dir, "https://a.test/x")
 
-	// la entrada dice ser de otra URL (colision o archivo manipulado)
+	// the entry claims to be for another URL (collision or tampered file)
 	data, _ := os.ReadFile(path)
 	_ = os.WriteFile(path, []byte(strings.Replace(string(data), "https://a.test/x", "https://evil.test/y", 1)), 0o600)
-	if _, _, ok := cacheGet("https://a.test/x", false); ok {
-		t.Fatal("acepto una entrada de otra URL")
+	if _, _, ok := cacheGet("https://a.test/x"); ok {
+		t.Fatal("accepted an entry for another URL")
 	}
-	// cabecera basura
-	_ = os.WriteFile(path, []byte("basura sin cabecera"), 0o600)
-	if _, _, ok := cacheGet("https://a.test/x", false); ok {
-		t.Fatal("acepto una entrada sin cabecera")
+	// garbage header
+	_ = os.WriteFile(path, []byte("garbage without a header"), 0o600)
+	if _, _, ok := cacheGet("https://a.test/x"); ok {
+		t.Fatal("accepted an entry without a header")
 	}
 }
 
 func TestCachePermissionsAndPrune(t *testing.T) {
 	dir := isolate(t)
-	_ = cachePut("https://a.test/x", false, "ok")
+	_ = cachePut("https://a.test/x", "ok")
 	if fi, _ := os.Stat(dir); fi.Mode().Perm() != 0o700 {
 		t.Errorf("dir perms %v", fi.Mode().Perm())
 	}
-	if fi, _ := os.Stat(cachePath(dir, "https://a.test/x", false)); fi.Mode().Perm() != 0o600 {
+	if fi, _ := os.Stat(cachePath(dir, "https://a.test/x")); fi.Mode().Perm() != 0o600 {
 		t.Errorf("file perms %v", fi.Mode().Perm())
 	}
 
-	old := filepath.Join(dir, "viejo.md")
-	tmp := filepath.Join(dir, "tmp-huerfano")
-	fresh := filepath.Join(dir, "tmp-reciente")
+	old := filepath.Join(dir, "old.md")
+	tmp := filepath.Join(dir, "tmp-orphan")
+	fresh := filepath.Join(dir, "tmp-recent")
 	for _, f := range []string{old, tmp, fresh} {
 		_ = os.WriteFile(f, []byte("x"), 0o600)
 	}
@@ -81,24 +94,24 @@ func TestCachePermissionsAndPrune(t *testing.T) {
 	_ = os.Chtimes(tmp, time.Now().Add(-2*time.Hour), time.Now().Add(-2*time.Hour))
 	pruneCache(dir)
 	if _, err := os.Stat(old); err == nil {
-		t.Error("no borro la entrada de >30 dias")
+		t.Error("did not delete the entry older than 30 days")
 	}
 	if _, err := os.Stat(tmp); err == nil {
-		t.Error("no borro el temporal huerfano")
+		t.Error("did not delete the orphaned temp file")
 	}
 	if _, err := os.Stat(fresh); err != nil {
-		t.Error("borro un temporal reciente (podria estar en uso)")
+		t.Error("deleted a recent temp file (it may be in use)")
 	}
 }
 
 func TestCacheClear(t *testing.T) {
 	dir := isolate(t)
-	_ = cachePut("https://a.test/x", false, "ok")
+	_ = cachePut("https://a.test/x", "ok")
 	if err := cacheClear(); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(dir); err == nil {
-		t.Fatal("la carpeta sigue existiendo")
+		t.Fatal("the directory still exists")
 	}
 }
 
@@ -110,10 +123,10 @@ func TestSanitizeStripsEscapes(t *testing.T) {
 
 func TestHumanAge(t *testing.T) {
 	for d, want := range map[time.Duration]string{
-		5 * time.Second: "hace unos segundos",
-		3 * time.Minute: "hace 3 min",
-		5 * time.Hour:   "hace 5 h",
-		72 * time.Hour:  "hace 3 dias",
+		5 * time.Second: "just now",
+		3 * time.Minute: "3 min ago",
+		5 * time.Hour:   "5h ago",
+		72 * time.Hour:  "3d ago",
 	} {
 		if got := humanAge(d); got != want {
 			t.Errorf("%v: got %q want %q", d, got, want)

@@ -11,16 +11,18 @@ import (
 	"time"
 )
 
-// Cache en disco del Markdown ya extraido, por URL. Sirve para abrir
-// instantaneamente una pagina ya leida; mientras se lee se refresca en segundo
-// plano para la proxima vez. Vive en el directorio de cache del usuario
-// (~/.cache/wr en Linux), con permisos 0700/0600.
+// On-disk cache of the extracted Markdown, per URL. It lets a page you already
+// read open instantly; while you read it is refreshed in the background for
+// next time. It lives in the user cache directory (~/.cache/wr on Linux), with
+// permissions 0700/0600.
 
 const (
-	cacheVersion = 1 // subir si cambia el formato del Markdown generado
-	cacheMaxAge  = 30 * 24 * time.Hour
+	cacheVersion = 2 // bump if the generated Markdown format changes
 	cacheTmpAge  = time.Hour
 )
+
+// cacheMaxAge is set from cache_days in the configuration.
+var cacheMaxAge = 30 * 24 * time.Hour
 
 func isHTTP(src string) bool {
 	return strings.HasPrefix(src, "http://") || strings.HasPrefix(src, "https://")
@@ -34,26 +36,25 @@ func cacheDir() (string, error) {
 	return filepath.Join(d, "wr"), nil
 }
 
-// el resultado depende de -L, asi que forma parte de la clave
-func cachePath(dir, src string, noLinks bool) string {
-	sum := sha256.Sum256([]byte(fmt.Sprintf("%d|%t|%s", cacheVersion, noLinks, src)))
+func cachePath(dir, src string) string {
+	sum := sha256.Sum256([]byte(fmt.Sprintf("%d|%s", cacheVersion, src)))
 	return filepath.Join(dir, hex.EncodeToString(sum[:16])+".md")
 }
 
-// cacheGet devuelve el Markdown guardado y cuando se guardo.
-func cacheGet(src string, noLinks bool) (md string, saved time.Time, ok bool) {
+// cacheGet returns the stored Markdown and when it was stored.
+func cacheGet(src string) (md string, saved time.Time, ok bool) {
 	dir, err := cacheDir()
 	if err != nil {
 		return "", time.Time{}, false
 	}
-	data, err := os.ReadFile(cachePath(dir, src, noLinks))
+	data, err := os.ReadFile(cachePath(dir, src))
 	if err != nil {
 		return "", time.Time{}, false
 	}
 	header, body, found := strings.Cut(string(data), "\n")
 	f := strings.SplitN(header, " ", 4)
 	if !found || len(f) != 4 || f[0] != "wr-cache" || f[1] != strconv.Itoa(cacheVersion) || f[3] != src {
-		return "", time.Time{}, false // formato viejo o colision de clave
+		return "", time.Time{}, false // old format or key collision
 	}
 	secs, err := strconv.ParseInt(f[2], 10, 64)
 	if err != nil {
@@ -62,9 +63,9 @@ func cacheGet(src string, noLinks bool) (md string, saved time.Time, ok bool) {
 	return body, time.Unix(secs, 0), true
 }
 
-// cachePut escribe de forma atomica (temporal + rename), asi un refresco
-// interrumpido nunca deja una entrada a medias.
-func cachePut(src string, noLinks bool, md string) error {
+// cachePut writes atomically (temp file + rename), so an interrupted refresh
+// never leaves a half-written entry.
+func cachePut(src, md string) error {
 	dir, err := cacheDir()
 	if err != nil {
 		return err
@@ -84,7 +85,7 @@ func cachePut(src string, noLinks bool, md string) error {
 		os.Remove(tmp.Name())
 		return werr
 	}
-	if err := os.Rename(tmp.Name(), cachePath(dir, src, noLinks)); err != nil {
+	if err := os.Rename(tmp.Name(), cachePath(dir, src)); err != nil {
 		os.Remove(tmp.Name())
 		return err
 	}
@@ -92,7 +93,7 @@ func cachePut(src string, noLinks bool, md string) error {
 	return nil
 }
 
-// pruneCache borra entradas de mas de 30 dias y temporales huerfanos.
+// pruneCache deletes entries older than cacheMaxAge and orphaned temp files.
 func pruneCache(dir string) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -122,11 +123,53 @@ func cacheClear() error {
 func humanAge(d time.Duration) string {
 	switch {
 	case d < time.Minute:
-		return "hace unos segundos"
+		return "just now"
 	case d < time.Hour:
-		return fmt.Sprintf("hace %d min", int(d.Minutes()))
+		return fmt.Sprintf("%d min ago", int(d.Minutes()))
 	case d < 48*time.Hour:
-		return fmt.Sprintf("hace %d h", int(d.Hours()))
+		return fmt.Sprintf("%dh ago", int(d.Hours()))
 	}
-	return fmt.Sprintf("hace %d dias", int(d.Hours()/24))
+	return fmt.Sprintf("%dd ago", int(d.Hours()/24))
+}
+
+// cacheDelete removes the entry for one URL.
+func cacheDelete(src string) error {
+	dir, err := cacheDir()
+	if err != nil {
+		return err
+	}
+	err = os.Remove(cachePath(dir, src))
+	if os.IsNotExist(err) {
+		return nil
+	}
+	return err
+}
+
+// cacheStats counts stored pages and their size in bytes.
+func cacheStats() (pages int, bytes int64) {
+	dir, err := cacheDir()
+	if err != nil {
+		return 0, 0
+	}
+	entries, _ := os.ReadDir(dir)
+	for _, e := range entries {
+		if strings.HasPrefix(e.Name(), "tmp-") || !strings.HasSuffix(e.Name(), ".md") {
+			continue
+		}
+		if info, err := e.Info(); err == nil && info.Mode().IsRegular() {
+			pages++
+			bytes += info.Size()
+		}
+	}
+	return pages, bytes
+}
+
+func humanSize(n int64) string {
+	switch {
+	case n < 1024:
+		return fmt.Sprintf("%d B", n)
+	case n < 1024*1024:
+		return fmt.Sprintf("%.0f KB", float64(n)/1024)
+	}
+	return fmt.Sprintf("%.1f MB", float64(n)/(1024*1024))
 }
