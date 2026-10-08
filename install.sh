@@ -57,9 +57,11 @@ fi
 [ "$want" = "$got" ] || die "checksum mismatch for $asset (expected $want, got $got)"
 say "checksum ok"
 
-tar -xzf "$tmp/$asset" -C "$tmp" wr
+mkdir -p "$tmp/x"
+tar -xzf "$tmp/$asset" -C "$tmp/x"
+[ -f "$tmp/x/wr" ] || die "the archive does not contain the wr binary"
 mkdir -p "$INSTALL_DIR"
-install -m 755 "$tmp/wr" "$INSTALL_DIR/wr"
+install -m 755 "$tmp/x/wr" "$INSTALL_DIR/wr"
 
 say "installed: $INSTALL_DIR/wr ($("$INSTALL_DIR/wr" --version))"
 case ":$PATH:" in
