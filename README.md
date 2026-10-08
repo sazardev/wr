@@ -121,13 +121,30 @@ language.
 
 ## Install
 
-With Go 1.26 or newer:
+**The quick way** (Linux and macOS, no Go needed): download the right binary
+from the [latest release](https://github.com/sazardev/wr/releases/latest),
+verify it and put it in `~/.local/bin`:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/sazardev/wr/main/install.sh | sh
+```
+
+(`INSTALL_DIR=/usr/local/bin` to choose where, `WR_VERSION=v0.1.0` to pick a
+version. The script checks the SHA-256 checksum before installing. Read it
+first if you like: [install.sh](install.sh).)
+
+**Or by hand:** download `wr_<os>_<arch>.tar.gz` for your system from the
+[releases page](https://github.com/sazardev/wr/releases/latest) (`linux` or
+`darwin`, `amd64` or `arm64`), check it against `checksums.txt`, and unpack the
+`wr` binary anywhere on your `PATH`.
+
+**With Go 1.26 or newer:**
 
 ```sh
 go install github.com/sazardev/wr@latest
 ```
 
-or from source:
+**From source:**
 
 ```sh
 git clone https://github.com/sazardev/wr.git
@@ -135,10 +152,14 @@ cd wr
 go build -ldflags="-s -w" -o ~/.local/bin/wr .
 ```
 
-The binary is about 14 MB when built with `-ldflags="-s -w"` (19 MB with a plain
-`go install`; chroma bundles all its lexers) and needs nothing else at runtime.
-Tested on Linux (WSL2, CachyOS) with Alacritty and Go 1.27; not tested on macOS
-or native Windows.
+Release binaries are static (no libc needed) and about 14 MB (chroma bundles all
+its lexers). Tested on Linux (WSL2, CachyOS) with Alacritty and Go 1.27; the
+macOS and arm64 builds are cross-compiled and have not been run by me. Windows:
+use WSL.
+
+**New to wr? Read the [guide](docs/GUIDE.md)**: how to follow links, go back and
+forward, search the web, use history and bookmarks, select and copy, and make
+it yours.
 
 Braille needs a font with those glyphs (most modern monospace fonts have them,
 e.g. Nerd Fonts). If yours does not, turn off *Braille decoration* in Settings.
