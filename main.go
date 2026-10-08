@@ -5,7 +5,12 @@
 //	wr URL           lee el articulo en un pager (q para salir)
 //	wr -L URL        sin las URL de los enlaces (solo el texto)
 //	wr --md URL      imprime el Markdown tal cual (para pipes)
+//	wr --fresh URL   ignora la cache y descarga de nuevo
+//	wr --clear-cache borra la cache
 //	wr archivo.html  tambien funciona con un archivo local
+//
+// Al leer en la terminal, una pagina ya vista se abre al instante desde la
+// cache (~/.cache/wr) y se refresca en segundo plano para la proxima vez.
 package main
 
 import (
@@ -55,13 +60,22 @@ var (
 
 func main() {
 	var src string
-	noLinks, rawMD := false, false
+	noLinks, rawMD, fresh := false, false, false
 	for _, a := range os.Args[1:] {
 		switch a {
 		case "-L", "--no-links":
 			noLinks = true
 		case "--md":
 			rawMD = true
+		case "--fresh":
+			fresh = true
+		case "--clear-cache":
+			if err := cacheClear(); err != nil {
+				fmt.Fprintf(os.Stderr, "wr: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Println("cache borrada")
+			return
 		case "-h", "--help":
 			usage(os.Stdout)
 			return
@@ -79,12 +93,19 @@ func main() {
 		os.Exit(2)
 	}
 
-	body, err := fetch(src)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "wr: %v\n", err)
-		os.Exit(1)
+	// La cache solo se lee en la vista interactiva: ahi el refresco en segundo
+	// plano tiene tiempo de terminar mientras el pager sigue abierto. Con
+	// --md o en un pipe siempre se descarga fresco (y se actualiza la cache).
+	interactive := !rawMD && isTerminal(os.Stdout)
+	if isHTTP(src) && interactive && !fresh {
+		if md, saved, ok := cacheGet(src, noLinks); ok {
+			go refresh(src, noLinks)
+			show(cacheBanner(saved) + render(sanitize(md)))
+			return
+		}
 	}
-	md, err := toMarkdown(body, src, noLinks)
+
+	md, err := load(src, noLinks)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "wr: %v\n", err)
 		os.Exit(1)
@@ -96,10 +117,38 @@ func main() {
 	show(render(md))
 }
 
+// load descarga, convierte y (si es una URL) guarda en la cache.
+func load(src string, noLinks bool) (string, error) {
+	body, err := fetch(src)
+	if err != nil {
+		return "", err
+	}
+	md, err := toMarkdown(body, src, noLinks)
+	if err != nil {
+		return "", err
+	}
+	if isHTTP(src) {
+		_ = cachePut(src, noLinks, md) // la cache es optativa: si falla, no pasa nada
+	}
+	return md, nil
+}
+
+// refresh actualiza la cache en segundo plano; los errores se ignoran (si el
+// proceso termina antes, el rename atomico evita dejar una entrada a medias).
+func refresh(src string, noLinks bool) {
+	_, _ = load(src, noLinks)
+}
+
+func cacheBanner(saved time.Time) string {
+	return dim + "↺ desde cache (" + humanAge(time.Since(saved)) + ") · wr --fresh para recargar" + off + "\n\n"
+}
+
 func usage(w io.Writer) {
-	fmt.Fprintln(w, "uso: wr [-L] [--md] URL|archivo.html")
+	fmt.Fprintln(w, "uso: wr [-L] [--md] [--fresh] URL|archivo.html")
 	fmt.Fprintln(w, "  -L, --no-links  sin las URL de los enlaces")
-	fmt.Fprintln(w, "  --md            imprime el Markdown sin colorear")
+	fmt.Fprintln(w, "  --md            imprime el Markdown sin colorear (siempre descarga fresco)")
+	fmt.Fprintln(w, "  --fresh         ignora la cache y descarga de nuevo")
+	fmt.Fprintln(w, "  --clear-cache   borra la cache (~/.cache/wr)")
 }
 
 // ---- descarga ----
@@ -107,7 +156,7 @@ func usage(w io.Writer) {
 func fetch(src string) ([]byte, error) {
 	var r io.Reader
 	var ctype string
-	if strings.HasPrefix(src, "http://") || strings.HasPrefix(src, "https://") {
+	if isHTTP(src) {
 		req, _ := http.NewRequest("GET", src, nil)
 		req.Header.Set("User-Agent", userAgent)
 		resp, err := (&http.Client{Timeout: 20 * time.Second}).Do(req)
@@ -247,13 +296,19 @@ func toMarkdown(page []byte, src string, noLinks bool) (string, error) {
 	text = regexp.MustCompile(`\n{3,}`).ReplaceAllString(text, "\n\n")
 	// el contenido de la pagina es no confiable: fuera caracteres de control
 	// (ESC, etc.) para que no puedan manipular tu terminal.
-	text = regexp.MustCompile(`[\x00-\x08\x0b-\x1f\x7f-\x9f]`).ReplaceAllString(text, "")
+	text = sanitize(text)
 	text = strings.TrimSpace(text) + "\n"
 	if title != "" && !regexp.MustCompile(`(?m)^#\s`).MatchString(text) {
 		text = "# " + title + "\n\n" + text
 	}
 	return text, nil
 }
+
+var controlChars = regexp.MustCompile(`[\x00-\x08\x0b-\x1f\x7f-\x9f]`)
+
+// sanitize quita caracteres de control (ESC, etc.). Tambien se aplica a lo que
+// viene de la cache, por si el archivo fue alterado.
+func sanitize(s string) string { return controlChars.ReplaceAllString(s, "") }
 
 // ---- Markdown -> ANSI ----
 
@@ -427,7 +482,7 @@ func sgrFor(t chroma.TokenType) string {
 // ---- pager ----
 
 func show(text string) {
-	if fi, err := os.Stdout.Stat(); err == nil && fi.Mode()&os.ModeCharDevice != 0 {
+	if isTerminal(os.Stdout) {
 		if less, err := exec.LookPath("less"); err == nil {
 			cmd := exec.Command(less, "-R", "-i", "-M")
 			cmd.Stdin, cmd.Stdout, cmd.Stderr = strings.NewReader(text), os.Stdout, os.Stderr
@@ -436,4 +491,9 @@ func show(text string) {
 		}
 	}
 	fmt.Print(text)
+}
+
+func isTerminal(f *os.File) bool {
+	fi, err := f.Stat()
+	return err == nil && fi.Mode()&os.ModeCharDevice != 0
 }

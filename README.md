@@ -68,23 +68,44 @@ macOS ni en Windows nativo.
 ## Uso
 
 ```sh
-wr URL           # lee el artículo en un pager (q para salir, / para buscar)
-wr -L URL        # sin las URL de los enlaces (solo el texto)
-wr --md URL      # imprime el Markdown tal cual, para pipes
-wr pagina.html   # también funciona con un archivo local
+wr URL            # lee el artículo en un pager (q para salir, / para buscar)
+wr -L URL         # sin las URL de los enlaces (solo el texto)
+wr --md URL       # imprime el Markdown tal cual, para pipes (siempre descarga fresco)
+wr --fresh URL    # ignora la caché y descarga de nuevo
+wr --clear-cache  # borra la caché
+wr pagina.html    # también funciona con un archivo local
 ```
+
+## Caché
+
+Una página que ya leíste se abre **al instante** desde `~/.cache/wr`, y mientras
+la lees se refresca en segundo plano para la próxima vez.
+
+- La caché solo se usa en la vista interactiva (terminal). Con `--md` o en un
+  pipe siempre se descarga fresco, y de paso se actualiza la caché.
+- Verás una línea `↺ desde cache (hace 3 h)` arriba. Para recargar ya:
+  `wr --fresh URL`.
+- Puedes ver una versión vieja de la página: la actualización llega en la visita
+  siguiente. Para páginas que cambian a menudo, usa `--fresh`.
+- El refresco en segundo plano solo termina si el pager sigue abierto lo
+  suficiente (normalmente una fracción de segundo). Si sales antes, se descarta
+  sin dejar nada a medias.
+- Las entradas de más de 30 días se borran solas. La carpeta es `0700` y los
+  archivos `0600`.
+- **Privacidad:** la caché guarda las URL y el contenido de lo que lees. Bórrala
+  con `wr --clear-cache`.
 
 ## Velocidad
 
-Medido sobre un artículo de ~290 KB (5 corridas, WSL2):
+Medido con un artículo de ~290 KB (WSL2, varias corridas):
 
-| | Tiempo |
+| | Tiempo hasta ver el texto |
 |---|---|
-| `wr` sobre un archivo local | ~11 ms |
-| `wr` descargando el artículo | ~0.35–0.55 s (casi todo es red) |
+| Primera visita (descarga) | ~0.35–0.4 s, casi todo es red |
+| Visitas siguientes (caché) | **~40 ms** |
+| `wr` sobre un archivo local pequeño | ~10 ms |
 
-La primera versión, en Python, tardaba ~84 ms sobre un archivo local y
-~1.0–1.5 s con red.
+La primera versión, en Python, tardaba ~1.0–1.5 s con red.
 
 ## Límites
 
@@ -104,7 +125,8 @@ La primera versión, en Python, tardaba ~84 ms sobre un archivo local y
 
 El contenido de la página no es de confianza. Antes de mostrarlo se eliminan los
 caracteres de control (incluido `ESC`), para que una página no pueda inyectar
-secuencias de escape en tu terminal.
+secuencias de escape en tu terminal. Se hace también al leer de la caché, y una
+entrada cuya cabecera no coincide con la URL pedida se descarta.
 
 ## Licencia
 
