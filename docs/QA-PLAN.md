@@ -1,9 +1,10 @@
 # QA plan: what to fix, in what order
 
 Plan derived from the rounds documented in [`QA.md`](QA.md), with the ID register
-in [`QA-FINDINGS.md`](QA-FINDINGS.md). Nothing here is applied yet: the automatic
-test mode (`qa_scenarios_test.go`) and the network harness (`scripts/qa/`) are the
-verification surface.
+in [`QA-FINDINGS.md`](QA-FINDINGS.md). Olas 1–4 are applied (see each finding's
+*Resolución*), except QA-F-012, which is a product decision (see the register).
+The automatic test mode (`qa_scenarios_test.go`) and the network harness
+(`scripts/qa/`) are the verification surface.
 
 ## What the rounds covered
 

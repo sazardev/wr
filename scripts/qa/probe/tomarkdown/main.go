@@ -1,5 +1,7 @@
 // Probe: instrumented replica of toMarkdown to attribute content loss to each
-// removal rule. Usage: go run ./scripts/qa/probe/tomarkdown page.html
+// removal rule. It replicates the v0.2.1 (fcb54cf) rules, before the QA fixes, so
+// it keeps explaining the loss on the original corpus; it does not follow the
+// current extraction in extract.go. Usage: go run ./scripts/qa/probe/tomarkdown page.html
 package main
 
 import (

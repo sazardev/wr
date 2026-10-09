@@ -1,8 +1,10 @@
 # QA report: reading the web and rendering code
 
-Status: findings only. No code was changed for this report; every item below has
-a minimal reproduction. This is the record of two testing rounds against the
-binary built from commit `fcb54cf` (`wr v0.2.1-0.20261009005749-fcb54cf0cd4f`).
+Status: this is the record of two testing rounds against the binary built from
+commit `fcb54cf` (`wr v0.2.1-0.20261009005749-fcb54cf0cd4f`); every item has a
+minimal reproduction. The code was not changed for the report itself; the fixes
+landed afterwards and are tracked per finding in [`QA-FINDINGS.md`](QA-FINDINGS.md),
+so the line numbers and root causes below describe `fcb54cf`, not the current tree.
 
 - [When](#when)
 - [Where it was tested](#where-it-was-tested)
