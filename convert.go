@@ -58,10 +58,12 @@ var linkRe = regexp.MustCompile(`!?\[([^\]]*)\]\([^)]*\)`)
 // stripLinks keeps only the link text (for --md -L).
 func stripLinks(md string) string { return linkRe.ReplaceAllString(md, "$1") }
 
+var backtickRuns = regexp.MustCompile("`+")
+
 // fence wraps text in a code fence long enough not to be closed by its content.
 func fence(lang, text string) string {
 	n := 3
-	for _, run := range regexp.MustCompile("`+").FindAllString(text, -1) {
+	for _, run := range backtickRuns.FindAllString(text, -1) {
 		n = max(n, len(run)+1)
 	}
 	f := strings.Repeat("`", n)

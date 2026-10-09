@@ -39,16 +39,14 @@ func main() {
 		return
 	case actClear:
 		if err := cacheClear(); err != nil {
-			fmt.Fprintf(os.Stderr, "wr: %v\n", err)
-			os.Exit(1)
+			fatal(err)
 		}
 		fmt.Println("cache cleared")
 		return
 	case actConfig:
 		path, err := ensureConfigFile()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "wr: %v\n", err)
-			os.Exit(1)
+			fatal(err)
 		}
 		fmt.Println(path)
 		return
@@ -77,16 +75,14 @@ func main() {
 	// prints and exits (always downloading fresh).
 	if interactive {
 		if err := runTUI(src, cfg, o.fresh, cfgErr); err != nil {
-			fmt.Fprintf(os.Stderr, "wr: %v\n", err)
-			os.Exit(1)
+			fatal(err)
 		}
 		return
 	}
 
 	md, err := load(src)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "wr: %v\n", err)
-		os.Exit(1)
+		fatal(err)
 	}
 	if o.rawMD {
 		if o.noLinks {
@@ -103,6 +99,13 @@ func main() {
 		width = 100
 	}
 	fmt.Println(strings.Join(renderDoc(md, width, cfg).Lines, "\n"))
+}
+
+// fatal prints the error and stops. A bad command line is not here: it also
+// shows the usage, and exits with 2.
+func fatal(err error) {
+	fmt.Fprintf(os.Stderr, "wr: %v\n", err)
+	os.Exit(1)
 }
 
 // applyRuntime pushes the settings that live in package-level state.
