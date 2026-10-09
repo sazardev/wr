@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/sazardev/wr/compare/v0.2.0...v0.2.1) (2026-10-09)
+
+
+### Bug Fixes
+
+* stop losing pages and rewriting code during extraction ([6327651](https://github.com/sazardev/wr/commit/6327651d5a8603d7ba0b127161d898f550d5e452))
+
 ## [0.2.0](https://github.com/sazardev/wr/compare/v0.1.0...v0.2.0) (2026-10-09)
 
 
