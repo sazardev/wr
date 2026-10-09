@@ -1,2 +1,5 @@
 wr
 dist/
+qa-out/
+__pycache__/
+*.pyc

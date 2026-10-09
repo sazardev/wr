@@ -89,6 +89,9 @@ Complements: a Go probe replicating `toMarkdown` with per-rule word accounting
 (dropTags, junkClass, codeJunk), synthetic HTML fixtures, and the official
 chroma lexer list and samples (`lexers/testdata`).
 
+The reproducible harness for both rounds is committed in
+[`scripts/qa/`](../scripts/qa/) (see [`scripts/qa/README.md`](../scripts/qa/README.md)).
+
 ## Results
 
 ### Web reading
