@@ -1,31 +1,104 @@
-// The braille layer for the wr documentation site.
+// The braille layer for the wr documentation site (design system DS-1.0).
 //
-// Everything is drawn with Braille patterns (U+2800..U+28FF), the same glyphs
-// the reader uses: 2 columns x 4 rows of dots per cell. The background is a
-// height field sampled per dot, the cursor is a blinking braille cell with a
-// trail, clicks send ripples through the field and a burst of glyphs, and the
-// footer progress bar fills cell by cell like the one in the program.
+// It owns four things, all flat and all drawn with the same glyphs the reader
+// uses:
+//
+//   1. themes: six palettes (bg, surface, fg, dim, accent, accent2) applied to
+//      <html data-theme>, chosen by the visitor and remembered, following the
+//      system preference when there is no choice;
+//   2. the field: a full-screen braille height map in the accent color, with a
+//      cursor bump and click ripples;
+//   3. the braille rules: ⣀ fills that match the width of their section, and the
+//      footer progress bar, which fills cell by cell like the program's;
+//   4. the custom cursor: a blinking braille cell with a trail.
+//
+// No gradient, no shadow, no glow: opacity over the accent color only.
 (() => {
   'use strict';
 
   const BASE = 0x2800;
-  // Braille dot bits, [row][column] (same map as braille.go).
-  const DOT = [[0x01, 0x08], [0x02, 0x10], [0x04, 0x20], [0x40, 0x80]];
-  // Fill levels from low to full, exactly as in braille.go.
+  const DOT = [[0x01, 0x08], [0x02, 0x10], [0x04, 0x20], [0x40, 0x80]]; // [row][col]
   const FILL = ['\u28C0', '\u28C4', '\u28E4', '\u28E6', '\u28F6', '\u28F7', '\u28FF']; // ⣀⣄⣤⣦⣶⣷⣿
-  // Single-column fills, for icons.
-  const ICONS = ['\u2801', '\u2803', '\u2807', '\u2847', '\u284F', '\u28FF']; // ⠁⠃⠇⡇⣇⣿
   const SPIN = ['\u280B', '\u2819', '\u2839', '\u2838', '\u283C', '\u2834', '\u2826', '\u2827', '\u2807', '\u280F']; // ⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏
-  const WAVE_COLORS = ['#3b82d6', '#60a5fa', '#22d3ee', '#34d399', '#22d3ee', '#60a5fa'];
   const BLANK = '\u2800';
 
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const fine = matchMedia('(pointer: fine)').matches;
 
-  // ---------------------------------------------------------------- field --
-  // A full-screen animated braille field. Each dot samples a height field made
-  // of traveling sine waves; dots over the threshold light up. The mouse is a
-  // local bump and every click drops a ripple that decays.
+  // ----------------------------------------------------------------- themes --
+  // Six palettes, same shape as the tokens in style.css. The chips shown in the
+  // header are built from here, so a theme is added in both places only.
+  const THEMES = [
+    { id: 'wr', keys: 'dark', colors: ['#07090d', '#0d1117', '#c9d3e3', '#5f7089', '#4da3ff'] },
+    { id: 'gruvbox', keys: 'dark', colors: ['#282828', '#32302f', '#ebdbb2', '#928374', '#fabd2f'] },
+    { id: 'nord', keys: 'dark', colors: ['#2e3440', '#343b49', '#d8dee9', '#616e88', '#88c0d0'] },
+    { id: 'catppuccin', keys: 'dark', colors: ['#1e1e2e', '#181825', '#cdd6f4', '#6c7086', '#cba6f7'] },
+    { id: 'solarized', keys: 'dark', colors: ['#002b36', '#073642', '#93a1a1', '#586e75', '#268bd2'] },
+    { id: 'matrix', keys: 'dark', colors: ['#050805', '#0a120a', '#b6f3c4', '#4e8a5b', '#2ee66f'] },
+    { id: 'paper', keys: 'light', colors: ['#f2efe9', '#e9e5db', '#20242a', '#6b7178', '#0b5cad'] },
+  ];
+  const STORE = 'wr-docs-theme';
+
+  const token = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+  function setTheme(id, persist = true) {
+    const theme = THEMES.find((t) => t.id === id) || THEMES[0];
+    document.documentElement.dataset.theme = theme.id;
+    if (persist) {
+      try { localStorage.setItem(STORE, theme.id); } catch {}
+    }
+    document.querySelectorAll('.themes button').forEach((b) => {
+      b.setAttribute('aria-pressed', String(b.dataset.theme === theme.id));
+    });
+    document.dispatchEvent(new CustomEvent('theme', { detail: theme }));
+  }
+
+  function buildThemeBar() {
+    const bar = document.getElementById('themes');
+    if (!bar) return;
+    for (const t of THEMES) {
+      const b = document.createElement('button');
+      b.dataset.theme = t.id;
+      b.title = `${t.id} (${t.keys})`;
+      b.setAttribute('aria-label', `theme: ${t.id}`);
+      b.setAttribute('aria-pressed', 'false');
+      // chips: bg, surface, fg and accent of that palette, nothing else
+      for (const c of [t.colors[0], t.colors[1], t.colors[2], t.colors[4]]) {
+        const i = document.createElement('i');
+        i.style.background = c;
+        b.appendChild(i);
+      }
+      b.addEventListener('click', () => setTheme(t.id));
+      bar.appendChild(b);
+    }
+    const swatches = document.getElementById('swatches');
+    if (swatches) {
+      for (const t of THEMES) {
+        const b = document.createElement('button');
+        b.className = 'swatch';
+        b.dataset.theme = t.id;
+        b.setAttribute('aria-pressed', 'false');
+        const chips = document.createElement('span');
+        chips.className = 'chips';
+        for (const c of [t.colors[0], t.colors[1], t.colors[2], t.colors[4]]) {
+          const i = document.createElement('i');
+          i.style.background = c;
+          chips.appendChild(i);
+        }
+        const name = document.createElement('span');
+        name.className = 'name';
+        name.textContent = t.id;
+        const keys = document.createElement('span');
+        keys.className = 'keys';
+        keys.textContent = t.keys;
+        b.append(chips, name, keys);
+        b.addEventListener('click', () => setTheme(t.id));
+        swatches.appendChild(b);
+      }
+    }
+  }
+
+  // ------------------------------------------------------------------ field --
   class Field {
     constructor(canvas) {
       this.cv = canvas;
@@ -39,481 +112,189 @@
       this.lastDraw = 0;
       this.raf = 0;
       this.dpr = Math.min(devicePixelRatio || 1, 1.5);
+      this.color = token('--accent');
       this.resize = this.resize.bind(this);
       this.loop = this.loop.bind(this);
+      document.addEventListener('theme', () => { this.color = token('--accent'); this.draw(0); });
       addEventListener('resize', this.resize);
-      addEventListener('pointermove', (e) => {
-        this.mouse.x = e.clientX;
-        this.mouse.y = e.clientY;
-      }, { passive: true });
+      addEventListener('pointermove', (e) => { this.mouse.x = e.clientX; this.mouse.y = e.clientY; }, { passive: true });
       addEventListener('pointerdown', (e) => this.ripple(e.clientX, e.clientY), { passive: true });
       document.addEventListener('visibilitychange', () => {
-        if (document.hidden) this.stop();
-        else if (!reduce) this.start();
+        if (document.hidden) { cancelAnimationFrame(this.raf); this.raf = 0; }
+        else this.start();
       });
       this.resize();
-      if (reduce) this.render();
-      else this.start();
+      if (!reduce) this.start(); else this.draw(0);
     }
 
-    start() {
-      if (!this.raf) this.raf = requestAnimationFrame(this.loop);
-    }
-
-    stop() {
-      cancelAnimationFrame(this.raf);
-      this.raf = 0;
-    }
+    start() { if (!this.raf) { this.last = performance.now(); this.raf = requestAnimationFrame(this.loop); } }
 
     resize() {
-      const w = innerWidth;
-      const h = innerHeight;
-      this.cols = Math.ceil(w / this.cellW);
-      this.rows = Math.ceil(h / this.cellH);
-      this.cv.width = Math.floor(w * this.dpr);
-      this.cv.height = Math.floor(h * this.dpr);
-      this.cv.style.width = w + 'px';
-      this.cv.style.height = h + 'px';
+      this.cols = Math.ceil(innerWidth / this.cellW) + 1;
+      this.rows = Math.ceil(innerHeight / this.cellH) + 1;
+      this.cv.width = this.cols * this.cellW * this.dpr;
+      this.cv.height = this.rows * this.cellH * this.dpr;
+      this.cv.style.width = this.cols * this.cellW + 'px';
+      this.cv.style.height = this.rows * this.cellH + 'px';
       this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-      this.ctx.font = (this.cellH - 2) + 'px ui-monospace, SFMono-Regular, Menlo, Consolas, "DejaVu Sans Mono", monospace';
+      this.ctx.font = `${this.cellH}px ui-monospace, monospace`;
       this.ctx.textBaseline = 'top';
-      if (reduce) this.render();
+      this.draw(0);
+    }
+
+    height(x, y, t) {
+      const h = Math.sin(x * 0.16 + t * 0.9) * 0.5 + Math.sin(y * 0.21 - t * 0.7) * 0.5 + Math.sin((x + y) * 0.09 + t * 1.4) * 0.5;
+      const dx = x * this.cellW - this.mouse.x, dy = y * this.cellH - this.mouse.y;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if (d < 90) h += (1 - d / 90) * 2.2;
+      for (const r of this.ripples) {
+        const dist = Math.hypot(x * this.cellW - r.x, y * this.cellH - r.y);
+        const w = Math.exp(-Math.pow(dist - r.age * 260, 2) / 6000) * (1 - r.age / 1.6);
+        if (w > 0) h += w * 2.4;
+      }
+      return h;
     }
 
     ripple(x, y) {
-      if (this.ripples.length < 8) {
-        this.ripples.push({ x: x / this.cellW * 2, y: y / this.cellH * 4, age: 0 });
-      }
+      if (reduce) return;
+      this.ripples.push({ x, y, age: 0 });
+      if (this.ripples.length > 12) this.ripples.shift();
+      this.start();
     }
 
-    loop(ts) {
-      const dt = Math.min((ts - this.last) / 1000 || 0, 0.05);
-      this.last = ts;
+    loop(now) {
+      const dt = Math.min((now - this.last) / 1000, 0.05);
+      this.last = now;
       this.t += dt;
       for (const r of this.ripples) r.age += dt;
-      if (this.ripples.length) this.ripples = this.ripples.filter((r) => r.age < 2.6);
-      if (this.t - this.lastDraw > 1 / 30) {
-        this.render();
-        this.lastDraw = this.t;
-      }
-      this.raf = requestAnimationFrame(this.loop);
+      this.ripples = this.ripples.filter((r) => r.age < 1.6);
+      this.draw(this.t);
+      if (this.ripples.length || true) this.raf = requestAnimationFrame(this.loop);
     }
 
-    render() {
-      const { ctx, cols, rows, cellW, cellH, t } = this;
-      ctx.clearRect(0, 0, cols * cellW, rows * cellH);
-      const W = cols * 2;
-      const H = rows * 4;
-
-      // Per-axis wave tables: the waves are split so each dot is a few
-      // multiplies instead of a pile of Math.sin calls.
-      const sx = new Float32Array(W), cx = new Float32Array(W);
-      const s3x = new Float32Array(W), c3x = new Float32Array(W);
-      for (let x = 0; x < W; x++) {
-        const a = x * 0.16 + t * 1.1;
-        const b = x * 0.11 + t * 0.5;
-        sx[x] = Math.sin(a); cx[x] = Math.cos(a);
-        s3x[x] = Math.sin(b); c3x[x] = Math.cos(b);
-      }
-      const sy = new Float32Array(H), s3y = new Float32Array(H), c3y = new Float32Array(H);
-      for (let y = 0; y < H; y++) {
-        sy[y] = Math.sin(y * 0.34 - t * 0.8);
-        const b = y * 0.11;
-        s3y[y] = Math.sin(b); c3y[y] = Math.cos(b);
-      }
-
-      const mx = this.mouse.x / cellW * 2;
-      const my = this.mouse.y / cellH * 4;
-      const ripples = this.ripples;
-
-      let band = -1;
-      for (let row = 0; row < rows; row++) {
-        // The field fades with depth so the reading area stays calm.
-        ctx.globalAlpha = Math.max(0.1, 1 - (row / rows) * 1.7);
-        const y0 = row * 4;
-        for (let col = 0; col < cols; col++) {
-          const x0 = col * 2;
-          let bits = 0;
-          let sum = 0;
-          for (let ly = 0; ly < 4; ly++) {
-            const y = y0 + ly;
-            const base = sy[y] + 0.4 * (s3x[x0] * c3y[y] + c3x[x0] * s3y[y]);
-            for (let lx = 0; lx < 2; lx++) {
-              const x = x0 + lx;
-              let v = sx[x] + base;
-              const dx = x - mx, dy = y - my;
-              const md = dx * dx + dy * dy;
-              if (md < 900) v += 1.6 * Math.exp(-md / 300);
-              for (let i = 0; i < ripples.length; i++) {
-                const r = ripples[i];
-                const rx = x - r.x, ry = y - r.y;
-                const d2 = rx * rx + ry * ry;
-                if (d2 < 6400) {
-                  const d = Math.sqrt(d2);
-                  v += 1.5 * Math.exp(-r.age * 1.1) * Math.cos(d * 0.35 - r.age * 9) * Math.exp(-d * 0.02);
-                }
-              }
-              sum += v;
-              if (v > 0.72) bits |= DOT[ly][lx];
+    draw(t) {
+      const { ctx, cols, rows } = this;
+      ctx.clearRect(0, 0, cols * this.cellW, rows * this.cellH);
+      // flat: one color, opacity carries the height
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          const h = this.height(x, y, t);
+          if (h < -0.8) continue;
+          const bits = [];
+          for (let r = 0; r < 4; r++) {
+            for (let c = 0; c < 2; c++) {
+              const o = Math.sin((x + c * 0.7) * 0.4 + t * 2 + (y + r * 0.5) * 0.3) * 0.6 + h;
+              if (o > 0.9) bits.push(DOT[r][c]);
             }
           }
-          if (!bits) continue;
-          const avg = sum / 8;
-          const b = avg > 1.15 ? 2 : avg > 0.9 ? 1 : 0;
-          if (b !== band) {
-            band = b;
-            ctx.fillStyle = b === 2 ? '#7dd3fc' : b === 1 ? '#3b82d6' : '#1d3a63';
-          }
-          ctx.fillText(String.fromCharCode(BASE + bits), col * cellW, row * cellH);
+          if (!bits.length) continue;
+          const ch = String.fromCharCode(BASE + bits.reduce((a, b) => a | b, 0));
+          const a = Math.min(0.06 + Math.max(0, h + 0.8) * 0.15, 0.42);
+          ctx.globalAlpha = a;
+          ctx.fillStyle = this.color;
+          ctx.fillText(ch, x * this.cellW, y * this.cellH);
         }
       }
+      ctx.globalAlpha = 1;
     }
   }
 
-  // --------------------------------------------------------------- cursor --
-  // A braille cell that follows the pointer with a springy trail. It spins
-  // while moving, blinks when idle, fills up over links and shows the link
-  // target in a small label (like wr's link hints).
-  class Cursor {
-    constructor() {
-      this.x = innerWidth / 2;
-      this.y = innerHeight / 2;
-      this.tx = this.x;
-      this.ty = this.y;
-      this.el = document.createElement('div');
-      this.el.className = 'cursor';
-      this.el.textContent = '\u283F';
-      this.ghosts = [0, 1, 2].map((i) => {
-        const g = document.createElement('div');
-        g.className = 'cursor-ghost g' + i;
-        document.body.append(g);
-        return { el: g, x: this.x, y: this.y };
-      });
-      this.label = document.createElement('div');
-      this.label.className = 'cursor-label';
-      this.label.hidden = true;
-      document.body.append(this.el, this.label);
-      this.down = false;
-      this.hover = null;
-      this.frame = 0;
-      this.t = 0;
-      this.last = 0;
+  // -------------------------------------------------------------- rules/fill --
+  // A ⣀ fill that always matches the width of its row, like the app's rule.
+  function measure(el) {
+    const probe = document.createElement('span');
+    probe.style.cssText = 'position:absolute;visibility:hidden;white-space:pre;font:inherit';
+    probe.textContent = '\u28C0';
+    el.appendChild(probe);
+    const w = probe.getBoundingClientRect().width || 8;
+    probe.remove();
+    return Math.max(4, Math.floor(el.getBoundingClientRect().width / w));
+  }
 
-      addEventListener('pointermove', (e) => {
-        this.tx = e.clientX;
-        this.ty = e.clientY;
-        const hit = e.target && e.target.closest ? e.target.closest('a[href], button, .copy') : null;
-        this.setHover(hit);
-      }, { passive: true });
-      addEventListener('pointerdown', () => { this.down = true; });
-      addEventListener('pointerup', () => { this.down = false; });
-      document.documentElement.addEventListener('pointerleave', () => {
-        this.el.style.opacity = '0';
-        this.label.hidden = true;
-      });
-      document.documentElement.addEventListener('pointerenter', () => {
-        this.el.style.opacity = '1';
-      });
-
-      this.loop = this.loop.bind(this);
-      requestAnimationFrame(this.loop);
-    }
-
-    setHover(el) {
-      this.hover = el;
-      if (!el) { this.label.hidden = true; return; }
-      let text = el.dataset.label;
-      if (!text) {
-        if (el.tagName === 'A') {
-          try { text = new URL(el.href, location.href).hostname || el.textContent; }
-          catch (_) { text = el.textContent; }
-        } else {
-          text = el.textContent;
-        }
-      }
-      text = (text || '').trim().replace(/\s+/g, ' ');
-      if (text.length > 44) text = text.slice(0, 43) + '\u2026';
-      this.label.textContent = '\u283F ' + text;
-      this.label.hidden = false;
-    }
-
-    loop(ts) {
-      const dt = Math.min((ts - this.last) / 1000 || 0, 0.05);
-      this.last = ts;
-      this.t += dt;
-      const k = 1 - Math.pow(0.0001, dt);
-      this.x += (this.tx - this.x) * Math.min(1, k * 1.4);
-      this.y += (this.ty - this.y) * Math.min(1, k * 1.4);
-      const speed = Math.hypot(this.tx - this.x, this.ty - this.y);
-
-      let ch;
-      if (this.down) {
-        ch = '\u28FF';
-      } else if (this.hover) {
-        ch = '\u28BF';
-      } else if (speed > 1.5) {
-        ch = SPIN[this.frame++ % SPIN.length];
-      } else {
-        ch = Math.floor(this.t * 1.8) % 2 ? '\u283F' : '\u280F';
-      }
-      this.el.textContent = ch;
-      this.el.style.transform = 'translate3d(' + this.x + 'px,' + this.y + 'px,0)';
-      this.label.style.transform = 'translate3d(' + (this.x + 16) + 'px,' + (this.y + 16) + 'px,0)';
-
-      const lag = [0.10, 0.05, 0.025];
-      const chars = ['\u2804', '\u2801', '\u2800'];
-      this.ghosts.forEach((g, i) => {
-        g.x += (this.x - g.x) * Math.min(1, k * lag[i]);
-        g.y += (this.y - g.y) * Math.min(1, k * lag[i]);
-        g.el.textContent = chars[i];
-        g.el.style.transform = 'translate3d(' + g.x + 'px,' + g.y + 'px,0)';
-      });
-      requestAnimationFrame(this.loop);
+  function fillRules() {
+    for (const el of document.querySelectorAll('.rule-b[data-fill]')) {
+      const n = parseInt(el.dataset.fill, 10) || 0;
+      const want = Math.max(1, n - 2);
+      el.textContent = '\u28C0'.repeat(Math.min(want, measure(el)));
     }
   }
 
-  // -------------------------------------------------------------- effects --
-  function burst(x, y) {
-    if (reduce) return;
-    for (let i = 0; i < 12; i++) {
-      const s = document.createElement('span');
-      s.className = 'spark';
-      const set = Math.random() < 0.55 ? SPIN : ICONS;
-      s.textContent = set[Math.floor(Math.random() * set.length)];
-      s.style.left = x + 'px';
-      s.style.top = y + 'px';
-      const a = Math.random() * Math.PI * 2;
-      const d = 28 + Math.random() * 76;
-      const anim = s.animate([
-        { transform: 'translate(-50%,-50%) scale(1)', opacity: 1 },
-        { transform: 'translate(calc(-50% + ' + (Math.cos(a) * d) + 'px), calc(-50% + ' + (Math.sin(a) * d) + 'px)) scale(.35)', opacity: 0 },
-      ], { duration: 480 + Math.random() * 420, easing: 'cubic-bezier(.2,.7,.3,1)' });
-      anim.onfinish = () => s.remove();
-      document.body.append(s);
-    }
-    const ring = document.createElement('span');
-    ring.className = 'ring';
-    ring.style.left = x + 'px';
-    ring.style.top = y + 'px';
-    const anim = ring.animate([
-      { transform: 'translate(-50%,-50%) scale(.25)', opacity: 0.9 },
-      { transform: 'translate(-50%,-50%) scale(1.7)', opacity: 0 },
-    ], { duration: 620, easing: 'ease-out' });
-    anim.onfinish = () => ring.remove();
-    document.body.append(ring);
-  }
-
-  // ------------------------------------------------------------- braille --
-  // Letters drawn as 5x7 dot maps, scaled 2x and packed into braille cells.
-  const GLYPHS = {
-    w: ['10001', '10001', '10101', '10101', '10101', '11011', '10001'],
-    r: ['00000', '10000', '10000', '11110', '10001', '10001', '10001'],
-  };
-
-  function brailleArt(words) {
-    const scale = 2;
-    const gap = 2;
-    const dotW = 5 * scale;
-    const dotH = 7 * scale;
-    const chars = [...words];
-    const width = chars.length * dotW + (chars.length - 1) * gap;
-    const grid = Array.from({ length: dotH }, () => new Array(width).fill(0));
-    chars.forEach((ch, li) => {
-      const rows = GLYPHS[ch];
-      const xo = li * (dotW + gap);
-      rows.forEach((row, y) => {
-        for (let x = 0; x < row.length; x++) {
-          if (row[x] !== '1') continue;
-          for (let sy = 0; sy < scale; sy++) {
-            for (let sx = 0; sx < scale; sx++) grid[y * scale + sy][xo + x * scale + sx] = 1;
-          }
-        }
-      });
-    });
-
-    const cols = Math.ceil(width / 2);
-    const rows = Math.ceil(dotH / 4);
-    const out = [];
-    for (let r = 0; r < rows; r++) {
-      let line = '';
-      for (let c = 0; c < cols; c++) {
-        let bits = 0;
-        for (let ly = 0; ly < 4; ly++) {
-          const y = r * 4 + ly;
-          if (y >= dotH) continue;
-          for (let lx = 0; lx < 2; lx++) {
-            const x = c * 2 + lx;
-            if (x < width && grid[y][x]) bits |= DOT[ly][lx];
-          }
-        }
-        line += String.fromCharCode(BASE + bits);
-      }
-      out.push(line);
-    }
-    return out;
-  }
-
-  function flash(pre, spans) {
-    if (reduce) return;
-    clearInterval(pre._flash);
-    pre._flash = setInterval(() => {
-      if (document.hidden) return;
-      const s = spans[Math.floor(Math.random() * spans.length)];
-      if (s.textContent === BLANK) return;
-      s.classList.add('lit');
-      setTimeout(() => s.classList.remove('lit'), 260);
-    }, 900);
-  }
-
-  function renderLogo(pre) {
-    const art = brailleArt('wr');
-    const spans = [];
-    pre.textContent = '';
-    art.forEach((line, r) => {
-      [...line].forEach((ch, c) => {
-        const s = document.createElement('span');
-        s.textContent = ch;
-        s.style.animationDelay = (c * 45 + r * 12) + 'ms';
-        pre.append(s);
-        spans.push(s);
-      });
-      pre.append(document.createTextNode('\n'));
-    });
-    pre.classList.remove('run');
-    void pre.offsetWidth;
-    pre.classList.add('run');
-    flash(pre, spans);
-  }
-
-  // The loading wave from braille.go, in a line of spans.
-  function startWave(el, cells) {
-    const spans = [];
-    for (let i = 0; i < cells; i++) {
-      const s = document.createElement('span');
-      s.textContent = FILL[0];
-      el.append(s);
-      spans.push(s);
-    }
-    if (reduce) {
-      spans.forEach((s, i) => { s.textContent = FILL[3 + (i % 4)]; });
-      return;
-    }
-    let last = 0;
-    const tick = (ts) => {
-      if (ts - last > 33) {
-        last = ts;
-        const t = ts / 1000;
-        for (let i = 0; i < cells; i++) {
-          const level = (Math.sin(t * 7 - i * 0.5) + 1) / 2;
-          spans[i].textContent = FILL[Math.round(level * (FILL.length - 1))];
-          spans[i].style.color = WAVE_COLORS[(i + Math.floor(t * 9)) % WAVE_COLORS.length];
-        }
-      }
-      requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-  }
-
-  // Footer progress, filled like progressBar() in braille.go.
+  // ------------------------------------------------------------- progress --
   function startProgress(bar, pct) {
-    let cells = 0;
-    const spans = [];
-    const build = () => {
-      const n = Math.max(8, Math.min(30, Math.floor(innerWidth / 64)));
-      if (n === cells) return;
-      cells = n;
-      bar.textContent = '';
-      spans.length = 0;
-      for (let i = 0; i < n; i++) {
-        const s = document.createElement('span');
-        s.textContent = FILL[0];
-        bar.append(s);
-        spans.push(s);
-      }
-      update();
-    };
-    const update = () => {
-      const max = document.documentElement.scrollHeight - innerHeight;
-      const p = max > 0 ? Math.min(100, Math.max(0, scrollY / max * 100)) : 0;
-      const steps = FILL.length - 1;
-      const units = Math.round(p * cells * steps / 100);
+    const doc = document.documentElement;
+    const paint = () => {
+      const max = doc.scrollHeight - innerHeight;
+      const p = max > 0 ? Math.min(1, Math.max(0, scrollY / max)) : 0;
+      const cells = 12;
+      const on = Math.round(p * cells);
+      let out = '';
       for (let i = 0; i < cells; i++) {
-        const u = Math.min(steps, Math.max(0, units - i * steps));
-        spans[i].textContent = FILL[u];
-        spans[i].className = u === 0 ? 'off' : '';
+        if (i < on) out += FILL[6];
+        else if (i === on) out += FILL[Math.min(6, Math.floor((p * cells - on) * 6.99))] || BLANK;
+        else out += BLANK;
       }
-      pct.textContent = Math.round(p) + '%';
+      bar.textContent = out || BLANK;
+      pct.textContent = Math.round(p * 100) + '%';
     };
-    addEventListener('resize', build);
-    addEventListener('scroll', update, { passive: true });
-    build();
+    addEventListener('scroll', paint, { passive: true });
+    addEventListener('resize', paint);
+    paint();
   }
 
-  // Copy buttons: spin, then confirm.
-  function setupCopy() {
-    document.querySelectorAll('[data-copy]').forEach((btn) => {
-      btn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        const label = btn.querySelector('.copy-label') || btn;
-        const original = label.textContent;
-        try { await navigator.clipboard.writeText(btn.dataset.copy); } catch (_) {}
-        let i = 0;
-        const spin = setInterval(() => { label.textContent = SPIN[i++ % SPIN.length] + ' copying'; }, 70);
-        setTimeout(() => {
-          clearInterval(spin);
-          label.textContent = '\u283F copied';
-          setTimeout(() => { label.textContent = original; }, 1500);
-        }, 520);
-      });
-    });
-  }
-
-  // Card icons cycle through the fill levels while hovered.
-  function setupCards() {
-    document.querySelectorAll('.card .ico').forEach((ico) => {
-      const base = ico.textContent;
-      let iv = 0, i = 0;
-      const card = ico.closest('.card');
-      card.addEventListener('pointerenter', () => {
-        if (reduce) return;
-        clearInterval(iv);
-        iv = setInterval(() => { ico.textContent = ICONS[i++ % ICONS.length]; }, 90);
-      });
-      card.addEventListener('pointerleave', () => {
-        clearInterval(iv);
-        ico.textContent = base;
-      });
-    });
-  }
-
-  // ------------------------------------------------------------------ go --
-  function init() {
-    const canvas = document.getElementById('field');
-    if (canvas) new Field(canvas);
-    if (fine && !reduce) {
-      document.body.classList.add('has-cursor');
-      new Cursor();
+  // ---------------------------------------------------------------- cursor --
+  function startCursor() {
+    if (!fine || reduce) return;
+    const cur = document.createElement('div');
+    cur.className = 'cursor blink';
+    cur.textContent = '\u2839'; // ⠹
+    document.body.appendChild(cur);
+    document.body.classList.add('has-cursor');
+    const ghosts = [];
+    for (let i = 1; i <= 3; i++) {
+      const g = document.createElement('div');
+      g.className = 'cursor-ghost g' + (i - 1);
+      g.textContent = ['\u2807', '\u2803', '\u2801'][i - 1]; // ⠇⠃⠁
+      document.body.appendChild(g);
+      ghosts.push({ el: g, x: innerWidth / 2, y: innerHeight / 2 });
     }
-    addEventListener('pointerdown', (e) => burst(e.clientX, e.clientY), { passive: true });
-
-    const logo = document.getElementById('logo');
-    if (logo) {
-      renderLogo(logo);
-      logo.addEventListener('click', () => renderLogo(logo));
-    }
-    const waveEl = document.getElementById('wave');
-    if (waveEl) startWave(waveEl, Math.max(24, Math.min(72, Math.floor(innerWidth / 14))));
-
-    const bar = document.getElementById('progress');
-    const pct = document.getElementById('pct');
-    if (bar && pct) startProgress(bar, pct);
-
-    document.querySelectorAll('.rule').forEach((el) => { el.textContent = '\u28C0'.repeat(160); });
-
-    setupCopy();
-    setupCards();
+    let x = innerWidth / 2, y = innerHeight / 2;
+    addEventListener('pointermove', (e) => {
+      x = e.clientX; y = e.clientY;
+      cur.style.transform = `translate(${x}px, ${y}px)`;
+      const label = (e.target.closest('a,button') || {}).textContent || '';
+      for (const g of ghosts) {
+        g.x += (x - g.x) * 0.16; g.y += (y - g.y) * 0.16;
+        g.el.style.transform = `translate(${g.x}px, ${g.y}px)`;
+        g.el.textContent = label && label.trim() ? '\u2807' : ['\u2807', '\u2803', '\u2801'][ghosts.indexOf(g)] || '\u2801';
+      }
+    }, { passive: true });
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
+  // ------------------------------------------------------------------ spin --
+  function startSpin() {
+    if (reduce) return;
+    const dots = document.querySelectorAll('[data-spin]');
+    if (!dots.length) return;
+    let i = 0;
+    setInterval(() => {
+      i = (i + 1) % SPIN.length;
+      dots.forEach((d) => { d.textContent = SPIN[i]; });
+    }, 110);
+  }
+
+  // --------------------------------------------------------------- bootstrap --
+  buildThemeBar();
+  let stored = null;
+  try { stored = localStorage.getItem(STORE); } catch {}
+  setTheme(stored || (matchMedia('(prefers-color-scheme: light)').matches ? 'paper' : 'wr'), false);
+  fillRules();
+  addEventListener('resize', fillRules);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fillRules);
+  new Field(document.getElementById('field'));
+  startCursor();
+  startSpin();
+  const bar = document.getElementById('progress'), pct = document.getElementById('pct');
+  if (bar && pct) startProgress(bar, pct);
+  // exposed for the console and for tests
+  window.wrDocs = { THEMES, setTheme, fillRules };
 })();

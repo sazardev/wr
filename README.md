@@ -104,6 +104,11 @@ physics, and designed to cost nothing at rest:
 Each animation has its own switch, and `animations = false` makes everything
 instant.
 
+The reader on video: `media/*.tape` are [VHS](https://github.com/charmbracelet/vhs)
+tapes and `scripts/capture.sh` regenerates the recorded frames on the
+[docs site](https://sazardev.github.io/wr/) — see
+[media/README.md](media/README.md).
+
 ## Why it exists
 
 I wanted to read documentation and technical articles without leaving the
@@ -158,7 +163,8 @@ macOS and arm64 builds are cross-compiled and have not been run by me. Windows:
 use WSL.
 
 **New to wr? Read the [guide](docs/GUIDE.md)** (also on the
-[docs site](https://sazardev.github.io/wr/guide.html)): how to follow links, go
+[docs site](https://sazardev.github.io/wr/guide.html), with six palettes —
+[the design system](docs/DESIGN.md) describes them): how to follow links, go
 back and forward, search the web, use history and bookmarks, select and copy,
 and make it yours.
 

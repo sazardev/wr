@@ -3,150 +3,187 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="dark">
+<meta name="color-scheme" content="dark light">
 <title>wr — read the web in your terminal</title>
 <meta name="description" content="wr is a reader and browser for your terminal: formatted Markdown, per-language code highlighting, links, history and bookmarks — drawn with braille, moving with springs.">
 <meta property="og:title" content="wr — read the web in your terminal">
 <meta property="og:description" content="Formatted Markdown, highlighted code, links, history and bookmarks — drawn with braille.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://sazardev.github.io/wr/">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%2307090d'/%3E%3Ctext x='50' y='74' font-size='66' text-anchor='middle' fill='%234da3ff' font-family='monospace'%3E%E2%A3%BF%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2307090d'/%3E%3Ctext x='50' y='74' font-size='66' text-anchor='middle' fill='%234da3ff' font-family='monospace'%3E%E2%A3%BF%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <canvas id="field" aria-hidden="true"></canvas>
 
 <header class="site-head">
-  <a class="brand" href="./"><span class="b">⣿</span> wr</a>
+  <a class="brand" href="./"><span class="b">⣿</span> wr <small>0.2.1</small></a>
   <nav>
+    <a href="./" class="active">Home</a>
     <a href="guide.html">Guide</a>
+    <a href="design.html">Design</a>
     <a href="https://github.com/sazardev/wr">GitHub</a>
     <a href="https://github.com/sazardev/wr/releases">Releases</a>
   </nav>
+  <div class="themes" id="themes">
+    <span class="label">⣀ theme</span>
+  </div>
 </header>
 
 <main class="wrap">
+
   <section class="hero">
-    <pre id="logo" aria-hidden="true" title="click the braille"></pre>
-    <h1>A reader and browser for your terminal. <span class="hl">Formatted Markdown</span>,
-      <span class="hl">highlighted code</span>, links, history and bookmarks —
-      drawn with braille, moving with springs.</h1>
-    <div id="wave" aria-hidden="true"></div>
-    <div class="install">
-      <code><span class="p">$</span> curl -fsSL https://raw.githubusercontent.com/sazardev/wr/main/install.sh | sh</code>
+    <div class="kicker">⣿ a reader for your terminal</div>
+    <h1>Read the web as <span class="hl">plain text</span>,<br>draw it with <span class="hl2">braille</span>.</h1>
+    <p class="lead"><code>wr</code> fetches a page, extracts the article and opens it in an animated reader
+      built with Bubble Tea: properly formatted Markdown (real headings, bold, lists, tables — no
+      <code>#</code> or <code>**</code> in sight), per-language syntax highlighting, and a full browsing
+      experience: click links, go back and forward, an address bar that also searches the web, history,
+      bookmarks. Everything uses your terminal's own 16-color ANSI palette, so it follows your theme
+      with zero configuration.</p>
+
+    <div class="install term">
+      <div class="term-bar"><span class="dots" data-spin>⣶</span><span class="title">~/src — sh</span><span class="right">80×24</span></div>
+      <pre><span class="p">$</span> curl -fsSL https://raw.githubusercontent.com/sazardev/wr/main/install.sh | sh
+<span class="dim"># or</span>
+<span class="p">$</span> go install github.com/sazardev/wr@latest
+
+<span class="p">$</span> wr https://example.com/some-article
+<span class="p">$</span> wr rust async book          <span class="dim"># not an address? it is searched on the web</span>
+<span class="p">$</span> wr                           <span class="dim"># the start page: your bookmarks and recent pages</span><span class="blinker">▊</span></pre>
       <button class="copy" data-copy="curl -fsSL https://raw.githubusercontent.com/sazardev/wr/main/install.sh | sh"><span class="copy-label">⣿ copy</span></button>
     </div>
+
     <div class="btn-row">
-      <a class="btn primary" href="guide.html">Read the guide</a>
-      <a class="btn" href="https://github.com/sazardev/wr">Star on GitHub</a>
+      <a class="btn primary" href="guide.html"><span class="k">⣿</span> Read the guide</a>
+      <a class="btn" href="#demos"><span class="k">⡇</span> Watch the UI</a>
+      <a class="btn" href="https://github.com/sazardev/wr"><span class="k">⡇</span> Star on GitHub</a>
     </div>
   </section>
 
-  <section id="features">
-    <h2 class="sec">What you get</h2>
-    <div class="rule" aria-hidden="true"></div>
-    <p class="lead">One static binary, no runtime dependencies. Everything follows your terminal's
-      16 colors, so it matches your theme with zero configuration.</p>
-    <div class="cards">
-      <div class="card">
-        <span class="ico">⣿</span>
-        <h3>Formatted Markdown</h3>
-        <p>Real headings, bold, lists, tables and quotes — no <code>#</code> or <code>**</code> in sight.</p>
-      </div>
-      <div class="card">
-        <span class="ico">⡇</span>
-        <h3>Code with color</h3>
-        <p>Per-language syntax highlighting in a labeled frame; the language is kept from the page.</p>
-      </div>
-      <div class="card">
-        <span class="ico">⣷</span>
-        <h3>Search and sections</h3>
-        <p><code>/</code> searches as you type with highlighted matches; <code>t</code> opens the heading index.</p>
-      </div>
-      <div class="card">
-        <span class="ico">⢿</span>
-        <h3>Select and copy</h3>
-        <p>Drag to select and let go to copy. Code copies without its frame or margin.</p>
-      </div>
-      <div class="card">
-        <span class="ico">⣤</span>
-        <h3>Links by label</h3>
-        <p>Click them, <code>Tab</code> through them, or press <code>f</code> and type a short hint.</p>
-      </div>
-      <div class="card">
-        <span class="ico">⣄</span>
-        <h3>History and bookmarks</h3>
-        <p>Back and forward restore the exact spot; cached pages open instantly.</p>
-      </div>
-      <div class="card">
-        <span class="ico">⠿</span>
-        <h3>Make it yours</h3>
-        <p>About 30 settings and every key binding, changed live from the menu and saved.</p>
-      </div>
-      <div class="card">
-        <span class="ico">⣶</span>
-        <h3>Spring motion</h3>
-        <p>Spring scrolling, page reveals and a braille loading wave — with zero idle cost.</p>
-      </div>
-    </div>
-  </section>
-
-  <section id="screen">
-    <h2 class="sec">The screen</h2>
-    <div class="rule" aria-hidden="true"></div>
-    <div class="shot"><pre><span class="t">  ⣿ Building a Realtime Forum in Go                                        ⡇</span>
-<span class="r">  ⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀  ⡇</span>
-                                                                           <span class="r">⡇</span>
+  <section>
+    <div class="sec-head"><span class="glyph">⣿</span><h2>THE SCREEN</h2></div>
+    <div class="rule-b" data-fill="26"></div>
+    <div class="shot term">
+      <div class="term-bar"><span class="dots">⣶⣶⣶</span><span class="title">wr — Building a Realtime Forum in Go</span><span class="right">100×28</span></div>
+      <pre><span class="t">  ⣿ Building a Realtime Forum in Go                                        ⡇</span>
+  <span class="r">⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀  ⡇</span>
+                                                                            <span class="r">⡇</span>
   Build a 100% CLI realtime forum in Go: TCP, TLS, deduplicated           <span class="r">⡇</span>
   broadcast and resilient reconnects, zero dependencies.                   <span class="r">⡇</span>
-                                                                           <span class="r">⠿</span>
-<span class="r">⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀</span>
-<span class="a"> o open  / search  H back  L fwd  f links  t index  r reload  m menu  q quit</span>    <span class="g">⣷⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀   6%</span></pre></div>
+                                                                            <span class="r">⡇</span>
+  ┌ go                                                                     <span class="r">⡇</span>
+  │ package main                                                            <span class="r">⡇</span>
+  │                                                                          <span class="r">⡇</span>
+  │ func main() {                                                             <span class="r">⡇</span>
+  │     srv := tls.Listen("tcp", ":8443", cfg)                                <span class="r">⡇</span>
+  │ }                                                                        <span class="r">⡇</span>
+  └────────                                                                   <span class="r">⡇</span>
+  <span class="r">⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀</span>
+  <span class="a"> o open  / search  H back  L fwd  f links  t index  r reload  m menu  q quit</span>    <span class="g">⣷⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⡇ 6%</span></pre>
+    </div>
+    <p class="lead" style="margin-top:14px">Everything follows your terminal's 16 colors. The scrollbar, the
+      progress bar, the page reveal and the loading wave are braille, and the springs are from
+      <a href="https://github.com/charmbracelet/harmonica">harmonica</a>.</p>
   </section>
 
-  <section id="open">
-    <h2 class="sec">Open source, automated</h2>
-    <div class="rule" aria-hidden="true"></div>
-    <p class="lead">MIT licensed: use it, modify it, fork it, ship it, sell it — the only ask is
-      that the copyright notice stays. Contributions are welcome and reviewed.</p>
+  <section>
+    <div class="sec-head"><span class="glyph">⡇</span><h2>WHAT YOU GET</h2></div>
+    <div class="rule-b" data-fill="22"></div>
     <div class="cards">
-      <div class="card">
-        <span class="ico">⣿</span>
-        <h3>MIT, for real</h3>
-        <p>No restrictions beyond keeping the license text. Fork it and make it yours.</p>
-      </div>
-      <div class="card">
-        <span class="ico">⡇</span>
-        <h3>Conventional commits</h3>
-        <p>Every merge becomes a changelog entry; PR titles are checked by CI.</p>
-      </div>
-      <div class="card">
-        <span class="ico">⣷</span>
-        <h3>Automated releases</h3>
-        <p>release-please proposes the version; merging it tags and publishes the archives with checksums.</p>
-      </div>
-      <div class="card">
-        <span class="ico">⣤</span>
-        <h3>Reviewed changes</h3>
-        <p>PRs need green CI and the maintainer's approval before they reach <code>main</code>.</p>
-      </div>
+      <div class="card"><span class="ico">⣿</span><h3>Formatted Markdown</h3>
+        <p>Real headings, bold, lists, tables and quotes — no <code>#</code> or <code>**</code> in sight.</p></div>
+      <div class="card"><span class="ico">⡇</span><h3>Code with color</h3>
+        <p>Per-language syntax highlighting in a labeled frame; the language is kept from the page.</p></div>
+      <div class="card"><span class="ico">⣷</span><h3>Search and sections</h3>
+        <p><code>/</code> searches as you type with highlighted matches; <code>t</code> opens the heading index.</p></div>
+      <div class="card"><span class="ico">⢿</span><h3>Select and copy</h3>
+        <p>Drag to select and let go to copy. Code copies without its frame or margin.</p></div>
+      <div class="card"><span class="ico">⣤</span><h3>Links by label</h3>
+        <p>Click them, <code>Tab</code> through them, or press <code>f</code> and type a short hint.</p></div>
+      <div class="card"><span class="ico">⣄</span><h3>History and bookmarks</h3>
+        <p>Back and forward restore the exact spot; cached pages open instantly.</p></div>
+      <div class="card"><span class="ico">⠿</span><h3>Make it yours</h3>
+        <p>About 30 settings and every key binding, changed live from the menu and saved.</p></div>
+      <div class="card"><span class="ico">⣶</span><h3>Spring motion</h3>
+        <p>Spring scrolling, page reveals and a braille loading wave — with zero idle cost.</p></div>
     </div>
   </section>
+
+  <section id="demos">
+    <div class="sec-head"><span class="glyph">⣤</span><h2>THE UI, RECORDED</h2></div>
+    <div class="rule-b" data-fill="24"></div>
+    <p class="lead">Frames captured from the real program with <a href="https://github.com/charmbracelet/vhs">VHS</a>
+      (see <a href="https://github.com/sazardev/wr/blob/main/media/README.md">media/README.md</a>): the same
+      reproducible tapes and the automatic script that regenerates every asset when <code>wr</code> changes.</p>
+    <div class="demos" id="demo-grid">
+      <figure class="demo"><img src="assets/scenes/ui.svg" alt="wr open on an article: reading view with a code block" loading="lazy">
+        <figcaption class="cap"><b>ui</b><span class="k">o</span> open an address, read the article</figcaption></figure>
+      <figure class="demo"><img src="assets/scenes/links.svg" alt="wr with every link labelled with a short hint" loading="lazy">
+        <figcaption class="cap"><b>links</b><span class="k">f</span> label every link, type a hint</figcaption></figure>
+      <figure class="demo"><img src="assets/scenes/sections.svg" alt="wr section index with the headings of the page" loading="lazy">
+        <figcaption class="cap"><b>sections</b><span class="k">t</span> the heading index</figcaption></figure>
+      <figure class="demo"><img src="assets/scenes/shortcuts.svg" alt="wr menu with the shortcuts of the program" loading="lazy">
+        <figcaption class="cap"><b>shortcuts</b><span class="k">m</span> the menu</figcaption></figure>
+      <figure class="demo"><img src="assets/scenes/search.svg" alt="wr search with the query typed and the matches highlighted" loading="lazy">
+        <figcaption class="cap"><b>search</b><span class="k">/</span> search as you type</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="themes-section">
+    <div class="sec-head"><span class="glyph">⢿</span><h2>SIX PALETTES</h2></div>
+    <div class="rule-b" data-fill="20"></div>
+    <p class="lead">The same document in six faithful terminal palettes. Pick one — the whole page, the
+      braille field and the footer bar follow. Without a choice it follows your system preference, and
+      the program itself always follows your terminal's 16 colors.</p>
+    <div class="swatches" id="swatches"></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="glyph">⠿</span><h2>THE DESIGN SYSTEM</h2></div>
+    <div class="rule-b dim" data-fill="18"></div>
+    <div class="cards">
+      <div class="card"><span class="ico">⣀</span><h3>Flat by rule</h3>
+        <p>No radius, no shadow, no gradient, no translucency. Separation is a <code>1px</code> line or a
+          braille glyph.</p></div>
+      <div class="card"><span class="ico">⣶</span><h3>Glyph chrome</h3>
+        <p>Braille fills (<code>⣀ ⣄ ⣤ ⣦ ⣶ ⣷ ⣿</code>) draw rules, bars and bullets; box-drawing draws frames.</p></div>
+      <div class="card"><span class="ico">⡇</span><h3>Eight-color discipline</h3>
+        <p>Six tokens per theme: bg, surface, fg, dim, accent, accent2. Nothing else is colored.</p></div>
+      <div class="card"><span class="ico">⣄</span><h3>Motion with a brake</h3>
+        <p>Braille animations, easing only; <code>prefers-reduced-motion</code> stops all of them.</p></div>
+    </div>
+    <p class="lead" style="margin-top:16px">The rules, the palette table and the glyph inventory:
+      <a href="design.html">docs/DESIGN.md</a>.</p>
+  </section>
+
+  <footer class="site-foot">
+    <div class="hints">
+      <a href="./"><span class="k">⣿</span> home</a>
+      <a href="guide.html"><span class="k">⡇</span> guide</a>
+      <a href="design.html"><span class="k">⣷</span> design</a>
+      <a href="https://github.com/sazardev/wr"><span class="k">⡇</span> github</a>
+      <a href="https://github.com/sazardev/wr/releases"><span class="k">⣄</span> releases</a>
+      <a href="https://github.com/sazardev/wr/blob/main/LICENSE"><span class="k">⣶</span> MIT</a>
+    </div>
+    <div class="foot-right">
+      <span id="progress" aria-hidden="true"></span>
+      <span id="pct">0%</span>
+    </div>
+  </footer>
 </main>
 
-<footer class="site-foot">
-  <div class="hints">
-    <a href="guide.html"><span class="k">⣿</span> guide</a>
-    <a href="https://github.com/sazardev/wr"><span class="k">⡇</span> github</a>
-    <a href="https://github.com/sazardev/wr/releases"><span class="k">⣄</span> releases</a>
-    <a href="https://github.com/sazardev/wr/blob/main/LICENSE"><span class="k">⣶</span> MIT</a>
-  </div>
-  <div class="foot-right">
-    <span id="progress" aria-hidden="true"></span>
-    <span id="pct">0%</span>
-  </div>
-</footer>
-
 <script src="braille.js"></script>
+<script src="markdown.js"></script>
+<script>
+// Install button: copy to the clipboard, flash the braille label.
+document.querySelector('.install .copy')?.addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
+  try { await navigator.clipboard.writeText(btn.dataset.copy); } catch {}
+  btn.dataset.copied = '1';
+  btn.querySelector('.copy-label').textContent = '⣿ copied';
+  setTimeout(() => { btn.dataset.copied = '0'; btn.querySelector('.copy-label').textContent = '⣿ copy'; }, 1200);
+});
+</script>
 </body>
 </html>
