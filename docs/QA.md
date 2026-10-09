@@ -92,6 +92,13 @@ chroma lexer list and samples (`lexers/testdata`).
 The reproducible harness for both rounds is committed in
 [`scripts/qa/`](../scripts/qa/) (see [`scripts/qa/README.md`](../scripts/qa/README.md)).
 
+**Tracking:** findings are versioned in [`QA-FINDINGS.md`](QA-FINDINGS.md), the
+work order lives in [`QA-PLAN.md`](QA-PLAN.md), and the automatic scenario suite
+is `qa_scenarios_test.go`: `go test ./...` runs it with the open findings
+skipped, `WR_QA_STRICT=1 go test -run TestQA ./...` asserts them (red until each
+one is fixed). `TestQAFindingsCovered` fails if a register ID has no scenario or
+vice versa, which keeps documents and tests in sync.
+
 ## Results
 
 ### Web reading
