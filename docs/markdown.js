@@ -4,7 +4,6 @@
 (() => {
   'use strict';
 
-  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
   const escapeHtml = (s) => s.replace(/[&<>"']/g, (c) => ESCAPES[c]);
 
@@ -153,7 +152,7 @@
       if (h.tagName === 'H3') a.className = 'sub';
       a.addEventListener('click', (e) => {
         e.preventDefault();
-        h.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+        h.scrollIntoView({ behavior: 'smooth', block: 'start' });
         history.replaceState(null, '', '#' + h.id);
       });
       nav.append(a);

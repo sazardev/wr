@@ -2,7 +2,7 @@
 
 The design language of the documentation site (`docs/`) and of the recordings in
 `media/`: a terminal look, flat, no decoration that a terminal cannot draw
-itself. Version: **DS-1.0** (2026-10-08).
+itself. Version: **DS-1.1** (2026-10-09).
 
 - [Rules](#rules)
 - [Tokens: the eight colors](#tokens-the-eight-colors)
@@ -29,8 +29,10 @@ itself. Version: **DS-1.0** (2026-10-08).
    the section rules and the code frames are the same shapes `wr` draws, so the
    docs read like a page opened in the reader.
 6. **Adaptive, not decorative.** The page follows `prefers-color-scheme` when no
-   theme is chosen; a chosen theme is remembered in `localStorage`; all motion
-   respects `prefers-reduced-motion`.
+   theme is chosen and a chosen theme is remembered in `localStorage`. Motion is
+   **always on** (DS-1.1 removed the reduced-motion gate by product decision):
+   the field, the reel, the marquee, the cursor and the progress bar animate by
+   default.
 
 ## Tokens: the eight colors
 
@@ -85,6 +87,12 @@ theme-specific markup.
   `setTheme()`.
 - **`.site-foot`** — the app's footer: hints on the left with the braille key,
   braille progress bar and percentage on the right.
+- **`.reel`** — the hero: a `.term` frame whose `.reel-stage` crossfades the
+  captured scenes while `.reel-cmd` types the command that produced each one
+  (`data-name`, `data-cmd` in the HTML; `braille.js` only drives it).
+- **`.strip`** — an infinite marquee of terminals and transports, flat and dim.
+- **`.benefits`** — the sales row: four one-line benefits, 1px-gap grid.
+- **`.rise`** — the entrance for the hero copy (`.d1`…`.d4` stagger).
 
 ## Motion
 
@@ -95,15 +103,20 @@ theme-specific markup.
 | `[data-spin]` | braille spinner in the hero prompt | 110 ms step |
 | `.blink` | terminal cursor block | `steps(1)`, 1.06 s |
 | `#progress` | scroll progress, cell by cell | follows the reader's bar |
+| `.reel-frame` | the hero reel: captured scenes crossfading | one frame every 4.6 s |
+| `.reel-cmd` | the command typed under the reel | 34 ms per character |
+| `.strip-track` | the terminals marquee | 38 s loop, `translateX(-50%)` |
+| `.rise` | hero copy entering, staggered | 0.7 s, 4 steps |
+| `.brand .b` | the brand glyph breathing | 2.8 s |
 
-Everything stops under `prefers-reduced-motion: reduce`, and the field pauses
-when the tab is hidden. Frames are never drawn while nothing moves.
+Motion is always on; the field pauses when the tab is hidden and no frames are
+drawn while the document is not visible.
 
 ## The recordings
 
 `media/` holds the sources that produce the frames used above:
 
-- `media/*.tape` — VHS tapes (ui, links, sections, shortcuts, themes);
+- `media/*.tape` — VHS tapes (ui, links, sections, shortcuts, search);
 - `media/demo.toml` — the pinned `wr` config used for every recording;
 - `media/scenes.json` — the same scenes as a PNG/SVG capture list, so the
   assets can be regenerated without VHS;

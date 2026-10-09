@@ -10,9 +10,12 @@
 //      cursor bump and click ripples;
 //   3. the braille rules: ⣀ fills that match the width of their section, and the
 //      footer progress bar, which fills cell by cell like the program's;
-//   4. the custom cursor: a blinking braille cell with a trail.
+//   4. the custom cursor: a blinking braille cell with a trail;
+//   5. the reel: the captured scenes cycling in the hero, with the command
+//      typed under them.
 //
 // No gradient, no shadow, no glow: opacity over the accent color only.
+// Motion is always on (DS-1.1: the reduced-motion gate was removed).
 (() => {
   'use strict';
 
@@ -22,7 +25,6 @@
   const SPIN = ['\u280B', '\u2819', '\u2839', '\u2838', '\u283C', '\u2834', '\u2826', '\u2827', '\u2807', '\u280F']; // ⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏
   const BLANK = '\u2800';
 
-  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const fine = matchMedia('(pointer: fine)').matches;
 
   // ----------------------------------------------------------------- themes --
@@ -124,7 +126,7 @@
         else this.start();
       });
       this.resize();
-      if (!reduce) this.start(); else this.draw(0);
+      this.start();
     }
 
     start() { if (!this.raf) { this.last = performance.now(); this.raf = requestAnimationFrame(this.loop); } }
@@ -156,7 +158,6 @@
     }
 
     ripple(x, y) {
-      if (reduce) return;
       this.ripples.push({ x, y, age: 0 });
       if (this.ripples.length > 12) this.ripples.shift();
       this.start();
@@ -169,7 +170,7 @@
       for (const r of this.ripples) r.age += dt;
       this.ripples = this.ripples.filter((r) => r.age < 1.6);
       this.draw(this.t);
-      if (this.ripples.length || true) this.raf = requestAnimationFrame(this.loop);
+      this.raf = requestAnimationFrame(this.loop);
     }
 
     draw(t) {
@@ -184,12 +185,12 @@
           for (let r = 0; r < 4; r++) {
             for (let c = 0; c < 2; c++) {
               const o = Math.sin((x + c * 0.7) * 0.4 + t * 2 + (y + r * 0.5) * 0.3) * 0.6 + h;
-              if (o > 0.9) bits.push(DOT[r][c]);
+              if (o > 1.5) bits.push(DOT[r][c]);
             }
           }
           if (!bits.length) continue;
           const ch = String.fromCharCode(BASE + bits.reduce((a, b) => a | b, 0));
-          const a = Math.min(0.06 + Math.max(0, h + 0.8) * 0.15, 0.42);
+          const a = Math.min(0.04 + Math.max(0, h + 0.8) * 0.09, 0.2);
           ctx.globalAlpha = a;
           ctx.fillStyle = this.color;
           ctx.fillText(ch, x * this.cellW, y * this.cellH);
@@ -243,7 +244,7 @@
 
   // ---------------------------------------------------------------- cursor --
   function startCursor() {
-    if (!fine || reduce) return;
+    if (!fine) return;
     const cur = document.createElement('div');
     cur.className = 'cursor blink';
     cur.textContent = '\u2839'; // ⠹
@@ -272,7 +273,6 @@
 
   // ------------------------------------------------------------------ spin --
   function startSpin() {
-    if (reduce) return;
     const dots = document.querySelectorAll('[data-spin]');
     if (!dots.length) return;
     let i = 0;
@@ -280,6 +280,36 @@
       i = (i + 1) % SPIN.length;
       dots.forEach((d) => { d.textContent = SPIN[i]; });
     }, 110);
+  }
+
+  // ------------------------------------------------------------------ reel --
+  // The hero shows the real captured scenes, one at a time, with the command
+  // that produced it typed underneath. Data lives in the HTML (data-name,
+  // data-cmd); this only drives it.
+  function startReel() {
+    const reel = document.getElementById('reel');
+    if (!reel) return;
+    const frames = [...reel.querySelectorAll('.reel-frame')];
+    const title = reel.querySelector('#reel-title');
+    const type = reel.querySelector('#reel-type');
+    if (!frames.length) return;
+    let i = 0, typer = 0;
+    const show = (n) => {
+      frames.forEach((f, k) => f.classList.toggle('is-on', k === n));
+      if (title) title.textContent = frames[n].dataset.name || '';
+      const cmd = frames[n].dataset.cmd || '';
+      clearInterval(typer);
+      if (type) {
+        type.textContent = '';
+        let j = 0;
+        typer = setInterval(() => {
+          type.textContent = cmd.slice(0, ++j);
+          if (j >= cmd.length) clearInterval(typer);
+        }, 34);
+      }
+    };
+    show(0);
+    setInterval(() => { i = (i + 1) % frames.length; show(i); }, 4600);
   }
 
   // --------------------------------------------------------------- bootstrap --
@@ -293,6 +323,7 @@
   new Field(document.getElementById('field'));
   startCursor();
   startSpin();
+  startReel();
   const bar = document.getElementById('progress'), pct = document.getElementById('pct');
   if (bar && pct) startProgress(bar, pct);
   // exposed for the console and for tests
