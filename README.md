@@ -352,6 +352,9 @@ startup and, if the terminal does not answer (some multiplexers), waits up to
 ## Development
 
 ```sh
+git clone https://github.com/sazardev/wr
+cd wr
+sh scripts/setup-hooks.sh   # once per clone: gofmt, vet and tests on commit
 go test -race ./...
 ```
 
@@ -370,6 +373,17 @@ also applies to what is read back from the cache, and an entry whose header does
 not match the requested URL is discarded. Only `http`, `https` and `file` links
 are followed; `mailto:`, `javascript:` and similar are refused with a notice.
 
+## Contributing
+
+Contributions are welcome — issues and pull requests. Commits follow
+[Conventional Commits](https://www.conventionalcommits.org/); releases are cut
+automatically by [release-please](https://github.com/googleapis/release-please)
+from those commits, so the changelog and the tags always match what shipped.
+Every PR is reviewed by [@sazardev](https://github.com/sazardev) and needs a
+green CI run. See [CONTRIBUTING.md](CONTRIBUTING.md) for the details.
+
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE). Use it, modify it, fork it, ship it, sell it — no restrictions.
+The only thing asked in return is that the copyright notice stays, so the
+project keeps its recognition.

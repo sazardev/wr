@@ -1,0 +1,10 @@
+#!/bin/sh
+# Pre-push: the full test suite with the race detector, then a build.
+#
+# Enabled with:  sh scripts/setup-hooks.sh
+set -eu
+
+cd "$(git rev-parse --show-toplevel)"
+
+go test -race ./...
+go build ./...

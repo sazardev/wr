@@ -1,0 +1,34 @@
+name: PR title
+
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  lint:
+    name: pr-title
+    runs-on: ubuntu-latest
+    if: >-
+      github.actor != 'dependabot[bot]' &&
+      github.actor != 'release-please[bot]'
+    steps:
+      - uses: amannn/action-semantic-pull-request@e32d7e603df1aa1ba07e981f2a23455dee596825 # v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            perf
+            refactor
+            docs
+            chore
+            ci
+            test
+            build
+            revert
+            deps
+          requireScope: false
