@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/sazardev/wr/compare/v0.1.0...v0.2.0) (2026-10-09)
+
+
+### Features
+
+* add the installer, guide and automated releases ([edc2be8](https://github.com/sazardev/wr/commit/edc2be802abea3b8f6cee0a74181b24569902321))
+
 ## v0.1.0
 
 First tagged release.
