@@ -76,20 +76,8 @@ func cachePut(src, md string) error {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return err
 	}
-	tmp, err := os.CreateTemp(dir, "tmp-*")
-	if err != nil {
-		return err
-	}
-	_, werr := fmt.Fprintf(tmp, "wr-cache %d %d %s\n%s", cacheVersion, time.Now().Unix(), src, md)
-	if cerr := tmp.Close(); werr == nil {
-		werr = cerr
-	}
-	if werr != nil {
-		os.Remove(tmp.Name())
-		return werr
-	}
-	if err := os.Rename(tmp.Name(), cachePath(dir, src)); err != nil {
-		os.Remove(tmp.Name())
+	data := fmt.Sprintf("wr-cache %d %d %s\n%s", cacheVersion, time.Now().Unix(), src, md)
+	if err := writeAtomic(cachePath(dir, src), []byte(data)); err != nil {
 		return err
 	}
 	pruneCache(dir)
@@ -109,7 +97,8 @@ func pruneCache(dir string) {
 			continue
 		}
 		age := now.Sub(info.ModTime())
-		if age > cacheMaxAge || (strings.HasPrefix(e.Name(), "tmp-") && age > cacheTmpAge) {
+		tmp := strings.HasPrefix(e.Name(), "tmp-") || strings.HasPrefix(e.Name(), ".tmp-")
+		if age > cacheMaxAge || (tmp && age > cacheTmpAge) {
 			os.Remove(filepath.Join(dir, e.Name()))
 		}
 	}

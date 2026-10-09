@@ -56,11 +56,9 @@ func ensureStateDir() error {
 	return os.MkdirAll(d, 0o700)
 }
 
-// writeAtomic replaces a state file without ever leaving it half-written.
+// writeAtomic replaces path without ever leaving it half-written. The parent
+// directory must already exist.
 func writeAtomic(path string, data []byte) error {
-	if err := ensureStateDir(); err != nil {
-		return err
-	}
 	tmp, err := os.CreateTemp(filepath.Dir(path), ".tmp-*")
 	if err != nil {
 		return err
@@ -107,6 +105,9 @@ func readHistory() []Visit {
 func writeHistory(vs []Visit) error {
 	path, err := statePath("history.jsonl")
 	if err != nil {
+		return err
+	}
+	if err := ensureStateDir(); err != nil {
 		return err
 	}
 	var b strings.Builder
@@ -214,6 +215,9 @@ func readBookmarks() []Visit {
 func writeBookmarks(vs []Visit) error {
 	path, err := statePath("bookmarks.json")
 	if err != nil {
+		return err
+	}
+	if err := ensureStateDir(); err != nil {
 		return err
 	}
 	js := make([]visitJSON, len(vs))

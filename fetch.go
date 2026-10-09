@@ -17,9 +17,20 @@ const (
 	maxBytes  = 8_000_000
 )
 
+// fetcher is how a document arrives: fetch in production, a stub in tests.
+type fetcher func(src string) (body []byte, ctype string, err error)
+
+// httpClient downloads pages. One client for the whole process, so connections
+// to the same host are reused.
+var httpClient = &http.Client{Timeout: 20 * time.Second}
+
 // load downloads, converts and (for a URL) stores the result in the cache.
-func load(src string) (string, error) {
-	body, ctype, err := fetch(src)
+func load(src string) (string, error) { return loadWith(src, fetch) }
+
+// loadWith is load with the transport injected, so tests can serve a document
+// without a network.
+func loadWith(src string, get fetcher) (string, error) {
+	body, ctype, err := get(src)
 	if err != nil {
 		return "", err
 	}
@@ -54,7 +65,7 @@ func fetch(src string) ([]byte, string, error) {
 	if isHTTP(src) {
 		req, _ := http.NewRequest("GET", src, nil)
 		req.Header.Set("User-Agent", userAgent)
-		resp, err := (&http.Client{Timeout: 20 * time.Second}).Do(req)
+		resp, err := httpClient.Do(req)
 		if err != nil {
 			return nil, "", fmt.Errorf("could not download: %w", err)
 		}
