@@ -38,9 +38,14 @@ piped render, with metrics of coverage, leaks, structure and timing.
 CORPUS=corpus  python3 scripts/qa/harness.py   # 263 front pages/docs/feeds
 CORPUS=corpus2 python3 scripts/qa/harness.py   # 113 harvested articles
 CORPUS=corpus3 python3 scripts/qa/harness.py   # 86 language/framework docs
+CORPUS=corpus4 python3 scripts/qa/harness.py   # 75 fresh URLs (round 2, 2026-10-09)
 python3 scripts/qa/analyze.py                  # aggregates + worst cases
 python3 scripts/qa/metrics.py                  # refined root-coverage metrics
 ```
+
+`corpus4.py` exists so every round can add URLs that were never tested before:
+keep the old corpora frozen (they are the baseline) and put the new batch in a
+new `corpusN.py`.
 
 **2. Code and languages.** One HTML page per lexer (297 chroma lexers + 11 `wr`
 aliases, 262 with a real snippet), rendered and compared byte for byte.

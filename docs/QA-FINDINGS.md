@@ -1,10 +1,10 @@
 # QA findings register
 
 Versioned record of every finding from the QA rounds documented in
-[`QA.md`](QA.md). This file is the source of truth for **what is open**;
-[`QA-PLAN.md`](QA-PLAN.md) is the source of truth for **what to do and in what
-order**, and `qa_scenarios_test.go` is the automatic test mode that covers each
-finding.
+[`QA.md`](QA.md) (round 1) and [`QA-v2.md`](QA-v2.md) (round 2). This file is the
+source of truth for **what is open**; [`QA-PLAN.md`](QA-PLAN.md) is the source of
+truth for **what to do and in what order**, and `qa_scenarios_test.go` is the
+automatic test mode that covers each finding.
 
 ## How to read this register
 
@@ -257,6 +257,40 @@ No ID assigned: they are not `wr`'s code.
 | JavaScript-rendered content | xeiaso.net (Cloudflare challenge), openlibrary.org (verification), go.dev/tour, notion.so, x.com, instagram.com |
 | TLS / HTTP/2 server-side | barrapunto.com (certificate), washingtonpost.com (stream error), semanticscholar.org & amazon.es (202+EOF) |
 | Unsupported formats by design | PDFs, images (clear message, `x` opens the browser) |
+
+---
+
+## v0.2.2 — round 2026-10-09 (build `a4a1102`)
+
+Re-audit after the fix: 537 URLs (263 + 113 + 86 + 75 new) plus 320 language
+entries, hostile offline fixtures, a local HTTP micro-server, a PTY smoke of the
+TUI and the clipboard matrix. Full report: [`QA-v2.md`](QA-v2.md).
+
+Verdict: the twelve fixed findings hold on their original pages (fasterthanli
+0 → 9,249 words, gov.uk/news 0 → 1,161, phoronix 8 → 5,886, fly.io/blog
+69 → 13,781, Wikipedia keeps its title and infobox, no mojibake in 421 pages),
+and the code body stays byte-identical except for documented wrapping and tabs.
+QA-F-012 stays open. The findings below come from this round and are open: each
+one has a scenario in `TestQARound2` that asserts the desired behavior, so
+`WR_QA_STRICT=1` is red on them until they are fixed.
+
+| ID | State | Severity | Area | Summary |
+|---|---|---|---|---|
+| QA-F-014 | Abierto | Media | Code | Line numbers are glued to the code (Torchlight `div.line` > `span.line-number`) |
+| QA-F-015 | Abierto | Media | Code | The last blank line of a code block is lost (`fence()` trims trailing newlines) |
+| QA-F-016 | Abierto | Media | Extraction | A line-number gutter **cell** outside `<pre>` leaks as stray text |
+| QA-F-021 | Abierto | Media | Extraction | A leading breadcrumb/nav strip survives as the first line of content (pages without `<h1>`) |
+| QA-F-022 | Abierto | Baja | Convert | An HTML comment between two block lists leaks into the Markdown |
+| QA-F-023 | Abierto | Baja | CLI | `--md -L` keeps links written as `[\[image: …\]](url)` |
+
+Documented in [`QA-v2.md`](QA-v2.md) without an ID (no automatizable scenario
+yet): two files given to `wr` are treated as a web search, the title rule always
+spans 100 columns (overflow on very narrow terminals), an HTTP/1.0 answer with
+`Transfer-Encoding: chunked` shows the chunk sizes, `[¶]`/private-use glyphs and
+GNU manuals' `Next:/Previous:/Up:` strips stay in headings, and `[^1]` footnotes
+render literally.
+
+---
 
 ## Template for the next round
 

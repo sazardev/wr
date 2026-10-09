@@ -29,7 +29,17 @@ import (
 // fix removes the ID here and flips the state there; that is what makes the
 // scenario run for real and turns CI green on it. Empty means every finding
 // with a behavior fix is asserted on every run.
-var pendingFindings = map[string]bool{}
+var pendingFindings = map[string]bool{
+	// QA-F-012 is a product decision, the rest are round-2 findings awaiting a
+	// fix (docs/QA-v2.md): the scenario runs only with WR_QA_STRICT=1.
+	"QA-F-012": true,
+	"QA-F-014": true,
+	"QA-F-015": true,
+	"QA-F-016": true,
+	"QA-F-021": true,
+	"QA-F-022": true,
+	"QA-F-023": true,
+}
 
 // qaScenarioCoverage maps every finding ID to the subtest that covers it.
 var qaScenarioCoverage = map[string]string{
@@ -46,6 +56,12 @@ var qaScenarioCoverage = map[string]string{
 	"QA-F-011": "TestQAClipboard/code_tabs_become_four_spaces",
 	"QA-F-012": "TestQALinkModes",
 	"QA-F-013": "TestQAExtraction/QA-F-013_non_semantic_nav",
+	"QA-F-014": "TestQARound2/QA-F-014_lineno_glued_to_code",
+	"QA-F-015": "TestQARound2/QA-F-015_last_blank_line_in_code",
+	"QA-F-016": "TestQARound2/QA-F-016_lineno_cell_is_not_text",
+	"QA-F-021": "TestQARound2/QA-F-021_title_when_leading_chrome",
+	"QA-F-022": "TestQARound2/QA-F-022_comment_between_lists",
+	"QA-F-023": "TestQARound2/QA-F-023_no_links_keeps_escaped_image",
 }
 
 // qaPending skips an open finding's assertion in the normal run.
@@ -647,6 +663,90 @@ func TestQALinkModes(t *testing.T) {
 // TestQAFindingsCovered keeps the register, the plan and the test file in sync:
 // every finding in docs/QA-FINDINGS.md needs a scenario, and every scenario ID
 // must exist in the register.
+// ---- round 2 (2026-10-09, build a4a1102): new failures ----
+//
+// These scenarios assert the *desired* behavior, so they are red until each
+// finding is fixed; that is why every ID also sits in pendingFindings. They come
+// from docs/QA-v2.md (round 2).
+
+func TestQARound2(t *testing.T) {
+	t.Run("QA-F-014_lineno_glued_to_code", func(t *testing.T) {
+		// Torchlight marks every line with div.line > span.line-number.
+		html := qaHTML(`<pre><code><div class='line'><span class="line-number">1</span>use Illuminate\Support\Facades\Route;</div></code></pre>`)
+		md := qaMarkdown(t, html)
+		qaPending(t, "QA-F-014")
+		if strings.Contains(md, "1use Illuminate") {
+			t.Errorf("the line number is glued to the code:\n%q", md)
+		}
+		if !strings.Contains(md, "use Illuminate") {
+			t.Errorf("the code line did not survive:\n%q", md)
+		}
+	})
+
+	t.Run("QA-F-015_last_blank_line_in_code", func(t *testing.T) {
+		md := qaMarkdown(t, qaHTML(`<pre class="language-python"><code>a = 1
+
+</code></pre>`))
+		qaPending(t, "QA-F-015")
+		if !strings.Contains(md, "a = 1\n\n\n```") && !strings.HasSuffix(strings.SplitN(md, "```python\n", 2)[1], "\n\n```") {
+			t.Errorf("the last blank line of the code block was trimmed:\n%q", md)
+		}
+	})
+
+	t.Run("QA-F-016_lineno_cell_is_not_text", func(t *testing.T) {
+		html := qaHTML(`<table class="highlight"><tr><td class="line-no">1</td>` +
+			`<td class="code"><pre><code>line numbers wrapper</code></pre></td></tr></table>`)
+		md := qaMarkdown(t, html)
+		qaPending(t, "QA-F-016")
+		if strings.Contains(md, "\n1\n") || strings.HasPrefix(md, "1\n") {
+			t.Errorf("the gutter cell leaked as stray text:\n%q", md)
+		}
+		if !strings.Contains(md, "line numbers wrapper") {
+			t.Errorf("the code did not survive:\n%q", md)
+		}
+	})
+
+	t.Run("QA-F-021_title_when_leading_chrome", func(t *testing.T) {
+		// A page with no <h1> opens with a breadcrumb strip before the first
+		// section heading: <title> must open the document and the breadcrumb
+		// must not be the first line of content.
+		html := `<!doctype html><html><head><title>Page Without Heading</title></head><body><main>` +
+			`<div><a href="/a">std</a>::<a href="/b">vec</a></div>` +
+			`<h2>Struct Vec</h2><p>THE REAL BODY must survive.</p></main></body></html>`
+		md := qaMarkdown(t, html)
+		qaPending(t, "QA-F-021")
+		if !strings.HasPrefix(md, "# Page Without Heading\n") {
+			t.Errorf("the title fallback did not fire:\n%q", md)
+		}
+		if strings.Contains(md, "::[vec]") || strings.Contains(md, "std") && strings.Contains(md, "::") {
+			t.Errorf("the leading breadcrumb strip survived:\n%q", md)
+		}
+		if !strings.Contains(md, "THE REAL BODY") {
+			t.Errorf("the body was lost:\n%q", md)
+		}
+	})
+
+	t.Run("QA-F-022_comment_between_lists", func(t *testing.T) {
+		md := qaMarkdown(t, qaHTML("<ul><li>a</li></ul>\n<!--THE END-->\n<ol><li>one</li></ol>"))
+		qaPending(t, "QA-F-022")
+		if strings.Contains(md, "<!--") {
+			t.Errorf("an HTML comment between block lists leaked into the Markdown:\n%q", md)
+		}
+	})
+
+	t.Run("QA-F-023_no_links_keeps_escaped_image", func(t *testing.T) {
+		// stripLinks must also drop the [\[image: alt\]](url) form.
+		out := stripLinks(`[\[image: A diagram\]](https://example.com/a.png)`)
+		qaPending(t, "QA-F-023")
+		if strings.Contains(out, "example.com") {
+			t.Errorf("stripLinks kept an escaped image link:\n%q", out)
+		}
+		if !strings.Contains(out, "image: A diagram") {
+			t.Errorf("stripLinks lost the link text:\n%q", out)
+		}
+	})
+}
+
 func TestQAFindingsCovered(t *testing.T) {
 	b, err := os.ReadFile("docs/QA-FINDINGS.md")
 	if err != nil {

@@ -14,6 +14,11 @@ The automatic test mode (`qa_scenarios_test.go`) and the network harness
 | 1b | Real articles harvested from those pages | 113 URLs | 109 extracted, 64% captured ≥60% |
 | 2 | Language rendering: 297 lexers + 11 aliases + 12 edge cases + clipboard | 308 + 12 + 4 | frames 320/320, color 304/308, code fidelity 88% |
 | 2c | Language/framework documentation sites | 86 URLs | 81 extracted, 23% of fences carried a language |
+| 4 (round 2) | Fresh URLs, none of the above | 75 URLs | 59 extracted, no content lost |
+| 5 (round 2) | Hostile offline fixtures, HTTP micro-server, TUI PTY smoke | 30 + 10 + 11 | 6 new findings, all open |
+
+Rounds 1–2b are described in [`QA.md`](QA.md); the re-audit of the fix and the
+new findings are in [`QA-v2.md`](QA-v2.md).
 
 ## Guiding principles
 
@@ -65,6 +70,22 @@ The automatic test mode (`qa_scenarios_test.go`) and the network harness
 | QA-F-002 | Score `article`/`main`/`body` candidates by text and paragraph density; keep `<article>` only when it wins | picking comments over content | `TestQAExtraction/QA-F-002` |
 | QA-F-009 | Own the table conversion or pre-normalize cells (lists, spans) for the plugin | tables that work today | `TestQATables/QA-F-009` |
 
+### Ola 5 — code fidelity and title fallback (round 2)
+
+| ID | What to do | Risk to watch | Becomes green when |
+|---|---|---|---|
+| QA-F-015 | Keep the last blank line of a code block: stop trimming the trailing newline in `fence()` (`convert.go:70`) — the fence closes on its own line anyway | an extra empty line at the end of every block | `TestQARound2/QA-F-015` |
+| QA-F-014 | Read per-line gutters before converting: `div.line > span.line-number` (and any `pre *` whose class is a gutter) must be removed *with* its text, not only when it is a direct `<pre>` child | removing real code that sits in a span | `TestQARound2/QA-F-014` |
+| QA-F-016 | Extend `codeJunk` to gutter cells that are siblings of the code cell (`td.line-no` next to `td.code`) | nothing: it is a table cell with only digits | `TestQARound2/QA-F-016` |
+| QA-F-021 | Drop a leading breadcrumb/nav strip: a first line made only of links (or `a::a` separators) before any heading is chrome — as are `[Read in English]`/`[Edit]` banners | a real article that starts with a link list (rare; the size guard helps) | `TestQARound2/QA-F-021` |
+| QA-F-022 | Drop HTML comments the converter keeps between block lists (post-process `mapOutsideFences` or a pre-pass on the DOM) | none: comments are never content | `TestQARound2/QA-F-022` |
+| QA-F-023 | Teach `stripLinks` the escaped `[\[…\]](url)` form (unescape before matching, or a second regex) | none | `TestQARound2/QA-F-023` |
+
+Remaining round-2 notes without a scenario yet (needs a CLI/PTY/HTTP harness
+first): two files treated as a search, the fixed 100-column title rule, HTTP/1.0
+chunked answers, `[¶]` heading anchors and GNU manual nav strips, literal `[^1]`
+footnotes.
+
 ## Definition of done (per finding)
 
 1. State in the register moves to `Resuelto` and the `Resuelto en` cell names the
@@ -101,13 +122,28 @@ python3 scripts/qa/metrics.py                                      # coverage me
 
 After the olas land, rerun the same corpora and compare against this baseline:
 
-| Metric | Round 2026-10-08 | Target |
-|---|---|---|
-| Real articles with ≥60% captured | 64% | ≥85% |
-| Front pages with ≥60% captured | 33% | ≥55% |
-| Fences with a language (docs) | 23% | ≥70% |
-| Rendered code byte-identical | 88% | ≥99% |
-| Boilerplate leaks (median) | 1 | 0 |
+| Metric | Round 2026-10-08 | Round 2026-10-09 | Target |
+|---|---|---|---|
+| Real articles with ≥60% captured | 64% | 50%* | ≥85% |
+| Front pages with ≥60% captured | 33% | 21%* | ≥55% |
+| Fences with a language (docs) | 23% | 32% | ≥70%** |
+| Rendered code byte-identical | 88% | 92.5% | ≥99% |
+| Boilerplate leaks (median) | 1 | 1 | 0*** |
+
+\* the sentence-recall metric counts against the QA-F-002 fix: 54% of the pages
+now capture more than the sampled root (whole listings instead of one teaser) and
+score low for it. Measure content loss on the worst *under*-captured pages
+instead, where round 2 found no real article loss — see
+[`QA-v2.md`](QA-v2.md) “Not failures”.
+
+\** unreachable by class conventions alone: the unlabeled `<pre>` blocks (zig
+831, nim 442, make 397, perldoc 354, pkg.go.dev 278, bash 178, Rails 150) name
+the language nowhere, and guessing is forbidden (QA-F-008). Raising the target
+needs a content heuristic, which is a separate decision.
+
+\*** the median is already 1 and the worst cases are content mentioning the
+leaked words (pkg.go.dev `SetCookie`, godot “comments”); the real chrome leaks
+are gone.
 
 ## Out of scope
 

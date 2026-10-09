@@ -5,6 +5,8 @@ commit `fcb54cf` (`wr v0.2.1-0.20261009005749-fcb54cf0cd4f`); every item has a
 minimal reproduction. The code was not changed for the report itself; the fixes
 landed afterwards and are tracked per finding in [`QA-FINDINGS.md`](QA-FINDINGS.md),
 so the line numbers and root causes below describe `fcb54cf`, not the current tree.
+A second round re-audited the fixes and added new failures: see
+[`QA-v2.md`](QA-v2.md).
 
 - [When](#when)
 - [Where it was tested](#where-it-was-tested)
