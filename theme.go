@@ -28,6 +28,3 @@ func setAccent(name string) {
 	}
 	accentFG, accentBG, accentDim = a.fg, a.bg, a.dim
 }
-
-// acc wraps s in the accent foreground.
-func acc(s string) string { return "\x1b[" + accentFG + "m" + s + "\x1b[0m" }

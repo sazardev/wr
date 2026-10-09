@@ -45,9 +45,9 @@ func scrollbar(h, total, view int, top float64) []string {
 			}
 		}
 		if bits == 0 {
-			out[r] = "\x1b[90m" + string(rune(0x2800|0x47)) + "\x1b[0m" // faint track (left column: ⡇)
+			out[r] = dim(string(rune(0x2800 | 0x47))) // faint track (left column: ⡇)
 		} else {
-			out[r] = "\x1b[" + accentFG + "m" + string(0x2800+bits) + "\x1b[0m"
+			out[r] = acc(string(0x2800 + bits))
 		}
 	}
 	return out

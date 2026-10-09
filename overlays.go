@@ -47,9 +47,9 @@ func box(title string, rows []boxRow, sel, width int) []string {
 		gap = max(gap, 0)
 		var content string
 		if i == sel {
-			content = "\x1b[30;" + accentBG + "m" + ansi.Strip(label) + strings.Repeat(" ", gap) + ansi.Strip(hintStr) + "\x1b[0m"
+			content = onAccent(ansi.Strip(label) + strings.Repeat(" ", gap) + ansi.Strip(hintStr))
 		} else {
-			content = label + strings.Repeat(" ", gap) + "\x1b[90m" + hintStr + "\x1b[0m"
+			content = label + strings.Repeat(" ", gap) + dim(hintStr)
 		}
 		pad := max(inner-ansi.StringWidth(label)-gap-hintW, 0)
 		out = append(out, border+"│\x1b[0m "+content+strings.Repeat(" ", pad)+" "+border+"│\x1b[0m")
@@ -112,7 +112,7 @@ func helpRows(text string, inner int) []boxRow {
 		if i >= 2 {
 			break
 		}
-		rows = append(rows, boxRow{"\x1b[90m" + l + "\x1b[0m", ""})
+		rows = append(rows, boxRow{dim(l), ""})
 	}
 	return rows
 }
@@ -272,7 +272,7 @@ func (m *model) settingsBox() []string {
 	selRow, last := 0, ""
 	for i, o := range opts {
 		if o.group != last {
-			rows = append(rows, boxRow{"\x1b[1;" + accentFG + "m" + o.group + "\x1b[0m", ""})
+			rows = append(rows, boxRow{accBold(o.group), ""})
 			last = o.group
 		}
 		val := o.get(&m.cfg)
@@ -305,7 +305,7 @@ func (m *model) keysBox() []string {
 	selRow, last := 0, ""
 	for i, a := range actionList {
 		if a.group != last {
-			rows = append(rows, boxRow{"\x1b[1;" + accentFG + "m" + a.group + "\x1b[0m", ""})
+			rows = append(rows, boxRow{accBold(a.group), ""})
 			last = a.group
 		}
 		keys := keyList(&m.cfg, a.id)
@@ -334,16 +334,16 @@ func (m *model) omniBox() []string {
 	width := m.panelWidth(84)
 	items := m.omniItems()
 	m.omni.sel = min(max(m.omni.sel, 0), max(len(items)-1, 0))
-	prompt := acc("›") + " " + m.omni.input + "\x1b[7m \x1b[0m"
+	prompt := acc("›") + " " + m.omni.input + cursor()
 	if m.omni.input == "" {
-		prompt = acc("›") + " \x1b[7m \x1b[0m\x1b[90m type an address, or words to search the web\x1b[0m"
+		prompt = acc("›") + " " + cursor() + dim(" type an address, or words to search the web")
 	}
 	rows := []boxRow{{prompt, ""}}
 	for _, it := range items {
 		rows = append(rows, boxRow{it.label, it.hint})
 	}
 	if len(items) == 0 {
-		rows = append(rows, boxRow{"\x1b[90mno bookmarks or history yet\x1b[0m", ""})
+		rows = append(rows, boxRow{dim("no bookmarks or history yet"), ""})
 	}
 	vis, sel := window(rows[1:], m.omni.sel, max(m.bodyH()-5, 3))
 	if len(items) == 0 {
@@ -361,9 +361,9 @@ func (m *model) listBox() []string {
 	if m.list.kind == listBookmarks {
 		title, help = "Bookmarks", "enter open · ctrl+d remove"
 	}
-	prompt := acc("/") + " " + m.list.filter + "\x1b[7m \x1b[0m"
+	prompt := acc("/") + " " + m.list.filter + cursor()
 	if m.list.filter == "" {
-		prompt += "\x1b[90m type to filter\x1b[0m"
+		prompt += dim(" type to filter")
 	}
 	rows := m.listRows()
 	n := len(rows)
@@ -375,7 +375,7 @@ func (m *model) listBox() []string {
 		if m.list.filter != "" {
 			msg = "nothing matches"
 		}
-		vis, sel = []boxRow{{"\x1b[90m" + msg + "\x1b[0m", ""}}, -1
+		vis, sel = []boxRow{{dim(msg), ""}}, -1
 	}
 	all := append([]boxRow{{prompt, ""}}, vis...)
 	return box(fmt.Sprintf("%s · %d", title, len(m.list.all)), append(all, helpR...), sel+1, width)

@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/charmbracelet/x/ansi"
 )
 
 // options is a parsed command line.
@@ -88,39 +90,29 @@ func usage(w io.Writer) {
 }
 
 // helpText builds the help. The flag rows and their column width come from
-// flagDefs, so a new flag documents itself.
+// flagDefs, so a new flag documents itself. Without a terminal the styling is
+// stripped once, at the end.
 func helpText(tty bool) string {
-	st := func(code, s string) string {
-		if !tty {
-			return s
-		}
-		return "\x1b[" + code + "m" + s + "\x1b[0m"
-	}
-	head := func(s string) string { return st("1;"+accentFG, s) }
-	key := func(s string) string { return st(accentFG, s) }
-	bold := func(s string) string { return st("1", s) }
-	dim := func(s string) string { return st("90", s) }
-
 	var b strings.Builder
 	line := func(s string) { b.WriteString(s); b.WriteByte('\n') }
 	blank := func() { line("") }
 
 	brand := "wr " + dim("— a terminal reader")
 	if tty {
-		brand = key("⣿") + " " + bold("wr") + " " + dim("— a terminal reader")
+		brand = acc("⣿") + " " + bold("wr") + " " + dim("— a terminal reader")
 		blank()
 	}
 	line("  " + brand)
 	if tty {
-		line("  " + key(strings.Repeat("⣀", utf8.RuneCountInString("⣿ wr — a terminal reader"))))
+		line("  " + acc(strings.Repeat("⣀", utf8.RuneCountInString("⣿ wr — a terminal reader"))))
 	}
 
 	blank()
-	line("  " + head("usage"))
+	line("  " + accBold("usage"))
 	line("    " + bold("wr") + " [flags] [URL | file | search words…]")
 
 	blank()
-	line("  " + head("flags"))
+	line("  " + accBold("flags"))
 	keyW := 0
 	for _, f := range flagDefs {
 		keyW = max(keyW, len(f.long)+4)
@@ -130,11 +122,11 @@ func helpText(tty bool) string {
 		if f.short != "" {
 			short = f.short + ", "
 		}
-		line("    " + key(short+f.long) + strings.Repeat(" ", keyW-len(short)-len(f.long)+2) + dim(f.desc))
+		line("    " + acc(short+f.long) + strings.Repeat(" ", keyW-len(short)-len(f.long)+2) + dim(f.desc))
 	}
 
 	blank()
-	line("  " + head("examples"))
+	line("  " + accBold("examples"))
 	examples := []struct{ cmd, desc string }{
 		{"wr example.com", "open the reader"},
 		{"wr rust async book", "search the web"},
@@ -153,11 +145,15 @@ func helpText(tty bool) string {
 	line("  or a file are searched on the web. In the reader:")
 	var keys []string
 	for _, h := range [][2]string{{"o", "open"}, {"/", "search"}, {"m", "menu"}, {"q", "quit"}} {
-		keys = append(keys, key(h[0])+" "+dim(h[1]))
+		keys = append(keys, acc(h[0])+" "+dim(h[1]))
 	}
 	line("    " + strings.Join(keys, dim(" · ")))
 
-	return b.String()
+	out := b.String()
+	if !tty {
+		out = ansi.Strip(out)
+	}
+	return out
 }
 
 // isTerminalWriter reports whether w is a terminal, for the help styling.

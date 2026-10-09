@@ -700,7 +700,7 @@ func (m *model) render() string {
 		return ""
 	}
 	if m.tooSmall() {
-		return ansi.Truncate("\x1b[90mwr: too small\x1b[0m", max(m.w, 1), "")
+		return ansi.Truncate(dim("wr: too small"), max(m.w, 1), "")
 	}
 	body := m.body()
 	switch m.mode {
@@ -757,7 +757,7 @@ func (m *model) loadingScreen(rows []string, bodyH int) {
 	}
 	if row+2 < len(rows) {
 		dots := strings.Repeat(".", int(m.elapsed()*3)%4)
-		rows[row+2] = m.center("\x1b[90mfetching \x1b[0m\x1b[1m" + host + "\x1b[0m\x1b[90m" + dots + "\x1b[0m")
+		rows[row+2] = m.center(dim("fetching ") + bold(host) + dim(dots))
 	}
 }
 
@@ -771,9 +771,9 @@ func (m *model) body() []string {
 	if m.doc == nil {
 		switch {
 		case m.loadErr != nil:
-			rows[bodyH/2] = m.center("\x1b[91m✗ " + m.loadErr.Error() + "\x1b[0m")
+			rows[bodyH/2] = m.center(style("91", "✗ "+m.loadErr.Error()))
 			if bodyH/2+2 < bodyH {
-				rows[bodyH/2+2] = m.center("\x1b[90m" + keyHint(&m.cfg, actOpen) + " open another page · " + keyHint(&m.cfg, actHome) + " start page · " + keyHint(&m.cfg, actQuit) + " quit\x1b[0m")
+				rows[bodyH/2+2] = m.center(dim(keyHint(&m.cfg, actOpen) + " open another page · " + keyHint(&m.cfg, actHome) + " start page · " + keyHint(&m.cfg, actQuit) + " quit"))
 			}
 		case m.loading:
 			m.loadingScreen(rows, bodyH)
@@ -843,7 +843,7 @@ func (m *model) body() []string {
 			if m.cfg.Braille {
 				glyph = "⣿"
 			}
-			line = "\x1b[96m" + strings.Repeat(glyph, cw) + "\x1b[0m"
+			line = style("96", strings.Repeat(glyph, cw))
 		case i < visible && y+i < len(m.doc.Lines):
 			idx := y + i
 			line = m.doc.Lines[idx]
@@ -927,17 +927,17 @@ func (m *model) progressText() string {
 	chips := ""
 	if m.cfg.FooterChips && m.w >= 70 {
 		if m.bookmarked {
-			chips += "\x1b[93m★\x1b[0m  "
+			chips += style("93", "★") + "  "
 		}
 		if m.newer != "" {
-			chips += "\x1b[93m● new version (" + keyHint(&m.cfg, actReload) + ")\x1b[0m  "
+			chips += style("93", "● new version ("+keyHint(&m.cfg, actReload)+")") + "  "
 		}
 		if len(m.matches) > 0 {
 			q := []rune(m.query)
 			if len(q) > 12 {
 				q = append(q[:11], '…')
 			}
-			chips += fmt.Sprintf("\x1b[96m«%s» %d/%d\x1b[0m  ", string(q), m.cur+1, len(m.matches))
+			chips += style("96", fmt.Sprintf("«%s» %d/%d", string(q), m.cur+1, len(m.matches))) + "  "
 		}
 	}
 	mode := m.cfg.FooterProgress
@@ -947,11 +947,11 @@ func (m *model) progressText() string {
 	pct, scrollable := m.percent()
 	if !scrollable {
 		if m.doc != nil && m.w >= 40 {
-			return chips + "\x1b[90mall visible\x1b[0m "
+			return chips + dim("all visible") + " "
 		}
 		return chips
 	}
-	label := fmt.Sprintf("\x1b[1m%3d%%\x1b[0m ", int(math.Round(pct)))
+	label := bold(fmt.Sprintf("%3d%%", int(math.Round(pct)))) + " "
 	cells := 0
 	switch {
 	case m.w >= 110:
@@ -986,8 +986,6 @@ func (m *model) progressText() string {
 	return chips + bar + " " + label
 }
 
-func hint(key, desc string) string { return acc(key) + " \x1b[90m" + desc + "\x1b[0m" }
-
 // leftText is the left side of the footer.
 func (m *model) leftText(room int) string {
 	lead := " "
@@ -996,15 +994,15 @@ func (m *model) leftText(room int) string {
 	}
 	switch {
 	case m.mode == modeSearch:
-		count := "\x1b[90mtype to search\x1b[0m"
+		count := dim("type to search")
 		if m.input != "" {
 			if len(m.matches) == 0 {
-				count = "\x1b[91mno results\x1b[0m"
+				count = style("91", "no results")
 			} else {
-				count = fmt.Sprintf("\x1b[96m%d results\x1b[0m", len(m.matches))
+				count = style("96", fmt.Sprintf("%d results", len(m.matches)))
 			}
 		}
-		return lead + acc("/") + m.input + "\x1b[7m \x1b[0m  " + count + "  " + hint("enter", "accept") + "  " + hint("esc", "cancel")
+		return lead + acc("/") + m.input + cursor() + "  " + count + "  " + hint("enter", "accept") + "  " + hint("esc", "cancel")
 	case m.mode == modeHints:
 		return lead + hint("type a label", "to follow a link") + "  " + m.hintInput + "  " + hint("esc", "cancel")
 	case m.mode == modeOmni:
@@ -1022,7 +1020,7 @@ func (m *model) leftText(room int) string {
 		}
 		return lead + "\x1b[" + col + "m" + shown + "\x1b[0m"
 	case m.focusID >= 0:
-		return lead + acc("→") + " \x1b[96m" + m.focusedURL() + "\x1b[0m"
+		return lead + acc("→") + " " + style("96", m.focusedURL())
 	case !m.cfg.FooterHints:
 		return lead
 	}
@@ -1102,9 +1100,9 @@ func plainScrollbar(h, total, view int, top float64) []string {
 	out := make([]string, h)
 	for i := range out {
 		if i >= start && i < start+thumb {
-			out[i] = "\x1b[" + accentFG + "m┃\x1b[0m"
+			out[i] = acc("┃")
 		} else {
-			out[i] = "\x1b[90m│\x1b[0m"
+			out[i] = dim("│")
 		}
 	}
 	return out

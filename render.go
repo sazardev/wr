@@ -197,8 +197,6 @@ func renderDoc(md string, width int, cfg Config) *Doc {
 	return &Doc{Lines: out, Plain: plain, Heads: heads, Meta: meta, Links: spans, URLs: r.urls}
 }
 
-func style(code, s string) string { return "\x1b[" + code + "m" + s + "\x1b[0m" }
-
 // scanLinks finds the link ranges on one line. A link still open at the end of
 // the line continues on the next one.
 func scanLinks(l string, line int, open, start *int, out []LinkSpan) []LinkSpan {
@@ -567,7 +565,7 @@ func highlightUncached(lang, code string) []string {
 			if sgr == "" {
 				cur.WriteString(part)
 			} else {
-				cur.WriteString("\x1b[" + sgr + "m" + part + "\x1b[0m")
+				cur.WriteString(style(sgr, part))
 			}
 		}
 	}
