@@ -27,20 +27,9 @@ import (
 
 // pendingFindings lists findings that are still open (docs/QA-FINDINGS.md). A
 // fix removes the ID here and flips the state there; that is what makes the
-// scenario run for real and turns CI green on it.
-var pendingFindings = map[string]bool{
-	"QA-F-001": true,
-	"QA-F-002": true,
-	"QA-F-003": true,
-	"QA-F-004": true,
-	"QA-F-005": true,
-	"QA-F-006": true,
-	"QA-F-007": true,
-	"QA-F-008": true,
-	"QA-F-009": true,
-	"QA-F-010": true,
-	"QA-F-013": true,
-}
+// scenario run for real and turns CI green on it. Empty means every finding
+// with a behavior fix is asserted on every run.
+var pendingFindings = map[string]bool{}
 
 // qaScenarioCoverage maps every finding ID to the subtest that covers it.
 var qaScenarioCoverage = map[string]string{
@@ -164,6 +153,89 @@ echo hi</code></pre><p>body</p>`)
 		}
 	})
 
+	t.Run("QA-F-001_layout_flags_are_not_junk", func(t *testing.T) {
+		for _, cls := range []string{"has-toc", "no-toc", "with-sidebar", "is-cookie-free"} {
+			md := qaMarkdown(t, qaHTML(`<div class="`+cls+`"><p>BODY SURVIVES `+cls+`</p></div>`))
+			if !strings.Contains(md, "BODY SURVIVES "+cls) {
+				t.Errorf("class %q removed the content:\n%s", cls, md)
+			}
+		}
+	})
+
+	t.Run("junk_tokens_are_still_removed", func(t *testing.T) {
+		for _, cls := range []string{"toc", "toc-wrapper", "sidebar__left", "post sidebar", "related-posts", "newsletter", "social-share", "cookie-banner", "cookiebar", "breadcrumbs"} {
+			md := qaMarkdown(t, qaHTML(`<p>KEEP WORDS here, enough text to be the article body of this page.</p><div class="`+cls+`">JUNK `+cls+`</div>`))
+			if strings.Contains(md, "JUNK") || !strings.Contains(md, "KEEP WORDS") {
+				t.Errorf("class %q: junk kept or content lost:\n%s", cls, md)
+			}
+		}
+	})
+
+	t.Run("junk_class_holding_most_of_the_page_is_kept", func(t *testing.T) {
+		// a wrapper named "sidebar" that holds nearly all the text is the content
+		md := qaMarkdown(t, qaHTML(`<div class="sidebar"><p>`+strings.Repeat("real article words ", 50)+`</p></div><p>tiny</p>`))
+		if !strings.Contains(md, "real article words") {
+			t.Errorf("size guard failed, content removed:\n%.200s", md)
+		}
+	})
+
+	t.Run("QA-F-002_listing_with_equal_teasers_keeps_all", func(t *testing.T) {
+		var b strings.Builder
+		for _, n := range []string{"ALPHA", "BRAVO", "CHARLIE", "DELTA"} {
+			b.WriteString(`<article><h2>` + n + `</h2><p>` + strings.Repeat("teaser words ", 20) + `</p></article>`)
+		}
+		html := `<!doctype html><html><head><title>Blog</title></head><body><main>` + b.String() + `</main></body></html>`
+		md := qaMarkdown(t, html)
+		for _, n := range []string{"ALPHA", "BRAVO", "CHARLIE", "DELTA"} {
+			if !strings.Contains(md, n) {
+				t.Errorf("teaser %s lost on a listing:\n%.300s", n, md)
+			}
+		}
+	})
+
+	t.Run("QA-F-002_article_with_comment_articles_keeps_only_the_article", func(t *testing.T) {
+		html := `<!doctype html><html><head><title>Post</title></head><body><article>` +
+			strings.Repeat("<p>The post body is long and has many words in it. </p>", 40) + `</article>` +
+			`<article><p>COMMENT ONE short.</p></article><article><p>COMMENT TWO short.</p></article></body></html>`
+		md := qaMarkdown(t, html)
+		if !strings.Contains(md, "The post body") || strings.Contains(md, "COMMENT") {
+			t.Errorf("a dominant article must stay the root:\n%.300s", md)
+		}
+	})
+
+	t.Run("QA-F-002_article_fragment_loses_to_the_page", func(t *testing.T) {
+		html := `<!doctype html><html><head><title>T</title></head><body><article><p>Banner.</p></article>` +
+			`<div id="content">` + strings.Repeat("<p>The real content lives outside of the article tag. </p>", 40) + `</div></body></html>`
+		if md := qaMarkdown(t, html); !strings.Contains(md, "real content lives outside") {
+			t.Errorf("a tiny article hid the page:\n%.300s", md)
+		}
+	})
+
+	t.Run("QA-F-003_form_controls_are_still_dropped", func(t *testing.T) {
+		html := qaHTML(`<form><label>SEARCH LABEL</label><input value="INPUT VALUE"><textarea>TEXTAREA</textarea><button>GO BUTTON</button><p>RESULT BODY</p></form>`)
+		md := qaMarkdown(t, html)
+		for _, junk := range []string{"SEARCH LABEL", "INPUT VALUE", "TEXTAREA", "GO BUTTON"} {
+			if strings.Contains(md, junk) {
+				t.Errorf("form control %q leaked:\n%s", junk, md)
+			}
+		}
+		if !strings.Contains(md, "RESULT BODY") {
+			t.Errorf("form content lost:\n%s", md)
+		}
+	})
+
+	t.Run("QA-F-004_header_chrome_is_still_dropped", func(t *testing.T) {
+		html := `<!doctype html><html><head><title>T</title></head><body><main>` +
+			`<header><h1>Heading</h1><p>HEADER TAGLINE</p><a href="/x">NAV LINK</a></header><p>BODY</p></main></body></html>`
+		md := qaMarkdown(t, html)
+		if !strings.Contains(md, "# Heading") || strings.Contains(md, "HEADER TAGLINE") || strings.Contains(md, "NAV LINK") {
+			t.Errorf("only the heading may survive from the header:\n%s", md)
+		}
+		if strings.Count(md, "# ") != 1 {
+			t.Errorf("the title was duplicated:\n%s", md)
+		}
+	})
+
 	// Working behavior: the junk-class drop still has to work.
 	t.Run("sidebar_junk_removed", func(t *testing.T) {
 		html := qaHTML(`<aside class="sidebar">SIDEBAR JUNK</aside><p>KEEP WORDS</p>`)
@@ -214,11 +286,51 @@ keep me
 	})
 
 	t.Run("QA-F-007_escape_bytes_in_code", func(t *testing.T) {
+		// a real ESC byte in the page (not the four characters \x1b)
+		md := qaMarkdown(t, qaHTML("<pre class=\"language-bash\"><code>echo \x1b[31mred\x1b[0m\n</code></pre>"))
+		qaPending(t, "QA-F-007")
+		// the byte must never reach the terminal, but the code keeps showing it
+		if strings.Contains(md, "\x1b") {
+			t.Errorf("a raw ESC byte survived into the Markdown:\n%q", md)
+		}
+		if !strings.Contains(md, "echo ␛[31mred␛[0m") {
+			t.Errorf("escape bytes were dropped from code instead of shown as ␛:\n%q", md)
+		}
+	})
+
+	t.Run("literal_backslash_escapes_are_untouched", func(t *testing.T) {
 		md := qaMarkdown(t, qaHTML(`<pre class="language-bash"><code>echo -e "\x1b[31mred\x1b[0m"
 </code></pre>`))
-		qaPending(t, "QA-F-007")
-		if !strings.Contains(md, "\x1b[31mred\x1b[0m") {
-			t.Errorf("escape bytes were stripped from code:\n%q", md)
+		if !strings.Contains(md, `echo -e "\x1b[31mred\x1b[0m"`) {
+			t.Errorf("literal \\x1b text must stay as typed:\n%q", md)
+		}
+	})
+
+	t.Run("other_control_bytes_still_stripped", func(t *testing.T) {
+		md := qaMarkdown(t, qaHTML("<p>a\x07b\x00c</p><pre><code>x\x08y</code></pre>"))
+		if strings.ContainsAny(md, "\x07\x00\x08") {
+			t.Errorf("control bytes reached the Markdown:\n%q", md)
+		}
+	})
+
+	t.Run("code_inside_a_list_item_keeps_blank_lines_and_trailing_spaces", func(t *testing.T) {
+		md := qaMarkdown(t, qaHTML("<ul><li>step<pre><code>a\n\n\n\nb  \n</code></pre></li></ul><p>x</p>"))
+		lines := strings.Split(md, "\n")
+		blank, b := 0, -1
+		for i, l := range lines {
+			if strings.TrimSpace(l) == "b" {
+				b = i
+				// the three blank lines right above b belong to the code
+				for j := i - 1; j >= 0 && strings.TrimSpace(lines[j]) == ""; j-- {
+					blank++
+				}
+				if !strings.HasSuffix(l, "b  ") {
+					t.Errorf("trailing spaces after b were stripped: %q", l)
+				}
+			}
+		}
+		if b == -1 || blank != 3 {
+			t.Errorf("want 3 blank lines before b, got %d (b at %d):\n%q", blank, b, md)
 		}
 	})
 
@@ -294,6 +406,13 @@ func TestQALanguageDetection(t *testing.T) {
 		{"QA-F-008_sphinx_highlight_class", qaHTML(`<div class="highlight-python notranslate"><pre><code>x = 1</code></pre></div>`), "python"},
 		{"QA-F-008_mediawiki_lang_class", qaHTML(`<div class="mw-highlight mw-highlight-lang-python"><pre><code>x = 1</code></pre></div>`), "python"},
 		{"no_language_is_text", qaHTML(`<pre><code>plain code</code></pre>`), ""},
+		{"QA-F-008_sphinx_ipython_is_python", qaHTML(`<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>x = 1</pre></div></div>`), "python"},
+		{"QA-F-008_sphinx_sql", qaHTML(`<div class="highlight-sql notranslate"><pre>SELECT 1;</pre></div>`), "sql"},
+		{"QA-F-008_sphinx_gdscript", qaHTML(`<div class="highlight-gdscript"><pre>func _ready():</pre></div>`), "gdscript"},
+		{"QA-F-008_sphinx_none_is_text", qaHTML(`<div class="highlight-none notranslate"><pre>whatever</pre></div>`), ""},
+		{"QA-F-008_sphinx_default_is_text", qaHTML(`<div class="highlight-default notranslate"><pre>whatever</pre></div>`), ""},
+		{"unknown_highlight_class_is_not_a_language", qaHTML(`<div class="highlight-wrapper-xyz"><pre>whatever</pre></div>`), ""},
+		{"strong_convention_beats_wrapper", qaHTML(`<div class="highlight-python"><pre class="language-rust"><code>fn main() {}</code></pre></div>`), "rust"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -322,6 +441,47 @@ func TestQATables(t *testing.T) {
 		md := qaMarkdown(t, qaHTML(`<table><tr><th>K</th><td><ul><li>aaa</li><li>bbb</li></ul></td></tr></table>`))
 		if !strings.Contains(md, "aaa") || !strings.Contains(md, "bbb") || !strings.Contains(md, "K") {
 			t.Errorf("cell contents lost:\n%s", md)
+		}
+	})
+
+	t.Run("QA-F-009_list_cell_is_one_line", func(t *testing.T) {
+		md := qaMarkdown(t, qaHTML(`<table><tr><th>K</th><td><ul><li>a</li><li>b</li></ul></td></tr><tr><th>Z</th><td>z</td></tr></table>`))
+		if !strings.Contains(md, "| K | a · b |") {
+			t.Errorf("a list in a cell must become one line:\n%s", md)
+		}
+	})
+
+	t.Run("QA-F-009_spans_become_cells", func(t *testing.T) {
+		md := qaMarkdown(t, qaHTML(`<table><tr><th colspan="2">Head</th><th>C</th></tr><tr><td rowspan="2">R</td><td>one</td><td>x</td></tr><tr><td>two</td><td>y</td></tr></table>`))
+		rows := regexp.MustCompile(`(?m)^\|.*\|$`).FindAllString(md, -1)
+		if len(rows) != 4 { // header, separator, two body rows
+			t.Fatalf("want a 4-line table, got %d lines:\n%s", len(rows), md)
+		}
+		for _, r := range rows {
+			if strings.Count(r, "|") != 4 {
+				t.Errorf("ragged row %q, spans must keep three columns:\n%s", r, md)
+			}
+		}
+	})
+
+	t.Run("QA-F-009_headerless_table_has_no_empty_header", func(t *testing.T) {
+		md := qaMarkdown(t, qaHTML(`<table><tr><td>first</td><td>row</td></tr><tr><td>second</td><td>row</td></tr></table>`))
+		lines := strings.Split(md, "\n")
+		var tbl []string
+		for _, l := range lines {
+			if strings.HasPrefix(l, "|") {
+				tbl = append(tbl, l)
+			}
+		}
+		if len(tbl) != 3 || !strings.Contains(tbl[0], "first") {
+			t.Errorf("the first row must become the header, no empty fake row:\n%s", md)
+		}
+	})
+
+	t.Run("QA-F-009_paragraphs_in_cells_stay_in_the_table", func(t *testing.T) {
+		md := qaMarkdown(t, qaHTML(`<table><tr><th>A</th><th>B</th></tr><tr><td><p>one</p><p>two</p></td><td>x<br>y</td></tr></table>`))
+		if !strings.Contains(md, "| one two | x y |") {
+			t.Errorf("block content in a cell broke the table:\n%s", md)
 		}
 	})
 
@@ -370,6 +530,44 @@ func TestQACharset(t *testing.T) {
 	})
 }
 
+func TestQACharsetDecoding(t *testing.T) {
+	t.Run("declared_latin1_is_honored", func(t *testing.T) {
+		in := []byte("<html><head><meta charset=\"iso-8859-1\"></head><body><p>ma\xf1ana</p></body></html>")
+		if got := string(toUTF8(in, "")); !strings.Contains(got, "mañana") {
+			t.Errorf("a declared charset must win: %q", got)
+		}
+	})
+
+	t.Run("header_charset_is_honored", func(t *testing.T) {
+		in := []byte("<p>caf\xe9</p>")
+		if got := string(toUTF8(in, "text/html; charset=iso-8859-1")); !strings.Contains(got, "café") {
+			t.Errorf("Content-Type charset must win: %q", got)
+		}
+	})
+
+	t.Run("undeclared_latin1_falls_back_to_windows1252", func(t *testing.T) {
+		in := []byte("<p>caf\xe9 \x93quoted\x94</p>")
+		if got := string(toUTF8(in, "text/html")); !strings.Contains(got, "café") || !strings.Contains(got, "“quoted”") {
+			t.Errorf("invalid UTF-8 must decode as windows-1252: %q", got)
+		}
+	})
+
+	t.Run("download_cut_in_the_middle_of_a_character_is_still_utf8", func(t *testing.T) {
+		in := []byte("<p>" + strings.Repeat("a", 2000) + "ñandú ñ")
+		in = in[:len(in)-1] // cut the last ñ in half
+		if got := string(toUTF8(in, "text/html")); !strings.Contains(got, "ñandú") {
+			t.Errorf("a truncated tail must not flip the whole page to windows-1252: %q", got[len(got)-30:])
+		}
+	})
+
+	t.Run("utf8_bom_is_dropped_or_harmless", func(t *testing.T) {
+		in := append([]byte{0xef, 0xbb, 0xbf}, []byte("<p>ñ</p>")...)
+		if got := string(toUTF8(in, "")); !strings.Contains(got, "ñ") {
+			t.Errorf("BOM document broke: %q", got)
+		}
+	})
+}
+
 func TestQAClipboard(t *testing.T) {
 	t.Run("code_tabs_become_four_spaces", func(t *testing.T) {
 		m, _ := selModel(t)
@@ -412,6 +610,20 @@ func TestQALinkModes(t *testing.T) {
 		all := strings.Join(d.Plain, "\n")
 		if !strings.Contains(all, "[1] https://ex.com/a") || !strings.Contains(all, "link[1]") {
 			t.Errorf("footnotes mode broken:\n%s", all)
+		}
+	})
+
+	// QA-F-012: the register assumed duplicates were not collapsed; they are, and
+	// this keeps it that way. What is left of the finding is only the length of
+	// the list on pages with hundreds of *different* links.
+	t.Run("footnotes_reuse_the_number_of_a_repeated_url", func(t *testing.T) {
+		md := "[a](https://x.test/1) [b](https://x.test/1) [c](https://x.test/2) [d](https://x.test/1)\n"
+		all := strings.Join(render(t, md, 80, nil).Plain, "\n")
+		if !strings.Contains(all, "a[1] b[1] c[2] d[1]") {
+			t.Errorf("repeated URLs must share one footnote:\n%s", all)
+		}
+		if n := strings.Count(all, "https://x.test/1"); n != 1 {
+			t.Errorf("the repeated URL is listed %d times, want 1:\n%s", n, all)
 		}
 	})
 

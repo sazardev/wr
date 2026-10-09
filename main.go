@@ -26,6 +26,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/JohannesKaufmann/html-to-markdown/v2/converter"
 	"github.com/JohannesKaufmann/html-to-markdown/v2/plugin/base"
@@ -43,19 +44,39 @@ const (
 )
 
 var (
-	dropTags = "script,style,noscript,nav,aside,footer,form,svg,button,iframe,template,dialog,select,input"
-	langRes  = []*regexp.Regexp{
+	// Elements that are chrome or controls, never reading content. A <form> is not
+	// here on purpose: some sites wrap the whole page in one, so only its controls go.
+	dropTags = "script,style,noscript,nav,aside,footer,svg,button,iframe,template,dialog,select,input,textarea,label"
+	// Class conventions that name the language outright.
+	langRes = []*regexp.Regexp{
 		regexp.MustCompile(`(?i)(?:^|\s)(?:language|lang|highlight-source|brush)[-:_ ]+([\w+#.-]+)`),
 		regexp.MustCompile(`(?i)(?:^|\s)sourceCode\s+([\w+#-]+)`),
 	}
-	junkClass = regexp.MustCompile(`(?i)(?:^|[\s_-])(?:toc|table-of-contents|breadcrumbs?|sidebar|cookie\w*)(?:$|[\s_-])`)
-	codeJunk  = regexp.MustCompile(`(?i)line-?no|linenum|gutter|copy|clipboard`)
+	// Looser conventions (Sphinx/Pygments highlight-python, MediaWiki
+	// mw-highlight-lang-python): the match is only trusted when chroma has a
+	// lexer for it, because a wrong label is worse than none.
+	weakLangRes = []*regexp.Regexp{
+		regexp.MustCompile(`(?i)(?:^|\s)mw-highlight-lang-([\w+#-]+)`),
+		regexp.MustCompile(`(?i)(?:^|\s)highlight-([\w+#-]+)`),
+	}
+	codeJunk = regexp.MustCompile(`(?i)line-?no|linenum|gutter|copy|clipboard`)
 	// name used on the page -> lexer name chroma understands
 	langMap = map[string]string{
 		"shell": "bash", "sh": "bash", "zsh": "bash", "console": "bash", "shellsession": "bash",
 		"golang": "go", "js": "javascript", "ts": "typescript", "yml": "yaml", "py": "python",
 		"docker": "dockerfile", "text": "", "plaintext": "", "txt": "",
+		"ipython": "python", "ipython3": "python", "python3": "python", "py3": "python", "pycon": "python",
+		"cs": "csharp", "nodejs": "javascript", "none": "", "default": "",
 	}
+	// Class words that mark page chrome. A class token is junk when it is one of
+	// these or starts with one followed by - or _ (toc-wrapper, sidebar-left);
+	// never when the word only ends it ("has-toc" is a layout flag, not a TOC).
+	junkWords = []string{
+		"toc", "table-of-contents", "breadcrumb", "breadcrumbs", "sidebar", "cookie", "cookies",
+		"related", "newsletter", "social", "share", "sharing", "advert", "advertisement",
+	}
+	// ARIA landmarks that are chrome even when the element is a plain <div>.
+	junkRoles = "[role=navigation],[role=banner],[role=contentinfo]"
 )
 
 func main() {
@@ -267,17 +288,43 @@ func fetch(src string) ([]byte, string, error) {
 		defer f.Close()
 		r = io.LimitReader(f, maxBytes)
 	}
-	// convert to UTF-8 according to the header / <meta charset>
-	utf8r, err := charset.NewReader(r, ctype)
+	raw, err := io.ReadAll(r)
 	if err != nil {
 		return nil, ctype, err
 	}
-	body, err := io.ReadAll(utf8r)
-	return body, ctype, err
+	return toUTF8(raw, ctype), ctype, nil
+}
+
+// toUTF8 converts a document to UTF-8 according to the header, the BOM or
+// <meta charset>. When nothing declares the encoding, a document that is valid
+// UTF-8 as a whole is taken as UTF-8: the detector only looks at the first KB,
+// and falling back to windows-1252 for an accent further down produces mojibake.
+func toUTF8(raw []byte, ctype string) []byte {
+	enc, _, certain := charset.DetermineEncoding(raw[:min(len(raw), 1024)], ctype)
+	if !certain && validUTF8(raw) {
+		return raw
+	}
+	if out, err := enc.NewDecoder().Bytes(raw); err == nil {
+		return out
+	}
+	return raw
+}
+
+// validUTF8 reports whether b is valid UTF-8, ignoring a multibyte character cut
+// in half at the end (the download is capped at maxBytes).
+func validUTF8(b []byte) bool {
+	for cut := 0; cut < 4 && cut <= len(b); cut++ {
+		if utf8.Valid(b[:len(b)-cut]) {
+			return true
+		}
+	}
+	return false
 }
 
 // ---- HTML -> Markdown ----
 
+// langOf reads the language of a <pre> from its own attributes/classes, its
+// <code> child or the three closest ancestors (Sphinx puts it on a wrapper div).
 func langOf(pre *goquery.Selection) string {
 	cands := []*goquery.Selection{pre, pre.Find("code").First()}
 	for par, i := pre.Parent(), 0; i < 3 && par.Length() > 0; par, i = par.Parent(), i+1 {
@@ -291,8 +338,8 @@ func langOf(pre *goquery.Selection) string {
 		if lang == "" {
 			lang, _ = el.Attr("data-lang")
 		}
+		cls, _ := el.Attr("class")
 		if lang == "" {
-			cls, _ := el.Attr("class")
 			for _, rx := range langRes {
 				if m := rx.FindStringSubmatch(cls); m != nil {
 					lang = m[1]
@@ -307,6 +354,20 @@ func langOf(pre *goquery.Selection) string {
 			}
 			return lang
 		}
+		for _, rx := range weakLangRes {
+			if m := rx.FindStringSubmatch(cls); m != nil {
+				name := strings.ToLower(m[1])
+				if v, ok := langMap[name]; ok {
+					if v != "" {
+						return v
+					}
+					return "" // the page says "no language" (highlight-none, -text)
+				}
+				if lexerFor(name) != nil {
+					return name
+				}
+			}
+		}
 	}
 	return ""
 }
@@ -318,26 +379,16 @@ func toMarkdown(page []byte, src string) (string, error) {
 	}
 	title := strings.TrimSpace(doc.Find("title").First().Text())
 
-	root := doc.Find("article").First()
-	isArticle := root.Length() > 0
-	if !isArticle {
-		if root = doc.Find("main").First(); root.Length() == 0 {
-			root = doc.Find("body").First()
-		}
-	}
+	root, isArticle := pickRoot(doc)
 	if root.Length() == 0 {
 		return "", fmt.Errorf("the page has no content")
 	}
 
 	root.Find(dropTags).Remove()
 	if !isArticle {
-		root.Find("header").Remove()
+		dropHeaders(root)
 	}
-	root.Find("[class]").Each(func(_ int, s *goquery.Selection) {
-		if cls, _ := s.Attr("class"); junkClass.MatchString(cls) {
-			s.Remove()
-		}
-	})
+	dropChrome(root)
 	root.Find("pre *").Each(func(_ int, s *goquery.Selection) {
 		if cls, _ := s.Attr("class"); codeJunk.MatchString(cls) {
 			s.Remove()
@@ -349,7 +400,9 @@ func toMarkdown(page []byte, src string) (string, error) {
 			pre.SetAttr("class", "language-"+lang)
 			pre.Find("code").First().SetAttr("class", "language-"+lang)
 		}
+		visibleEscapes(pre)
 	})
+	flattenTables(root)
 	root.Find("img").Each(func(_ int, img *goquery.Selection) {
 		alt := strings.TrimSpace(img.AttrOr("alt", ""))
 		dup := alt != "" && title != "" && strings.Contains(strings.ToLower(title), strings.ToLower(alt))
@@ -378,18 +431,29 @@ func toMarkdown(page []byte, src string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	text := string(md)
-	text = regexp.MustCompile(`(?m)^(?:\[[^\]]*\]\([^)]*\)[ \t]*){4,}$`).ReplaceAllString(text, "")
-	text = regexp.MustCompile(`[ \t]+\n`).ReplaceAllString(text, "\n")
-	text = regexp.MustCompile(`\n{3,}`).ReplaceAllString(text, "\n\n")
+	// the prose cleanup never touches code: fenced blocks are quoted data
+	text := mapOutsideFences(string(md), tidyProse)
 	// page content is untrusted: strip control characters (ESC, etc.) so a page
 	// cannot manipulate your terminal.
 	text = sanitize(text)
 	text = strings.TrimSpace(text) + "\n"
-	if title != "" && !regexp.MustCompile(`(?m)^#\s`).MatchString(text) {
+	if title != "" && !hasTitleHeading(text) {
 		text = "# " + title + "\n\n" + text
 	}
 	return text, nil
+}
+
+var (
+	linkOnlyLine = regexp.MustCompile(`(?m)^(?:\[[^\]]*\]\([^)]*\)[ \t]*){4,}$`)
+	trailingWS   = regexp.MustCompile(`[ \t]+\n`)
+	blankRuns    = regexp.MustCompile(`\n{3,}`)
+)
+
+// tidyProse normalizes a stretch of Markdown that is not code.
+func tidyProse(text string) string {
+	text = linkOnlyLine.ReplaceAllString(text, "")
+	text = trailingWS.ReplaceAllString(text, "\n")
+	return blankRuns.ReplaceAllString(text, "\n\n")
 }
 
 var controlChars = regexp.MustCompile(`[\x00-\x08\x0b-\x1f\x7f-\x9f]`)
