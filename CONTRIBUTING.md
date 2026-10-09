@@ -76,3 +76,8 @@ and need no manual version bump:
 
 Nothing is published without the Release PR being reviewed and merged, so the
 changelog always matches what actually shipped.
+
+Because the Release PR is opened by a bot, GitHub holds its workflow runs for
+approval, so the maintainer merges it with the admin bypass after reviewing the
+diff; the release job runs `go test` on the tagged commit before building, so
+nothing ships untested.
