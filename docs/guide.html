@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Guide — wr</title>
+<meta name="description" content="How to read and browse the web from your terminal with wr.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%2307090d'/%3E%3Ctext x='50' y='74' font-size='66' text-anchor='middle' fill='%234da3ff' font-family='monospace'%3E%E2%A3%BF%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="page-guide">
+<canvas id="field" aria-hidden="true"></canvas>
+
+<header class="site-head">
+  <a class="brand" href="./"><span class="b">⣿</span> wr</a>
+  <nav>
+    <a href="./">Home</a>
+    <a href="guide.html" class="active">Guide</a>
+    <a href="https://github.com/sazardev/wr">GitHub</a>
+    <a href="https://github.com/sazardev/wr/releases">Releases</a>
+  </nav>
+</header>
+
+<main class="guide-wrap">
+  <aside class="toc">
+    <div class="toc-title">⣿ SECTIONS</div>
+    <nav id="toc-nav"></nav>
+  </aside>
+  <article id="doc" class="doc">
+    <p class="loading">⠋ loading the guide…</p>
+  </article>
+</main>
+
+<footer class="site-foot">
+  <div class="hints">
+    <a href="./"><span class="k">⣿</span> home</a>
+    <a href="https://github.com/sazardev/wr"><span class="k">⡇</span> github</a>
+    <a href="https://github.com/sazardev/wr/releases"><span class="k">⣄</span> releases</a>
+    <a href="https://github.com/sazardev/wr/issues"><span class="k">⣶</span> issues</a>
+  </div>
+  <div class="foot-right">
+    <span id="progress" aria-hidden="true"></span>
+    <span id="pct">0%</span>
+  </div>
+</footer>
+
+<script src="braille.js"></script>
+<script src="markdown.js"></script>
+<script>
+(async () => {
+  const doc = document.getElementById('doc');
+  try {
+    const res = await fetch('GUIDE.md');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    doc.innerHTML = renderMarkdown(await res.text());
+    buildTOC(doc, document.getElementById('toc-nav'));
+  } catch (err) {
+    doc.innerHTML = '<p class="load-error">⠋ could not load GUIDE.md (' + err.message +
+      '). Read it on <a href="https://github.com/sazardev/wr/blob/main/docs/GUIDE.md">GitHub</a>.</p>';
+  }
+})();
+</script>
+</body>
+</html>

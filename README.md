@@ -157,9 +157,10 @@ its lexers). Tested on Linux (WSL2, CachyOS) with Alacritty and Go 1.27; the
 macOS and arm64 builds are cross-compiled and have not been run by me. Windows:
 use WSL.
 
-**New to wr? Read the [guide](docs/GUIDE.md)**: how to follow links, go back and
-forward, search the web, use history and bookmarks, select and copy, and make
-it yours.
+**New to wr? Read the [guide](docs/GUIDE.md)** (also on the
+[docs site](https://sazardev.github.io/wr/guide.html)): how to follow links, go
+back and forward, search the web, use history and bookmarks, select and copy,
+and make it yours.
 
 Braille needs a font with those glyphs (most modern monospace fonts have them,
 e.g. Nerd Fonts). If yours does not, turn off *Braille decoration* in Settings.
