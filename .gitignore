@@ -3,3 +3,4 @@ dist/
 qa-out/
 __pycache__/
 *.pyc
+media/out/

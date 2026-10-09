@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Building a Realtime Forum in Go — wr demo page</title>
+<meta name="description" content="A sample article used by the recordings, so frames never depend on the network.">
+<style>
+  body { font: 16px/1.6 system-ui, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 16px; color: #1b1f24; }
+  h1 { font-size: 28px; margin: 0 0 6px; }
+  h2 { font-size: 20px; margin: 28px 0 6px; }
+  .byline { color: #5b6570; font-size: 14px; }
+  pre { background: #f2f3f5; padding: 12px; overflow: auto; }
+  code { font-family: ui-monospace, monospace; }
+  table { border-collapse: collapse; }
+  td, th { border: 1px solid #d5d9de; padding: 6px 10px; }
+</style>
+</head>
+<body>
+<article>
+  <h1>Building a Realtime Forum in Go</h1>
+  <p class="byline">by the wr docs · 6 min read · 2026</p>
+
+  <p>Build a 100% CLI realtime forum in Go: TCP, TLS, deduplicated broadcast and
+     resilient reconnects, zero dependencies. This is the page the recordings in
+     <a href="README.md">media/</a> use, so a frame is always the same frame.</p>
+
+  <h2>Why a reader</h2>
+  <p>Documentation and long articles read better as plain text with real
+     typography than as a wall of markup. <code>wr</code> fetches the page,
+     extracts the article and draws it with the terminal's own colors. See the
+     <a href="GUIDE.md">guide</a> or the <a href="QA.md">QA report</a>.</p>
+
+  <h2>Getting started</h2>
+  <ol>
+    <li>Install it with the installer or <code>go install</code>.</li>
+    <li>Open an address: <code>wr https://example.com/article</code>.</li>
+    <li>Type plain words to search the web.</li>
+  </ol>
+
+  <h2>The server</h2>
+  <pre class="language-go"><code>package main
+
+import (
+	"bufio"
+	"crypto/tls"
+	"log"
+	"net"
+)
+
+func main() {
+	cfg := &amp;tls.Config{MinVersion: tls.VersionTLS13}
+	ln, err := tls.Listen("tcp", ":8443", cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for {
+		c, err := ln.Accept()
+		if err != nil {
+			continue
+		}
+		go handle(bufio.NewReader(c), c)
+	}
+}</code></pre>
+  <p>Every client gets a goroutine and a deduplicated broadcast fan-out; a
+     reconnect resumes from the last acknowledged message.</p>
+
+  <h2>Reading</h2>
+  <ul>
+    <li><code>/</code> searches as you type, <code>n</code>/<code>N</code> jump.</li>
+    <li><code>t</code> opens the section index; <code>]</code>/<code>[</code> move.</li>
+    <li>Drag to select and copy: code keeps its indentation and loses its frame.</li>
+  </ul>
+
+  <h2>Browsing</h2>
+  <p>Links are clickable; press <code>f</code> to label every one on screen and
+     type the hint. Back and forward restore the exact scroll position, and
+     cached pages open instantly.</p>
+
+  <h2>Shortcuts</h2>
+  <table>
+    <tr><th>Key</th><th>Action</th></tr>
+    <tr><td>o</td><td>open an address or search</td></tr>
+    <tr><td>t</td><td>section index</td></tr>
+    <tr><td>f</td><td>label the links on screen</td></tr>
+    <tr><td>H / L</td><td>back / forward</td></tr>
+  </table>
+
+  <h2>Limits</h2>
+  <p>No JavaScript and no forms: pages that draw their content with JS come out
+     empty or incomplete. Images and PDFs are not shown; press <code>x</code> to
+     open them in the browser.</p>
+</article>
+</body>
+</html>

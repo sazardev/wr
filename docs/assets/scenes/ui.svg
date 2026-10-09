@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="828" height="538" viewBox="0 0 828 538" role="img" aria-label="wr — ui">
+<rect width="828" height="538" fill="#07090d"/>
+<text x="14" y="10" font-size="10" fill="#5f7089" font-family="ui-monospace,monospace" letter-spacing="1">wr — ui</text>
+<text x="14" y="14" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">  </text>
+<text x="30" y="14" fill="#74b6ff" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⣿ Building a Realtime Forum in Go⣿</text>
+<text x="14" y="31" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">  </text>
+<text x="30" y="31" fill="#4da3ff" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀</text>
+<text x="790" y="31" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">  </text>
+<text x="806" y="31" fill="#74b6ff" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⣿</text>
+<text x="14" y="48" fill="#74b6ff" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⣿</text>
+<text x="14" y="65" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">  by the wr docs · 6 min read · 2026</text>
+<text x="302" y="65" fill="#74b6ff" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⣿</text>
+<text x="14" y="82" fill="#74b6ff" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⣿</text>
+<text x="14" y="99" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">  Build a 100% CLI realtime forum in Go: TCP, TLS, deduplicated broadcast and resilient            </text>
+<text x="806" y="99" fill="#74b6ff" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⣿</text>
+<text x="14" y="116" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">  reconnects, zero dependencies. This is the page the recordings in </text>
+<text x="558" y="116" fill="#7dd3fc" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">media/</text>
+<text x="606" y="116" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">[1]</text>
+<text x="630" y="116" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve"> use, so a frame is   </text>
+<text x="806" y="116" fill="#74b6ff" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⣿</text>
+<text x="14" y="133" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">  always the same frame.</text>
+<text x="206" y="133" fill="#74b6ff" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⠿</text>
+<text x="14" y="150" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⡇</text>
+<text x="14" y="167" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⡇</text>
+<text x="14" y="184" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">  </text>
+<text x="30" y="184" fill="#a5e3ff" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⣶ Why a reader</text>
+<text x="142" y="184" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⡇</text>
+<text x="14" y="201" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">  </text>
+<text x="30" y="201" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤</text>
+<text x="790" y="201" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">  </text>
+<text x="806" y="201" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⡇</text>
+<text x="14" y="218" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⡇</text>
+<text x="14" y="235" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">  Documentation and long articles read better as plain text with real typography than as a wall    </text>
+<text x="806" y="235" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⡇</text>
+<text x="14" y="252" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">  of markup. </text>
+<text x="118" y="252" fill="#f2c94c" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">wr</text>
+<text x="134" y="252" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve"> fetches the page, extracts the article and draws it with the terminal&#x27;s own        </text>
+<text x="806" y="252" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⡇</text>
+<text x="14" y="269" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">  colors. See the </text>
+<text x="158" y="269" fill="#7dd3fc" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">guide</text>
+<text x="198" y="269" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">[2]</text>
+<text x="222" y="269" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve"> or the </text>
+<text x="286" y="269" fill="#7dd3fc" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">QA report</text>
+<text x="358" y="269" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">[3]</text>
+<text x="382" y="269" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">.</text>
+<text x="390" y="269" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⡇</text>
+<text x="14" y="286" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⡇</text>
+<text x="14" y="303" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⡇</text>
+<text x="14" y="320" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">  </text>
+<text x="30" y="320" fill="#a5e3ff" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⣶ Getting started</text>
+<text x="166" y="320" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⡇</text>
+<text x="14" y="337" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">  </text>
+<text x="30" y="337" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤</text>
+<text x="790" y="337" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">  </text>
+<text x="806" y="337" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⡇</text>
+<text x="14" y="354" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⡇</text>
+<text x="14" y="371" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">  </text>
+<text x="30" y="371" fill="#74b6ff" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">1.</text>
+<text x="46" y="371" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve"> Install it with the installer or </text>
+<text x="318" y="371" fill="#f2c94c" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">go install</text>
+<text x="398" y="371" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">.</text>
+<text x="406" y="371" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⡇</text>
+<text x="14" y="388" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">  </text>
+<text x="30" y="388" fill="#74b6ff" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">2.</text>
+<text x="46" y="388" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve"> Open an address: </text>
+<text x="190" y="388" fill="#f2c94c" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">wr https://example.com/article</text>
+<text x="430" y="388" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">.</text>
+<text x="438" y="388" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⡇</text>
+<text x="14" y="405" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">  </text>
+<text x="30" y="405" fill="#74b6ff" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">3.</text>
+<text x="46" y="405" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve"> Type plain words to search the web.</text>
+<text x="334" y="405" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⡇</text>
+<text x="14" y="422" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⡇</text>
+<text x="14" y="439" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⡇</text>
+<text x="14" y="456" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">  </text>
+<text x="30" y="456" fill="#a5e3ff" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⣶ The server</text>
+<text x="126" y="456" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⡇</text>
+<text x="14" y="473" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">  </text>
+<text x="30" y="473" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤⠤</text>
+<text x="790" y="473" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">  </text>
+<text x="806" y="473" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⡇</text>
+<text x="14" y="490" fill="#4da3ff" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀</text>
+<text x="278" y="490" fill="#74b6ff" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀</text>
+<text x="542" y="490" fill="#a5e3ff" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀</text>
+<text x="14" y="507" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve"> </text>
+<text x="22" y="507" fill="#74b6ff" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">o</text>
+<text x="30" y="507" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve"> </text>
+<text x="38" y="507" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">open</text>
+<text x="70" y="507" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">  </text>
+<text x="86" y="507" fill="#74b6ff" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">/</text>
+<text x="94" y="507" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve"> </text>
+<text x="102" y="507" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">search</text>
+<text x="150" y="507" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">  </text>
+<text x="166" y="507" fill="#74b6ff" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">H</text>
+<text x="174" y="507" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve"> </text>
+<text x="182" y="507" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">back</text>
+<text x="214" y="507" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">  </text>
+<text x="230" y="507" fill="#74b6ff" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">L</text>
+<text x="238" y="507" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve"> </text>
+<text x="246" y="507" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">fwd</text>
+<text x="270" y="507" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">  </text>
+<text x="286" y="507" fill="#74b6ff" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">f</text>
+<text x="294" y="507" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve"> </text>
+<text x="302" y="507" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">links</text>
+<text x="342" y="507" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">  </text>
+<text x="358" y="507" fill="#74b6ff" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">n N</text>
+<text x="382" y="507" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve"> </text>
+<text x="390" y="507" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">next</text>
+<text x="422" y="507" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">  </text>
+<text x="438" y="507" fill="#74b6ff" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">t</text>
+<text x="446" y="507" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve"> </text>
+<text x="454" y="507" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">index</text>
+<text x="494" y="507" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">  </text>
+<text x="510" y="507" fill="#74b6ff" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">m</text>
+<text x="518" y="507" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve"> </text>
+<text x="526" y="507" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">menu</text>
+<text x="558" y="507" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">  </text>
+<text x="574" y="507" fill="#74b6ff" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">q</text>
+<text x="582" y="507" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve"> </text>
+<text x="590" y="507" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">quit</text>
+<text x="622" y="507" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">      </text>
+<text x="670" y="507" fill="#5f7089" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀</text>
+<text x="766" y="507" fill="#c9d3e3" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13" xml:space="preserve">   0%</text>
+</svg>

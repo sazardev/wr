@@ -1,0 +1,15 @@
+{
+  "page": "media/demo.html",
+  "scenes": [
+    { "name": "ui", "url": "LOCAL", "keys": [], "wait": 1.5,
+      "caption": "o  open an address, read the article" },
+    { "name": "links", "url": "LOCAL", "keys": ["f"], "wait": 2.0,
+      "caption": "f  label every link on screen" },
+    { "name": "sections", "url": "LOCAL", "keys": ["t"], "wait": 2.0,
+      "caption": "t  the heading index" },
+    { "name": "shortcuts", "url": "LOCAL", "keys": ["m", "7"], "wait": 2.5,
+      "caption": "m  the menu" },
+    { "name": "search", "url": "LOCAL", "keys": ["/", "b", "r", "a", "i", "l", "l", "e", "\r"], "wait": 2.0,
+      "caption": "/  search as you type" }
+  ]
+}

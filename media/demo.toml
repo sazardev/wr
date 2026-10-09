@@ -1,0 +1,19 @@
+# The wr configuration used for every recording.
+# Pinned on purpose: tapes and captures must be reproducible, so size, font,
+# frames, footer and links are identical across versions of the terminal.
+width = 100
+center = true
+spacing = 1
+heading_rules = true
+code_frame = true
+links = "footnotes"
+braille = true
+accent = "blue"
+scrollbar = true
+footer = true
+footer_rule = true
+footer_hints = true
+footer_progress = "both"
+footer_chips = true
+animations = false   # deterministic frames: no reveal, no springs
+scroll_speed = "fast"
