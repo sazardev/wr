@@ -1,0 +1,86 @@
+---
+import Base from '../../layouts/Base.astro';
+import RuleBar from '../../components/RuleBar.astro';
+import Command from '../../components/Command.astro';
+import { withBase } from '../../lib/urls';
+import { siteVersion } from '../../lib/version';
+
+// /docs/search/?q=&scope= — one static page whose state is the query string.
+// The island reads ?q= and ?scope= from the URL and keeps them in sync while
+// you type, so a search is a link: shareable, bookmarkable, back-buttonable.
+
+const version = siteVersion();
+const scopes = ['all', 'guide', 'design', 'changelog', 'reference'];
+---
+
+<Base
+  title="Search — wr docs"
+  description="Search the wr documentation: the guide, the design language, the changelog and the generated reference."
+  current="search"
+>
+  <div class="wrap" style="padding-top:44px">
+    <div class="sec-head">
+      <span class="glyph">⡇</span>
+      <h2>SEARCH THE DOCS</h2>
+      <span class="note">v{version}</span>
+    </div>
+    <RuleBar fill={20} />
+    <p class="lead">
+      Every page of this site is one section of a source file. Type a word and the results
+      update as you go; the query lives in the address bar, so you can share or bookmark a
+      search.
+    </p>
+
+    <form class="search-box" id="search" data-search-form role="search" style="margin-top:22px">
+      <span class="prompt" aria-hidden="true">/</span>
+      <input
+        type="search"
+        name="q"
+        data-search-input
+        placeholder="links, keys, cache, bookmarks…"
+        aria-label="Search the documentation"
+        autocomplete="off"
+        spellcheck="false"
+        autofocus
+      />
+      <span class="count" data-search-status aria-live="polite">…</span>
+    </form>
+
+    <div class="search-scopes" role="group" aria-label="Scope">
+      {scopes.map((scope) => (
+        <button type="button" data-scope={scope} aria-pressed={scope === 'all'}>{scope}</button>
+      ))}
+    </div>
+
+    <p class="search-hint">
+      <kbd>Enter</kbd> opens the first result · <kbd>/</kbd> focuses this box from any page ·
+      the URL is the state: <code>/docs/search/?q=links&amp;scope=guide</code>
+    </p>
+
+    <div class="results" id="results" data-search-results aria-live="polite"></div>
+
+    <section style="padding-top:56px">
+      <div class="sec-head">
+        <span class="glyph">⣶</span>
+        <h2>OR START AT THE BEGINNING</h2>
+      </div>
+      <RuleBar fill={16} />
+      <div class="install-grid">
+        <div>
+          <Command
+            cmd="curl -fsSL https://raw.githubusercontent.com/sazardev/wr/main/install.sh | sh"
+            title="install"
+            right="sh"
+            comment="then: wr"
+          />
+        </div>
+        <div class="ways">
+          <p>Install wr and open any page:</p>
+          <p><a href={withBase('/docs/guide/start/')}>Start — the first read</a></p>
+          <p><a href={withBase('/docs/reference/shortcuts/')}>Every shortcut</a></p>
+          <p><a href={withBase('/docs/reference/settings/')}>Every setting</a></p>
+        </div>
+      </div>
+    </section>
+  </div>
+</Base>

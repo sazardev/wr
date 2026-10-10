@@ -1,0 +1,73 @@
+---
+import Page from '../../../layouts/Page.astro';
+import RuleBar from '../../../components/RuleBar.astro';
+import { shortcutGroups } from '../../../lib/reference';
+import { cellText, tableUnderHeading } from '../../../lib/tables';
+import { readReadme } from '../../../lib/repo';
+import { repo, withBase } from '../../../lib/urls';
+
+// /docs/reference/shortcuts/ — every default key binding, grouped like the
+// program's shortcuts panel, parsed from keys.go. The mouse table comes from
+// the README. Both are the sources the program is built from.
+
+const groups = shortcutGroups();
+const mouse = tableUnderHeading(readReadme(), 'Mouse');
+const total = groups.reduce((sum, group) => sum + group.items.length, 0);
+---
+
+<Page
+  title="Shortcuts"
+  description="Every default key binding of wr, grouped like the program's shortcuts panel and generated from keys.go."
+  glyph="⣤"
+  summary={`${total} actions in ${groups.length} groups, with the mouse on top. Generated from keys.go — the same file the program binds keys from.`}
+  source={{ label: 'keys.go', href: repo.file('keys.go') }}
+>
+  <div class="sec-head">
+    <span class="glyph">⣿</span>
+    <h2>DEFAULT KEY BINDINGS</h2>
+    <span class="note">keys.go</span>
+  </div>
+  <RuleBar fill={22} />
+
+  <div class="ref-grid" style="margin-top:4px">
+    {groups.map((group) => (
+      <div class="ref-group">
+        <h3><span class="glyph">⡇</span> {group.group} <span class="count">{group.items.length}</span></h3>
+        <div class="ref-rows">
+          {group.items.map((item) => (
+            <div class="ref-row">
+              <div class="keys">
+                {item.keys.map((key) => <kbd>{key}</kbd>)}
+                {item.keys.length === 0 && <span class="action-id">no default key</span>}
+              </div>
+              <div class="label">
+                {item.label} <span class="action-id">{item.id}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    ))}
+
+    {mouse && (
+      <div class="ref-group">
+        <h3><span class="glyph">⣶</span> Mouse <span class="count">{mouse.rows.length}</span></h3>
+        <div class="ref-rows">
+          {mouse.rows.map((row) => (
+            <div class="ref-row">
+              <div class="keys">
+                {(row[0] ?? '').split(/\s*\/\s*/).map((key) => <kbd>{cellText(key)}</kbd>)}
+              </div>
+              <div class="label">{cellText(row[1] ?? '')}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+  </div>
+
+  <p class="search-hint" style="margin-top:18px">
+    Rebind any of them from the menu (<kbd>m</kbd>) or the shortcuts panel (<kbd>,</kbd>):
+    see <a href={withBase('/docs/guide/rebinding-keys/')}>Rebinding keys</a>.
+  </p>
+</Page>

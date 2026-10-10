@@ -1,0 +1,198 @@
+---
+import Base from '../layouts/Base.astro';
+import Command from '../components/Command.astro';
+import Reel from '../components/Reel.astro';
+import SectionHead from '../components/SectionHead.astro';
+import ThemeSwatches from '../components/ThemeSwatches.astro';
+import { footerBindings, teaserBindings } from '../lib/reference';
+import { repo, withBase } from '../lib/urls';
+import { siteVersion } from '../lib/version';
+
+// The landing page: what wr is, what it does, how to install it. Every claim
+// here has a page behind it in /docs.
+
+const version = siteVersion();
+const footer = footerBindings();
+const teaser = teaserBindings();
+const versionedInstall = `curl -fsSL ${repo.installScript} | sh`;
+
+const benefits = [
+  { glyph: '⣿', title: 'Nothing but the text', text: 'The article and its code. Menus, footers, ads and cookie walls are dropped before you ever see them.' },
+  { glyph: '⡇', title: 'Built for code', text: 'Real per-language highlighting, exact indentation, and copies that come out without the frame.' },
+  { glyph: '⣷', title: 'Instant', text: 'A page you already read opens from the cache in milliseconds; scrolling glides on spring physics.' },
+  { glyph: '⣄', title: 'Yours', text: 'Your terminal’s sixteen colors, your own key bindings and your search engine. Zero configuration.' },
+];
+
+const steps = [
+  {
+    n: '01',
+    title: 'Install the binary',
+    text: 'One line, no Go needed: the installer verifies the SHA-256 checksum before putting wr on your PATH.',
+    cmd: versionedInstall,
+  },
+  {
+    n: '02',
+    title: 'Read a page',
+    text: 'An address opens the article; anything else is a web search; a local file opens as you wrote it.',
+    cmd: 'wr https://go.dev/doc/',
+  },
+  {
+    n: '03',
+    title: 'Keep the keyboard',
+    text: 'f labels every link, H and L go back and forward, t jumps by section, m shows every key.',
+    cmd: 'f',
+  },
+];
+---
+
+<Base
+  title="wr — the web, without the noise"
+  description="wr turns any page into clean, typeset text with real code highlighting — and gives you back the keyboard. Links, history, bookmarks and search, from your terminal."
+  current="home"
+>
+  <section class="hero wrap">
+    <div class="hero-grid">
+      <div>
+        <div class="kicker rise">⣿ reader · browser · one binary · v{version}</div>
+        <h1 class="rise d1">The web, without<br />the <span class="hl">noise</span>.</h1>
+        <p class="lead rise d2">
+          wr fetches a page, extracts the article and opens it in an animated reader: properly
+          formatted Markdown, real code highlighting and a full browsing experience —
+          links, history, bookmarks and search, all from your terminal.
+        </p>
+        <div class="install rise d3">
+          <Command cmd={versionedInstall} title="install" comment="then: wr" />
+        </div>
+        <div class="btn-row rise d4">
+          <a class="btn primary" href={withBase('/docs/guide/start/')}><span class="k">⣿</span> Read the guide</a>
+          <a class="btn" href={withBase('/docs/reference/shortcuts/')}><span class="k">⡇</span> Every shortcut</a>
+          <a class="btn" href={repo.url}><span class="k">⣷</span> Star on GitHub</a>
+        </div>
+      </div>
+      <Reel />
+    </div>
+
+    <div class="strip" aria-hidden="true">
+      <div class="strip-track">
+        {[0, 1].map(() => (
+          <span>
+            <span><b class="b">⣿</b> alacritty</span><span>kitty</span><span>wezterm</span><span>ghostty</span>
+            <span>iterm2</span><span>tmux</span><span>ssh</span><span>wsl2</span><span>linux</span><span>macos</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <SectionHead glyph="⣤" title="WHAT YOU GET" />
+    <div class="benefits">
+      {benefits.map((benefit) => (
+        <div class="benefit">
+          <span class="ico">{benefit.glyph}</span>
+          <h3>{benefit.title}</h3>
+          <p>{benefit.text}</p>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <section class="wrap">
+    <SectionHead glyph="⡇" title="THREE STEPS" note="the whole program, in three lines" />
+    <div class="steps">
+      {steps.map((step) => (
+        <div class="step">
+          <span class="n">{step.n}</span>
+          <h3>{step.title}</h3>
+          <p>{step.text}</p>
+          <Command cmd={step.cmd} title="sh" blink={false} prompt="$" />
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <section class="wrap">
+    <SectionHead glyph="⣶" title="IT IS ALL KEYSTROKES" note={`${teaser.length} of the default bindings`} />
+    <div class="ref-grid">
+      {['Browsing', 'Scrolling', 'Reading', 'Interface'].map((group) => (
+        <div class="ref-group">
+          <h3><span class="glyph">⡇</span> {group}</h3>
+          <div class="ref-rows">
+            {teaser.filter((item) => item.group === group).map((item) => (
+              <div class="ref-row">
+                <div class="keys">
+                  {item.keys.map((key) => <kbd>{key}</kbd>)}
+                </div>
+                <div class="label">{item.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+    <p class="search-hint" style="margin-top:16px">
+      Every binding is rebindable from the menu. The full list lives in
+      <a href={withBase('/docs/reference/shortcuts/')}>the reference</a>, generated from keys.go.
+    </p>
+
+    <div class="term" style="margin-top:20px">
+      <div class="term-bar">
+        <span class="dots" data-spin>⣶</span>
+        <span class="title">the reader's own footer</span>
+        <span class="right">the shortcuts you use most</span>
+      </div>
+      <pre style="display:flex;flex-wrap:wrap;gap:6px 18px;align-items:baseline">{
+        footer.map((item) => (
+          <span><kbd>{item.keys[0]}</kbd> {item.label.toLowerCase()}</span>
+        ))
+      }</pre>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <SectionHead glyph="⢿" title="DRESS IT LIKE YOUR TERMINAL" />
+    <p class="lead">
+      The reader wears your terminal’s own sixteen colors. This site shows the same idea: pick a
+      palette and the whole page follows — the choice is remembered, and it links
+      (<code>?theme=gruvbox</code>).
+    </p>
+    <ThemeSwatches />
+  </section>
+
+  <section class="wrap" id="install">
+    <SectionHead glyph="⠿" title="INSTALL" note="linux and macOS · ~14 MB · no runtime dependencies" />
+    <div class="install-grid">
+      <div>
+        <Command cmd={versionedInstall} title="install" right="sh" comment="then: wr" />
+      </div>
+      <div class="ways">
+        <p><strong>Go 1.26 or newer:</strong> <code>go install github.com/sazardev/wr@latest</code></p>
+        <p>Prefer a binary? Grab <code>wr_&lt;os&gt;_&lt;arch&gt;.tar.gz</code> from
+          <a href={repo.releases}>Releases</a> and unpack it on your <code>PATH</code>.</p>
+        <p>From source: <code>git clone {repo.url} &amp;&amp; go build -o ~/.local/bin/wr .</code></p>
+        <p><code>INSTALL_DIR</code> chooses where, <code>WR_VERSION</code> picks a version.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <SectionHead glyph="⣀" title="READ IT, THEN USE IT" />
+    <div class="cards">
+      <a class="card" href={withBase('/docs/guide/start/')}>
+        <div class="top"><span class="glyph">⣿</span><h3>The guide</h3><span class="meta">docs/guide</span></div>
+        <p>Every screen and every key of the reader, with examples: reading, links, history, copying, settings.</p>
+        <span class="go">start ▸</span>
+      </a>
+      <a class="card" href={withBase('/docs/design/')}>
+        <div class="top"><span class="glyph">⡇</span><h3>The design language</h3><span class="meta">docs/design</span></div>
+        <p>Flat, Braille, sixteen colors: the rules, the tokens and the motion that make wr look like a terminal.</p>
+        <span class="go">read ▸</span>
+      </a>
+      <a class="card" href={withBase('/docs/changelog/')}>
+        <div class="top"><span class="glyph">⣄</span><h3>What changed</h3><span class="meta">v{version}</span></div>
+        <p>Every release, written by release-please from the repository history and published here as it is written.</p>
+        <span class="go">changelog ▸</span>
+      </a>
+    </div>
+  </section>
+</Base>

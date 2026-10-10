@@ -10,7 +10,8 @@ the only thing I ask is that you keep the copyright notice.
 - Send fixes and features as pull requests. Small, focused PRs are easiest to
   review and merge.
 - Improve the docs: the README, the [guide](docs/GUIDE.md) and the changelog
-  (the last one is generated, see [Releases](#releases)).
+  (the last one is generated, see [Releases](#releases)). The published site
+  (`web/`) is built from them, so editing `docs/GUIDE.md` edits the website.
 
 ## Development
 
@@ -33,6 +34,31 @@ You can bypass them with `--no-verify` if you must, but CI will run them anyway.
 CI (`.github/workflows/ci.yml`) checks `gofmt`, `go mod tidy -diff`, `go vet`,
 `go test -race` and `go build`. GitHub Actions are pinned to commit SHAs (the
 repository enforces it); Dependabot keeps them updated.
+
+## The documentation site
+
+The site at <https://sazardev.github.io/wr/> is an [Astro](https://astro.build/)
+app in [`web/`](web/), deployed to GitHub Pages by
+`.github/workflows/docs.yml`. It is not hand-written HTML: a custom content
+loader reads `docs/GUIDE.md`, `docs/DESIGN.md` and `CHANGELOG.md` from this
+repository and splits them into **one page per section** (`/docs/guide/start/`,
+`/docs/guide/following-links/`, …). The reference pages — every shortcut, every
+setting — are generated at build time from `keys.go` and the README, and the
+search page keeps its state in the query string (`/docs/search/?q=links`).
+
+The documentation's version is the repository's version: the deploy reads
+`.release-please-manifest.json`, so a release bumps the docs automatically.
+
+```sh
+cd web
+npm ci          # once (package-lock.json is committed)
+npm run dev     # the site at /wr/ with a live reload
+npm run verify  # astro check + the unit tests + a production build
+```
+
+Everything that is not a component lives in `web/src/lib/` as pure, tested
+modules: the section splitter, the table and Go parsers, the search scorer.
+Run them with `npm test`.
 
 ## Commit and PR titles
 

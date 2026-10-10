@@ -6,9 +6,10 @@ article and opens it in an animated reader built with
 Markdown** (real headings, bold, lists, tables — no `#` or `**` in sight),
 **per-language syntax highlighting**, and a full browsing experience — click
 links, go back and forward, an address bar that also searches the web, history,
-bookmarks. Everything is customizable from inside the program. It all uses your
-terminal's own 16-color ANSI palette, so it follows your theme (gruvbox, nord, …)
-with zero configuration.
+bookmarks. Everything is customizable from inside the program. The colors come
+from your terminal's own 16-color ANSI palette — one accent plus its partner,
+and the shades picked for your background — so it follows your theme (gruvbox,
+nord, …) with zero configuration.
 
 ```
 wr https://example.com/some-article
@@ -163,10 +164,10 @@ macOS and arm64 builds are cross-compiled and have not been run by me. Windows:
 use WSL.
 
 **New to wr? Read the [guide](docs/GUIDE.md)** (also on the
-[docs site](https://sazardev.github.io/wr/guide.html), with six palettes —
-[the design system](docs/DESIGN.md) describes them): how to follow links, go
-back and forward, search the web, use history and bookmarks, select and copy,
-and make it yours.
+[docs site](https://sazardev.github.io/wr/docs/guide/), one page per section,
+with six palettes — [the design system](docs/DESIGN.md) describes them): how to
+follow links, go back and forward, search the web, use history and bookmarks,
+select and copy, and make it yours.
 
 Braille needs a font with those glyphs (most modern monospace fonts have them,
 e.g. Nerd Fonts). If yours does not, turn off *Braille decoration* in Settings.
@@ -253,7 +254,7 @@ and the defaults are used).
 | `code_frame` | `true` | label and frame around code blocks |
 | `links` | `"footnotes"` | `footnotes`, `inline` or `hidden` (links stay clickable in all of them) |
 | `braille` | `true` | braille decoration; `false` = plain glyphs |
-| `accent` | `"blue"` | color of panels, keys, marks and bars: blue, cyan, green, magenta, yellow, red, white |
+| `accent` | `"blue"` | color of panels, keys, marks and bars, and the one the headings walk: blue, cyan, green, magenta, yellow, red, gray, white (your terminal's own colors) or orange, violet, teal, pink, lime, slate (fixed presets) |
 | `scrollbar` | `true` | scrollbar on the right |
 | `footer` | `true` | the footer row |
 | `footer_rule` | `true` | the thin rule above the footer |
@@ -319,9 +320,11 @@ WSL2:
 Code is highlighted in parallel, one goroutine per block, and the result is
 memoized, so resizing the window never tokenizes again.
 
-It uses Bubble Tea **v2**: v1 queries the terminal for its background color at
-startup and, if the terminal does not answer (some multiplexers), waits up to
-5 seconds.
+It uses Bubble Tea **v2**: it asks the terminal for its background color at
+startup and moves the palette to the half of the 16 colors that reads on it —
+the bright one (94) on a dark background, the plain, darker one (34) on a light
+one. A terminal that does not answer (some multiplexers) keeps the default,
+which suits a dark one.
 
 ## How it works
 

@@ -1,0 +1,33 @@
+---
+import type { DocEntry } from '../lib/doc-nav';
+import { docPath } from '../lib/urls';
+
+interface Props {
+  doc: string;
+  previous: DocEntry | undefined;
+  next: DocEntry | undefined;
+}
+
+const { doc, previous, next } = Astro.props;
+const label = (entry: DocEntry): string =>
+  entry.data.section === 'index' ? 'overview' : entry.data.title;
+---
+
+<nav class="pager" aria-label="Section navigation">
+  {previous ? (
+    <a href={docPath(doc, previous.data.section)} rel="prev">
+      <span class="dir">◂ PREV</span>
+      <span class="what">{label(previous)}</span>
+    </a>
+  ) : (
+    <span class="end">first section</span>
+  )}
+  {next ? (
+    <a href={docPath(doc, next.data.section)} rel="next" class="next">
+      <span class="dir">NEXT ▸</span>
+      <span class="what">{label(next)}</span>
+    </a>
+  ) : (
+    <span class="end" style="text-align:right">end of the {doc}</span>
+  )}
+</nav>

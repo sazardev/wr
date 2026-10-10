@@ -1,0 +1,17 @@
+---
+interface Props {
+  glyph: string;
+  title: string;
+  /** Small note on the right of the rule, e.g. "generated from keys.go". */
+  note?: string;
+}
+
+const { glyph, title, note } = Astro.props;
+---
+
+<div class="sec-head">
+  <span class="glyph">{glyph}</span>
+  <h2>{title}</h2>
+  {note && <span class="note">{note}</span>}
+</div>
+<slot />

@@ -1,0 +1,168 @@
+---
+import Base from '../../layouts/Base.astro';
+import RuleBar from '../../components/RuleBar.astro';
+import { DOCS } from '../../lib/registry';
+import { docEntries } from '../../lib/doc-nav';
+import { settingRows, shortcutGroups } from '../../lib/reference';
+import { repo, withBase } from '../../lib/urls';
+import { siteVersion } from '../../lib/version';
+
+// /docs/ — the documentation home. Three doors in, every document listed, and
+// a note about where the pages come from: the repository itself.
+
+const version = siteVersion();
+
+const entriesByDoc = new Map<string, Awaited<ReturnType<typeof docEntries>>>();
+for (const meta of DOCS) {
+  entriesByDoc.set(meta.id, await docEntries(meta.id));
+}
+
+const sections = (doc: string) => entriesByDoc.get(doc)!.filter((entry) => entry.data.section !== 'index');
+
+const starts = [
+  {
+    glyph: '⣿',
+    title: 'Start here',
+    text: 'Install wr and read your first page: the screen, the keys, the first link you follow.',
+    href: withBase('/docs/guide/start/'),
+    meta: 'guide / start',
+  },
+  {
+    glyph: '⣤',
+    title: 'Every shortcut',
+    text: `All ${shortcutGroups().reduce((sum, group) => sum + group.items.length, 0)} default bindings grouped like the program’s panel, generated from keys.go.`,
+    href: withBase('/docs/reference/shortcuts/'),
+    meta: 'reference / shortcuts',
+  },
+  {
+    glyph: '⣶',
+    title: 'Every setting',
+    text: `The whole config.toml (${settingRows().length} options) with defaults and what each one does, from the README.`,
+    href: withBase('/docs/reference/settings/'),
+    meta: 'reference / settings',
+  },
+];
+---
+
+<Base
+  title="Documentation — wr"
+  description="The wr documentation: the guide, the design language, the changelog and the generated reference. Every page is one section of a file in the repository."
+  current="docs"
+>
+  <div class="wrap" style="padding-top:52px">
+    <div class="sec-head">
+      <span class="glyph">⣿</span>
+      <h2>DOCUMENTATION</h2>
+      <span class="note">v{version} · built from the repository</span>
+    </div>
+    <RuleBar fill={24} />
+    <h1 style="font-size:clamp(28px,4.6vw,44px);margin:0 0 10px">
+      Everything wr can do, <span class="hl" style="color:var(--accent)">one page at a time</span>.
+    </h1>
+    <p class="lead" style="font-size:16.5px">
+      Each page below is one section of a file in this repository — the guide, the design notes
+      and the changelog are the very files that ship with the program. The reference pages are
+      generated from the program’s own sources: <code>keys.go</code> for the shortcuts and the
+      README for the settings. Press <kbd>/</kbd> to search all of it.
+    </p>
+
+    <div class="cards" style="margin-top:30px">
+      {starts.map((card) => (
+        <a class="card" href={card.href}>
+          <div class="top">
+            <span class="glyph">{card.glyph}</span>
+            <h3>{card.title}</h3>
+            <span class="meta">{card.meta}</span>
+          </div>
+          <p>{card.text}</p>
+          <span class="go">open ▸</span>
+        </a>
+      ))}
+    </div>
+  </div>
+
+  <section class="wrap">
+    <div class="sec-head">
+      <span class="glyph">⡇</span>
+      <h2>ALL DOCUMENTS</h2>
+      <span class="note">{DOCS.length} documents</span>
+    </div>
+    <RuleBar fill={20} />
+    <div class="cards">
+      {DOCS.map((meta) => {
+        const list = sections(meta.id);
+        return (
+          <a class="card" href={withBase(`/docs/${meta.id}/`)}>
+            <div class="top">
+              <span class="glyph">{meta.glyph}</span>
+              <h3>{meta.label}</h3>
+              <span class="meta">{list.length} pages</span>
+            </div>
+            <p>{meta.blurb}</p>
+            <p style="color:var(--line-strong);font-size:12px;margin-top:8px">
+              {list.slice(0, 5).map((entry) => entry.data.title).join(' · ')}
+              {list.length > 5 ? ` · …${list.length - 5} more` : ''}
+            </p>
+            <span class="go">read ▸</span>
+          </a>
+        );
+      })}
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="sec-head">
+      <span class="glyph">⣶</span>
+      <h2>REFERENCE</h2>
+      <span class="note">generated at build time</span>
+    </div>
+    <RuleBar fill={16} />
+    <div class="cards">
+      <a class="card" href={withBase('/docs/reference/shortcuts/')}>
+        <div class="top"><span class="glyph">⣤</span><h3>Shortcuts</h3><span class="meta">keys.go</span></div>
+        <p>Every default key binding, with the groups and the order of the program’s shortcuts panel.</p>
+        <span class="go">open ▸</span>
+      </a>
+      <a class="card" href={withBase('/docs/reference/settings/')}>
+        <div class="top"><span class="glyph">⣶</span><h3>Settings</h3><span class="meta">README.md</span></div>
+        <p>Every option of config.toml, its default and its meaning — plus where wr keeps its files.</p>
+        <span class="go">open ▸</span>
+      </a>
+      <a class="card" href={withBase('/docs/search/')}>
+        <div class="top"><span class="glyph">⡇</span><h3>Search</h3><span class="meta">?q=</span></div>
+        <p>One page, the query in the URL: share a search like you share a link.</p>
+        <span class="go">open ▸</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="sec-head">
+      <span class="glyph">⣷</span>
+      <h2>WHERE THIS COMES FROM</h2>
+    </div>
+    <RuleBar fill={14} />
+    <div class="cards">
+      <a class="card" href={repo.file('docs/GUIDE.md')}>
+        <div class="top"><span class="glyph">⣿</span><h3>docs/GUIDE.md</h3><span class="meta">the guide</span></div>
+        <p>The guide ships inside every release tarball and is the source of the guide pages here.</p>
+        <span class="go">view on GitHub ▸</span>
+      </a>
+      <a class="card" href={repo.file('docs/DESIGN.md')}>
+        <div class="top"><span class="glyph">⡇</span><h3>docs/DESIGN.md</h3><span class="meta">the design language</span></div>
+        <p>The rules, the tokens and the motion — of this site and of the program’s own screens.</p>
+        <span class="go">view on GitHub ▸</span>
+      </a>
+      <a class="card" href={repo.file('keys.go')}>
+        <div class="top"><span class="glyph">⣤</span><h3>keys.go</h3><span class="meta">the shortcuts</span></div>
+        <p>The file the program binds keys from: the reference page is parsed out of it at build time.</p>
+        <span class="go">view on GitHub ▸</span>
+      </a>
+      <a class="card" href={repo.file('web')}>
+        <div class="top"><span class="glyph">⣷</span><h3>web/</h3><span class="meta">this site</span></div>
+        <p>An Astro app: content collections, a custom loader, one page per section, deployed to GitHub Pages.</p>
+        <span class="go">view on GitHub ▸</span>
+      </a>
+    </div>
+  </section>
+</Base>

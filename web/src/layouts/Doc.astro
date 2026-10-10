@@ -1,0 +1,64 @@
+---
+import { render } from 'astro:content';
+import Base from './Base.astro';
+import Crumbs, { type Crumb } from '../components/Crumbs.astro';
+import DocAside from '../components/DocAside.astro';
+import Pager from '../components/Pager.astro';
+import { docEntry, docEntries, neighboursOf } from '../lib/doc-nav';
+import { docMeta } from '../lib/registry';
+import { docPath, repo, withBase } from '../lib/urls';
+import { siteVersion } from '../lib/version';
+
+interface Props {
+  /** Document id: guide, design, changelog. */
+  doc: string;
+  /** Section slug, or 'index' for the document overview. */
+  section: string;
+}
+
+const { doc, section } = Astro.props;
+const entry = await docEntry(doc, section);
+const meta = docMeta(doc);
+if (!entry || !meta) return Astro.redirect(withBase('/404/'));
+
+const { Content } = await render(entry);
+const entries = await docEntries(doc);
+const { previous, next } = neighboursOf(entries, section);
+const version = siteVersion();
+
+const title =
+  entry.data.section === 'index'
+    ? `${entry.data.title || meta.label} — wr docs`
+    : `${entry.data.title} — ${meta.label} — wr docs`;
+const description = entry.data.summary || meta.blurb;
+const crumbs: Crumb[] = [
+  { label: 'docs', href: withBase('/docs/') },
+  { label: meta.label, href: docPath(doc) },
+  ...(entry.data.section === 'index' ? [] : [{ label: entry.data.title }]),
+];
+---
+
+<Base title={title} description={description} current={doc}>
+  <div class="wrap doc-shell">
+    <DocAside doc={doc} section={section} entries={entries} headings={entry.data.headings} />
+    <div>
+      <Crumbs items={crumbs} />
+      <div class="doc-head">
+        <span class="glyph">{meta.glyph}</span>
+        <h1>{entry.data.section === 'index' ? entry.data.title || meta.label : entry.data.title}</h1>
+        <span class="chip accent"><span class="glyph">⣄</span> v{version}</span>
+      </div>
+      {description && entry.data.section !== 'index' && <p class="doc-summary">{description}</p>}
+      <div class="doc-actions">
+        <a href={repo.file(meta.file, entry.data.editAnchor)}>edit this page</a>
+        <a href={repo.file(meta.file)}>source: {meta.file}</a>
+        <a href={withBase('/docs/search/')}>search the docs</a>
+      </div>
+      <div class="prose">
+        <Content />
+      </div>
+      {entry.data.section === 'index' && <slot name="after" />}
+      <Pager doc={doc} previous={previous} next={next} />
+    </div>
+  </div>
+</Base>

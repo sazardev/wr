@@ -1,0 +1,66 @@
+---
+import type { DocEntry } from '../lib/doc-nav';
+import { DOCS, docMeta } from '../lib/registry';
+import { docPath, withBase } from '../lib/urls';
+
+interface Props {
+  doc: string;
+  section: string;
+  entries: readonly DocEntry[];
+  /** Headings of the current section, for the "on this page" panel. */
+  headings: readonly { depth: number; slug: string; text: string }[];
+}
+
+const { doc, section, entries, headings } = Astro.props;
+const sections = entries.filter((entry) => entry.data.section !== 'index');
+const intro = entries.find((entry) => entry.data.section === 'index');
+---
+
+<aside class="doc-aside">
+  <div class="doc-switch">
+    {DOCS.map((meta) => (
+      <a
+        href={docPath(meta.id)}
+        class={meta.id === doc ? 'active' : ''}
+        aria-current={meta.id === doc ? 'page' : undefined}
+      >
+        {meta.id}
+      </a>
+    ))}
+  </div>
+
+  <div class="aside-title">{docMeta(doc)?.label ?? doc} · SECTIONS</div>
+  <nav aria-label={`Sections of the ${doc} documentation`}>
+    {intro && (
+      <a href={docPath(doc, 'index')} class={section === 'index' ? 'active' : ''}>
+        <span class="order">⣿</span> overview
+      </a>
+    )}
+    {sections.map((entry) => (
+      <a href={docPath(doc, entry.data.section)} class={section === entry.data.section ? 'active' : ''}>
+        <span class="order">{String(entry.data.order).padStart(2, '0')}</span>
+        {entry.data.title}
+      </a>
+    ))}
+  </nav>
+
+  {headings.length > 0 && (
+    <>
+      <div class="aside-title">ON THIS PAGE</div>
+      <nav class="ref-links" aria-label="On this page">
+        {headings.map((heading) => (
+          <a href={`#${heading.slug}`} class={heading.depth > 3 ? 'lvl4' : ''}>
+            {heading.text}
+          </a>
+        ))}
+      </nav>
+    </>
+  )}
+
+  <div class="aside-title">REFERENCE</div>
+  <nav class="ref-links" aria-label="Reference">
+    <a href={withBase('/docs/reference/shortcuts/')}>Shortcuts</a>
+    <a href={withBase('/docs/reference/settings/')}>Settings</a>
+    <a href={withBase('/docs/search/')}>Search</a>
+  </nav>
+</aside>

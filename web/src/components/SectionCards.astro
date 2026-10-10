@@ -1,0 +1,44 @@
+---
+import type { DocEntry } from '../lib/doc-nav';
+import { docPath } from '../lib/urls';
+
+interface Props {
+  doc: string;
+  entries: readonly DocEntry[];
+  /** Heading of the block above the cards. */
+  title?: string;
+}
+
+const { doc, entries, title = 'IN THIS DOCUMENT' } = Astro.props;
+const sections = entries.filter((entry) => entry.data.section !== 'index');
+
+/** The card keeps the first sentence, and never a wall of text. */
+function firstSentence(text: string, limit = 150): string {
+  const clean = text.replace(/\s+/g, ' ').trim();
+  const stop = clean.search(/[.!?] /);
+  const sentence = stop > 40 ? clean.slice(0, stop + 1) : clean;
+  return sentence.length > limit ? `${sentence.slice(0, limit).trimEnd()}…` : sentence;
+}
+---
+
+<section>
+  <div class="sec-head">
+    <span class="glyph">⣤</span>
+    <h2>{title}</h2>
+    <span class="note">{sections.length} sections</span>
+  </div>
+  <div class="rule-b" data-fill="18" aria-hidden="true"></div>
+  <div class="cards">
+    {sections.map((entry) => (
+      <a class="card" href={docPath(doc, entry.data.section)}>
+        <div class="top">
+          <span class="glyph">⡇</span>
+          <h3>{entry.data.title}</h3>
+          <span class="meta">{entry.data.date ?? String(entry.data.order).padStart(2, '0')}</span>
+        </div>
+        <p>{firstSentence(entry.data.summary || entry.data.text)}</p>
+        <span class="go">read ▸</span>
+      </a>
+    ))}
+  </div>
+</section>

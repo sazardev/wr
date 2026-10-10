@@ -1,0 +1,52 @@
+---
+import { THEMES } from '../data/themes';
+import { docPath, withBase } from '../lib/urls';
+
+interface Props {
+  version: string;
+  /** Which entry is current: home, guide, design, changelog, reference, search. */
+  current: string;
+}
+
+const { version, current } = Astro.props;
+
+const links = [
+  { href: withBase('/'), label: 'Home', key: 'home' },
+  { href: docPath('guide'), label: 'Guide', key: 'guide' },
+  { href: docPath('design'), label: 'Design', key: 'design' },
+  { href: docPath('changelog'), label: 'Changelog', key: 'changelog' },
+  { href: withBase('/docs/reference/'), label: 'Reference', key: 'reference' },
+];
+---
+
+<header class="site-head">
+  <a class="brand" href={withBase('/')} aria-label="wr, home">
+    <span class="b">⣿</span> wr <small>v{version}</small>
+  </a>
+  <nav aria-label="Main">
+    {links.map((link) => (
+      <a href={link.href} class={current === link.key ? 'active' : ''} aria-current={current === link.key ? 'page' : undefined}>
+        {link.label}
+      </a>
+    ))}
+    <a href={withBase('/docs/search/')} class={current === 'search' ? 'active' : ''} aria-current={current === 'search' ? 'page' : undefined}>
+      Search <span class="k">/</span>
+    </a>
+  </nav>
+  <div class="themes" role="group" aria-label="Theme">
+    <span class="label">⣀ theme</span>
+    {THEMES.map((theme) => (
+      <button
+        type="button"
+        data-theme-pick={theme.id}
+        aria-pressed={theme.id === 'wr'}
+        aria-label={`theme: ${theme.id}`}
+        title={`${theme.id} (${theme.scheme})`}
+      >
+        {[theme.colors[0], theme.colors[1], theme.colors[2], theme.colors[4]].map((color) => (
+          <i style={`background:${color}`} />
+        ))}
+      </button>
+    ))}
+  </div>
+</header>

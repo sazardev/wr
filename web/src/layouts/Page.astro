@@ -1,0 +1,38 @@
+---
+import Base from './Base.astro';
+import Crumbs from '../components/Crumbs.astro';
+import { withBase } from '../lib/urls';
+
+interface Props {
+  /** Page title, also used in the document title. */
+  title: string;
+  description: string;
+  /** Braille mark next to the heading. */
+  glyph?: string;
+  /** Short line under the heading. */
+  summary?: string;
+  /** Where the page comes from, shown in the actions row. */
+  source?: { label: string; href: string };
+  current?: string;
+}
+
+const { title, description, glyph = '⣤', summary, source, current = 'reference' } = Astro.props;
+---
+
+<Base title={`${title} — wr docs`} description={description} current={current}>
+  <div class="wrap" style="padding-top:32px">
+    <Crumbs items={[{ label: 'docs', href: withBase('/docs/') }, { label: title }]} />
+    <div class="doc-head">
+      <span class="glyph">{glyph}</span>
+      <h1>{title}</h1>
+    </div>
+    {summary && <p class="doc-summary">{summary}</p>}
+    {source && (
+      <div class="doc-actions">
+        <a href={source.href}>source: {source.label}</a>
+        <a href={withBase('/docs/search/')}>search the docs</a>
+      </div>
+    )}
+    <slot />
+  </div>
+</Base>

@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://sazardev.github.io/wr/sitemap-0.xml

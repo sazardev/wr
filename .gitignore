@@ -4,3 +4,9 @@ qa-out/
 __pycache__/
 *.pyc
 media/out/
+
+# the documentation site (web/)
+web/node_modules/
+web/dist/
+web/.astro/
+web/*.tsbuildinfo

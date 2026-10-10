@@ -1,0 +1,29 @@
+---
+import { SCENES, sceneAsset } from '../data/scenes';
+import { assetUrl } from '../lib/urls';
+
+// The hero reel: the real captured frames, one at a time, with the command
+// that produced it typed underneath (?scene= picks one to link to).
+---
+
+<div class="reel term" id="reel">
+  <div class="term-bar">
+    <span class="dots" data-spin>⣶</span>
+    <span class="title">wr — <b id="reel-title">reading</b></span>
+    <span class="right">100×30</span>
+  </div>
+  <div class="reel-stage">
+    {SCENES.map((scene, i) => (
+      <img
+        class={`reel-frame${i === 0 ? ' is-on' : ''}`}
+        src={assetUrl(sceneAsset(scene))}
+        alt={scene.alt}
+        data-name={scene.name}
+        data-cmd={scene.cmd}
+        loading={i === 0 ? 'eager' : 'lazy'}
+        decoding="async"
+      />
+    ))}
+  </div>
+  <div class="reel-cmd"><span class="p">$</span> <span id="reel-type"></span><span class="blinker">▊</span></div>
+</div>

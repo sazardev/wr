@@ -1,0 +1,33 @@
+---
+import { repo, withBase, docPath } from '../lib/urls';
+
+interface Props {
+  version: string;
+}
+
+const { version } = Astro.props;
+const hints = [
+  { href: withBase('/'), key: '⣿', label: 'home' },
+  { href: docPath('guide'), key: '⡇', label: 'guide' },
+  { href: docPath('design'), key: '⣷', label: 'design' },
+  { href: docPath('changelog'), key: '⣄', label: 'changelog' },
+  { href: withBase('/docs/reference/shortcuts/'), key: '⣤', label: 'shortcuts' },
+  { href: repo.url, key: '⡇', label: 'github' },
+  { href: repo.releases, key: '⣶', label: 'releases' },
+];
+---
+
+<footer class="site-foot">
+  <div class="hints">
+    {hints.map((hint) => (
+      <a href={hint.href}>
+        <span class="k">{hint.key}</span> {hint.label}
+      </a>
+    ))}
+  </div>
+  <div class="foot-right">
+    <span class="foot-version">v{version}</span>
+    <span id="progress" aria-hidden="true"></span>
+    <span id="pct">0%</span>
+  </div>
+</footer>

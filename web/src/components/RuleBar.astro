@@ -1,0 +1,10 @@
+---
+interface Props {
+  /** How many ⣀ to fill: the script trims it to the row's width. */
+  fill?: number;
+}
+
+const { fill = 24 } = Astro.props;
+---
+
+<div class="rule-b" data-fill={fill} aria-hidden="true"></div>

@@ -1,0 +1,74 @@
+---
+import Page from '../../../layouts/Page.astro';
+import RuleBar from '../../../components/RuleBar.astro';
+import { pathRows, settingRows } from '../../../lib/reference';
+import { inlineHtml } from '../../../lib/inline';
+import { repo, withBase } from '../../../lib/urls';
+
+// /docs/reference/settings/ — the Configuration and "Where things live"
+// tables of the README, rendered as documentation. The README stays the single
+// source of truth; this page only changes its clothes.
+
+const settings = settingRows();
+const paths = pathRows();
+---
+
+<Page
+  title="Settings"
+  description={`Every option of wr (${settings.length} keys) with its default and what it does, generated from the README.`}
+  glyph="⣶"
+  summary="Settings change from inside the program (press ,) and are saved for you; the file is the same thing, fully commented. A broken file never stops you from reading."
+  source={{ label: 'README.md', href: repo.file('README.md', 'configuration') }}
+>
+  <div class="sec-head">
+    <span class="glyph">⣿</span>
+    <h2>CONFIG.TOML</h2>
+    <span class="note">README.md · {settings.length} keys</span>
+  </div>
+  <RuleBar fill={22} />
+
+  <table class="set-table" style="margin-top:4px">
+    <thead>
+      <tr><th>Key</th><th>Default</th><th>What it does</th></tr>
+    </thead>
+    <tbody>
+      {settings.map((row) => (
+        <tr>
+          <td class="key">{row.key}</td>
+          <td class="def">{row.default}</td>
+          <td set:html={inlineHtml(row.description)} />
+        </tr>
+      ))}
+    </tbody>
+  </table>
+  <p class="search-hint">
+    Create the file with <code>wr --config</code>; it comes with everything commented.
+    Key bindings live in the <code>[keys]</code> table — see <a href={withBase('/docs/reference/shortcuts/')}>Shortcuts</a>.
+  </p>
+
+  <div class="sec-head" style="margin-top:52px" id="where-things-live">
+    <span class="glyph">⣷</span>
+    <h2>WHERE THINGS LIVE</h2>
+    <span class="note">README.md</span>
+  </div>
+  <RuleBar fill={16} />
+
+  <table class="set-table" style="margin-top:4px">
+    <thead>
+      <tr><th>Path</th><th>What</th></tr>
+    </thead>
+    <tbody>
+      {paths.map((row) => (
+        <tr>
+          <td class="key">{row.path}</td>
+          <td set:html={inlineHtml(row.what)} />
+        </tr>
+      ))}
+    </tbody>
+  </table>
+  <p class="search-hint">
+    All directories are <code>0700</code> and files <code>0600</code>. The cache and the history
+    store the addresses and the content of what you read: turn them off in Settings, or clear
+    them from the History panel and the menu.
+  </p>
+</Page>

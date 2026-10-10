@@ -3,7 +3,8 @@
 #
 # Runs the real program in a PTY with the pinned config (media/demo.toml), one
 # scene at a time, and converts each captured screen to a flat SVG in
-# docs/assets/scenes/. Deterministic: same config, same page, same size.
+# web/public/assets/scenes/ (the documentation site's assets). Deterministic:
+# same config, same page, same size.
 #
 # Usage: sh scripts/capture.sh            # WR=$PWD/wr by default
 #        WR=/path/to/wr sh scripts/capture.sh
@@ -28,7 +29,7 @@ python3 scripts/pty_capture.py \
   --out "$out" \
   --width 100 --height 30
 
-mkdir -p docs/assets/scenes
+mkdir -p web/public/assets/scenes
 python3 - "$out" <<'PY'
 import json, subprocess, sys
 from pathlib import Path
@@ -40,7 +41,7 @@ for s in json.loads(Path("media/scenes.json").read_text())["scenes"]:
         continue
     subprocess.run([sys.executable, "scripts/ansi_to_svg.py", str(frame),
                    "--title", f"wr — {s['name']}",
-                   "--out", f"docs/assets/scenes/{s['name']}.svg"], check=True)
+                   "--out", f"web/public/assets/scenes/{s['name']}.svg"], check=True)
 PY
 
 version=$("$WR" --version 2>/dev/null || echo unknown)
@@ -56,11 +57,11 @@ commit=$(git rev-parse --short HEAD 2>/dev/null || echo -)
   echo
   echo "| file | bytes | sha256 |"
   echo "|---|---|---|"
-  for f in docs/assets/scenes/*.svg; do
+  for f in web/public/assets/scenes/*.svg; do
     [ -f "$f" ] || continue
     printf '| %s | %s | %s |\n' "$f" "$(wc -c <"$f")" "$(sha256sum "$f" | cut -c1-16)"
   done
 } >media/ASSETS.md
 
-echo "capture: done — $(ls docs/assets/scenes | tr '\n' ' ')"
+echo "capture: done — $(ls web/public/assets/scenes | tr '\n' ' ')"
 echo "manifest: media/ASSETS.md ($version)"

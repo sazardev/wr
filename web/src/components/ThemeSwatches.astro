@@ -1,0 +1,20 @@
+---
+import { THEMES } from '../data/themes';
+
+// Theme swatches: the same palettes the chips pick, shown big on the landing
+// page so the visitor sees what each one looks like.
+---
+
+<div class="swatches" id="swatches">
+  {THEMES.map((theme) => (
+    <button class="swatch" type="button" data-theme-pick={theme.id} aria-pressed={theme.id === 'wr'}>
+      <span class="chips">
+        {[theme.colors[0], theme.colors[1], theme.colors[2], theme.colors[4]].map((color) => (
+          <i style={`background:${color}`} />
+        ))}
+      </span>
+      <span class="name">{theme.id}</span>
+      <span class="keys">{theme.scheme}</span>
+    </button>
+  ))}
+</div>

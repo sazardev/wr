@@ -1,0 +1,75 @@
+---
+import { ClientRouter } from 'astro:transitions';
+import SiteHeader from '../components/SiteHeader.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import { siteVersion } from '../lib/version';
+import { THEMES } from '../data/themes';
+import { assetUrl } from '../lib/urls';
+import '../styles/site.css';
+
+interface Props {
+  title: string;
+  description: string;
+  /** Path of the page, for the canonical link. Defaults to the current one. */
+  path?: string;
+  /** Which header entry is current: home, guide, design, changelog, reference, search. */
+  current?: string;
+  bodyClass?: string;
+  /** Theme ids the inline script may apply before the first paint. */
+  prePaint?: boolean;
+}
+
+const { title, description, path, current = '', bodyClass = '', prePaint = true } = Astro.props;
+const version = siteVersion();
+const canonical = new URL(path ?? Astro.url.pathname, Astro.site).toString();
+const shareImage = new URL(assetUrl('/assets/scenes/ui.svg'), Astro.site).toString();
+const icon = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2307090d'/%3E%3Ctext x='50' y='74' font-size='66' text-anchor='middle' fill='%23${THEMES[0]!.colors[4]!.slice(1)}' font-family='monospace'%3E%E2%A3%BF%3C/text%3E%3C/svg%3E`;
+---
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>{title}</title>
+<meta name="description" content={description}>
+<link rel="canonical" href={canonical}>
+<meta property="og:title" content={title}>
+<meta property="og:description" content={description}>
+<meta property="og:type" content="website">
+<meta property="og:url" content={canonical}>
+<meta property="og:image" content={shareImage}>
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href={icon}>
+{prePaint && (
+  <script is:inline set:html={`
+    (function () {
+      var ids = ${JSON.stringify(THEMES.map((t) => t.id))};
+      var pick = null;
+      try { pick = new URLSearchParams(location.search).get('theme'); } catch (e) {}
+      if (!pick || ids.indexOf(pick) === -1) {
+        try { pick = localStorage.getItem('wr-docs-theme'); } catch (e) {}
+      }
+      if (!pick || ids.indexOf(pick) === -1) {
+        pick = matchMedia('(prefers-color-scheme: light)').matches ? 'paper' : 'wr';
+      }
+      document.documentElement.dataset.theme = pick;
+    })();
+  `} />
+)}
+<ClientRouter />
+</head>
+<body class={bodyClass}>
+<a class="skip-link" href="#main">skip to content</a>
+<canvas id="field" aria-hidden="true"></canvas>
+<SiteHeader version={version} current={current} />
+<main id="main">
+  <slot />
+</main>
+<SiteFooter version={version} />
+<script>
+  import '../scripts/enhance';
+</script>
+</body>
+</html>
