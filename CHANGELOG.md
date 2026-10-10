@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/sazardev/wr/compare/v0.3.0...v0.4.0) (2026-10-10)
+
+
+### Features
+
+* give the accent a partner color and name the status colors ([6e5397d](https://github.com/sazardev/wr/commit/6e5397d3f46b05b41c841c3aa0fc96031644e91d))
+
 ## [0.3.0](https://github.com/sazardev/wr/compare/v0.2.1...v0.3.0) (2026-10-09)
 
 
