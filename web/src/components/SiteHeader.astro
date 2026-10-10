@@ -33,20 +33,52 @@ const links = [
       Search <span class="k">/</span>
     </a>
   </nav>
-  <div class="themes" role="group" aria-label="Theme">
-    <span class="label">⣀ theme</span>
-    {THEMES.map((theme) => (
-      <button
-        type="button"
-        data-theme-pick={theme.id}
-        aria-pressed={theme.id === 'wr'}
-        aria-label={`theme: ${theme.id}`}
-        title={`${theme.id} (${theme.scheme})`}
-      >
-        {[theme.colors[0], theme.colors[1], theme.colors[2], theme.colors[4]].map((color) => (
+  <div class="themes">
+    <button
+      type="button"
+      class="theme-trigger"
+      data-theme-menu
+      aria-haspopup="dialog"
+      aria-expanded="false"
+      aria-label={`theme: ${THEMES[0]!.id} (${THEMES[0]!.scheme})`}
+      title={`theme: ${THEMES[0]!.id} (${THEMES[0]!.scheme})`}
+    >
+      <span class="chips" data-theme-chips aria-hidden="true">
+        {[THEMES[0]!.colors[0], THEMES[0]!.colors[1], THEMES[0]!.colors[2], THEMES[0]!.colors[4]].map((color) => (
           <i style={`background:${color}`} />
         ))}
-      </button>
-    ))}
+      </span>
+      <span class="nm" data-theme-name>{THEMES[0]!.id}</span>
+      <span class="sc" data-theme-scheme>{THEMES[0]!.scheme}</span>
+      <span class="caret" aria-hidden="true">▾</span>
+    </button>
   </div>
 </header>
+
+<div class="theme-modal" data-theme-modal hidden>
+  <div class="tm-box" role="dialog" aria-modal="true" aria-label="Theme">
+    <div class="tm-top">
+      <span class="glyph">⣿</span> theme
+      <span class="fill" aria-hidden="true">──────────────────────────────────────────</span>
+    </div>
+    <div class="tm-list" role="listbox" aria-label="Theme" tabindex="0" data-theme-list>
+      {THEMES.map((theme) => (
+        <div class="tm-opt" role="option" data-theme-option={theme.id} aria-selected="false">
+          <span class="mark" aria-hidden="true">▸</span>
+          <span class="nm">{theme.id}</span>
+          <span class="sc">{theme.scheme}</span>
+          <span class="chips" aria-hidden="true">
+            {[theme.colors[0], theme.colors[1], theme.colors[2], theme.colors[4]].map((color) => (
+              <i style={`background:${color}`} />
+            ))}
+          </span>
+        </div>
+      ))}
+    </div>
+    <div class="tm-foot">
+      <span><span class="key">↑↓</span> move</span>
+      <span><span class="key">↵</span> apply</span>
+      <span><span class="key">esc</span> cancel</span>
+    </div>
+  </div>
+</div>
