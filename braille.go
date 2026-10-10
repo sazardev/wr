@@ -75,7 +75,7 @@ func progressBar(cells int, pct float64) string {
 			b.WriteRune(brailleFill[steps])
 		case u <= 0:
 			if !closed {
-				b.WriteString("\x1b[90m")
+				b.WriteString("\x1b[" + dimFG + "m")
 				closed = true
 			}
 			b.WriteRune(brailleFill[0])

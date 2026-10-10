@@ -63,7 +63,9 @@ Quit with `q`. `Ctrl+C` also always quits.
 - **Notices** such as "copied 57 characters" replace the shortcuts for about a
   second and disappear the moment you press a key or click.
 - Everything uses your terminal's 16 colors, so it matches your theme. The
-  accent color (panels, keys, bars) can be changed in Settings.
+  accent color (panels, keys, bars, and the colors the headings walk) can be
+  changed in Settings, and it has a partner color for the secondary highlights
+  (the light end of the footer rule, the search count, the focused link).
 
 ## Reading a page
 
@@ -254,7 +256,9 @@ Some ideas:
 - **A quieter look:** *Braille decoration* off, *Heading rules* off, *Spacing*
   compact.
 - **Your terminal's colors only:** the accent color is one of your 16 terminal
-  colors, so any choice follows your theme.
+  colors, so any choice follows your theme. The six presets after them (orange,
+  violet, teal, pink, lime, slate) are fixed 256-colors instead: pick one when
+  your theme does not have the color you want.
 - **Everything instant:** *Animations* off.
 
 All of this lives in one file, `~/.config/wr/config.toml`
@@ -354,7 +358,9 @@ version, or `x` to open it in your browser.
 
 **Colors look wrong.** `wr` uses your terminal's 16-color palette, so colors
 come from your terminal theme. Pick another accent color in Settings if one is
-hard to see.
+hard to see, and remember that the presets (orange onwards) keep their color on
+every terminal. On a terminal with a light background the palette moves to the
+darker half of the 16 colors by itself.
 
 **It starts but looks cramped or odd in a small window.** Make the window
 bigger; panels and the footer shrink to fit, but below about 24 columns or 3

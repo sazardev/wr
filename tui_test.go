@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"image/color"
 	"strings"
 	"testing"
 	"time"
@@ -373,6 +374,27 @@ func TestLoadingAndErrorScreens(t *testing.T) {
 	m.Update(loadedMsg{err: fmt.Errorf("HTTP 404")})
 	if v := ansi.Strip(m.render()); !strings.Contains(v, "HTTP 404") {
 		t.Errorf("error screen:\n%s", v)
+	}
+}
+
+// The terminal's background decides which half of the 16 colors the palette
+// uses: the bright one on a dark background, the plain one on a light one.
+func TestTheTerminalsBackgroundReTintsThePalette(t *testing.T) {
+	resetGlobals(t)
+	m := newTestModel(t, 100, 40)
+	if accentFG != "94" {
+		t.Fatalf("a dark background is assumed until the terminal answers: %q", accentFG)
+	}
+	m.Update(tea.BackgroundColorMsg{Color: color.RGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xff}})
+	if accentFG != "34" || headColor[0] != "34" {
+		t.Errorf("a light terminal must get the plain half: %q %v", accentFG, headColor)
+	}
+	if !strings.Contains(strings.Join(m.doc.Lines, ""), "\x1b[1;34m") {
+		t.Error("the page already drawn must be redrawn in the new palette")
+	}
+	m.Update(tea.BackgroundColorMsg{Color: color.RGBA{R: 0x10, G: 0x10, B: 0x10, A: 0xff}})
+	if accentFG != "94" {
+		t.Errorf("back to a dark background: %q", accentFG)
 	}
 }
 

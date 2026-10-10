@@ -14,7 +14,7 @@ import (
 // resetGlobals restores the package-level state a settings change can touch.
 func resetGlobals(t *testing.T) {
 	t.Helper()
-	t.Cleanup(func() { setAccent("blue"); setScrollSpeed("normal"); cacheOn = true })
+	t.Cleanup(func() { setTerminalDark(true); setAccent("blue"); setScrollSpeed("normal"); cacheOn = true })
 }
 
 func optionIndex(t *testing.T, m *model, label string) int {
@@ -435,6 +435,110 @@ func TestAccentColorsThePanels(t *testing.T) {
 	setAccent("nonsense")
 	if accentFG != "94" {
 		t.Error("an unknown accent falls back to blue")
+	}
+}
+
+func TestThePaletteHasTwoShades(t *testing.T) {
+	resetGlobals(t)
+	dark := func() [4]string {
+		setAccent("blue")
+		return [4]string{accentFG, accentBG, accentDim, accentAlt}
+	}
+	before := dark()
+	if want := [4]string{"94", "104", "34", "96"}; before != want {
+		t.Errorf("on a dark terminal: %v, want %v", before, want)
+	}
+	if !setTerminalDark(false) {
+		t.Fatal("a light background must re-tint the palette")
+	}
+	setAccent("blue")
+	light := [4]string{accentFG, accentBG, accentDim, accentAlt}
+	if want := [4]string{"34", "104", "94", "36"}; light != want {
+		t.Errorf("on a light terminal: %v, want %v", light, want)
+	}
+	if light[0] == light[2] || light[0] == before[0] {
+		t.Error("the light shade must be its own, and different from the dark one")
+	}
+	if setTerminalDark(false) {
+		t.Error("the same background twice changes nothing")
+	}
+}
+
+func TestPresetAccentsDoNotFollowTheTerminal(t *testing.T) {
+	resetGlobals(t)
+	setAccent("orange")
+	preset := [4]string{accentFG, accentBG, accentDim, accentAlt}
+	if want := [4]string{"38;5;208", "48;5;208", "38;5;130", "38;5;214"}; preset != want {
+		t.Errorf("orange: %v, want %v", preset, want)
+	}
+	setTerminalDark(false)
+	setAccent("orange")
+	if got := [4]string{accentFG, accentBG, accentDim, accentAlt}; got != preset {
+		t.Errorf("a preset must not move with the background: %v vs %v", got, preset)
+	}
+}
+
+func TestHeadingsWalkTheAccent(t *testing.T) {
+	resetGlobals(t)
+	setAccent("blue")
+	if want := [6]string{"94", "96", "92", "93", "95", "97"}; headColor != want {
+		t.Errorf("blue walks %v, want %v", headColor, want)
+	}
+	setAccent("green")
+	if headColor[0] != accentFG || headColor[1] != accentAlt {
+		t.Errorf("the accent and its partner must lead: %v", headColor)
+	}
+	seen := map[string]bool{}
+	for _, c := range headColor {
+		if seen[c] {
+			t.Errorf("a repeated heading color in %v", headColor)
+		}
+		seen[c] = true
+	}
+	setTerminalDark(false)
+	setAccent("green")
+	if strings.HasPrefix(headColor[0], "9") {
+		t.Errorf("a light terminal wants the plain half: %v", headColor)
+	}
+}
+
+func TestEveryAccentResolves(t *testing.T) {
+	resetGlobals(t)
+	for _, name := range accentNames {
+		setAccent(name)
+		if accentFG == "" || accentBG == "" || accentDim == "" || accentAlt == "" {
+			t.Fatalf("%s: an empty code", name)
+		}
+		seen := map[string]bool{}
+		for _, c := range headColor {
+			if seen[c] {
+				t.Fatalf("%s: a repeated heading color in %v", name, headColor)
+			}
+			seen[c] = true
+		}
+		if !strings.Contains(acc2("x"), accentAlt) {
+			t.Errorf("%s: acc2 must use the partner color", name)
+		}
+		// the quiet end of the gradient and the bars drawn with it must be
+		// visible: never plain black on a dark terminal
+		if accentDim == "30" {
+			t.Errorf("%s: the muted end is invisible on a dark terminal", name)
+		}
+	}
+	cfg := defaultConfig()
+	for _, name := range accentNames {
+		cfg.Accent = name
+		cfg.normalize()
+		if cfg.Accent != name {
+			t.Errorf("%s must be a valid config value", name)
+		}
+	}
+	setTerminalDark(false)
+	for _, name := range accentNames {
+		setAccent(name)
+		if accentFG == "" || headColor[0] == "" {
+			t.Errorf("%s: the light shade is not resolved", name)
+		}
 	}
 }
 

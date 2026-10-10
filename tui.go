@@ -161,7 +161,8 @@ func (m *model) setToast(s string, warn bool) tea.Cmd {
 }
 
 func (m *model) Init() tea.Cmd {
-	cmds := []tea.Cmd{m.startNav(navInitial, m.src, 0, m.fresh)}
+	cmds := []tea.Cmd{func() tea.Msg { return tea.RequestBackgroundColor() },
+		m.startNav(navInitial, m.src, 0, m.fresh)}
 	if m.toast != "" {
 		cmds = append(cmds, m.setToast(m.toast, m.toastWarn))
 	}
@@ -339,6 +340,15 @@ func (m *model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case toastExpireMsg:
 		if msg.id == m.toastID {
 			m.toast = ""
+		}
+		return m, nil
+
+	case tea.BackgroundColorMsg:
+		// The terminal answered what background it has: the palette moves to
+		// the half of the 16 colors that reads on it. A terminal that never
+		// answers keeps the default, which suits a dark one.
+		if setTerminalDark(msg.IsDark()) {
+			m.rebuild()
 		}
 		return m, nil
 
@@ -771,7 +781,7 @@ func (m *model) body() []string {
 	if m.doc == nil {
 		switch {
 		case m.loadErr != nil:
-			rows[bodyH/2] = m.center(style("91", "✗ "+m.loadErr.Error()))
+			rows[bodyH/2] = m.center(fail("✗ " + m.loadErr.Error()))
 			if bodyH/2+2 < bodyH {
 				rows[bodyH/2+2] = m.center(dim(keyHint(&m.cfg, actOpen) + " open another page · " + keyHint(&m.cfg, actHome) + " start page · " + keyHint(&m.cfg, actQuit) + " quit"))
 			}
@@ -843,7 +853,7 @@ func (m *model) body() []string {
 			if m.cfg.Braille {
 				glyph = "⣿"
 			}
-			line = style("96", strings.Repeat(glyph, cw))
+			line = acc2(strings.Repeat(glyph, cw))
 		case i < visible && y+i < len(m.doc.Lines):
 			idx := y + i
 			line = m.doc.Lines[idx]
@@ -855,7 +865,7 @@ func (m *model) body() []string {
 				line = highlightLine(line, sp, c)
 			}
 			if sp, ok := focus[idx]; ok {
-				line = markSpans(line, sp, func(int) (string, string) { return "\x1b[30;" + accentBG + "m", "\x1b[39;49m" })
+				line = markSpans(line, sp, func(int) (string, string) { return onAccentSpan() })
 			}
 			if ss, ok := m.mouseSel.spanOn(idx, len([]rune(m.doc.Plain[idx]))); ok {
 				line = selectLine(line, ss)
@@ -908,7 +918,7 @@ func (m *model) rule() string {
 	third := m.w / 3
 	return "\x1b[" + accentDim + "m" + strings.Repeat(glyph, third) +
 		"\x1b[" + accentFG + "m" + strings.Repeat(glyph, third) +
-		"\x1b[96m" + strings.Repeat(glyph, m.w-2*third) + "\x1b[0m"
+		"\x1b[" + accentAlt + "m" + strings.Repeat(glyph, m.w-2*third) + "\x1b[0m"
 }
 
 // footerRow is the whole footer: shortcuts (or the current prompt) on the
@@ -927,17 +937,17 @@ func (m *model) progressText() string {
 	chips := ""
 	if m.cfg.FooterChips && m.w >= 70 {
 		if m.bookmarked {
-			chips += style("93", "★") + "  "
+			chips += caution("★") + "  "
 		}
 		if m.newer != "" {
-			chips += style("93", "● new version ("+keyHint(&m.cfg, actReload)+")") + "  "
+			chips += caution("● new version ("+keyHint(&m.cfg, actReload)+")") + "  "
 		}
 		if len(m.matches) > 0 {
 			q := []rune(m.query)
 			if len(q) > 12 {
 				q = append(q[:11], '…')
 			}
-			chips += style("96", fmt.Sprintf("«%s» %d/%d", string(q), m.cur+1, len(m.matches))) + "  "
+			chips += acc2(fmt.Sprintf("«%s» %d/%d", string(q), m.cur+1, len(m.matches))) + "  "
 		}
 	}
 	mode := m.cfg.FooterProgress
@@ -997,9 +1007,9 @@ func (m *model) leftText(room int) string {
 		count := dim("type to search")
 		if m.input != "" {
 			if len(m.matches) == 0 {
-				count = style("91", "no results")
+				count = fail("no results")
 			} else {
-				count = style("96", fmt.Sprintf("%d results", len(m.matches)))
+				count = acc2(fmt.Sprintf("%d results", len(m.matches)))
 			}
 		}
 		return lead + acc("/") + m.input + cursor() + "  " + count + "  " + hint("enter", "accept") + "  " + hint("esc", "cancel")
@@ -1010,17 +1020,17 @@ func (m *model) leftText(room int) string {
 	case m.mode.isPanel():
 		return lead + hint("↑↓", "move") + "  " + hint("enter", "select") + "  " + hint("esc", "close")
 	case m.toast != "":
-		col := "92"
-		if m.toastWarn {
-			col = "93"
-		}
 		shown := m.toast
 		if m.anim(m.cfg.AnimNotices) {
 			shown, _ = typed(m.toast, m.toastStart, m.now, typeSpeed)
 		}
-		return lead + "\x1b[" + col + "m" + shown + "\x1b[0m"
+		col := good
+		if m.toastWarn {
+			col = caution
+		}
+		return lead + col(shown)
 	case m.focusID >= 0:
-		return lead + acc("→") + " " + style("96", m.focusedURL())
+		return lead + acc("→") + " " + acc2(m.focusedURL())
 	case !m.cfg.FooterHints:
 		return lead
 	}
@@ -1110,7 +1120,7 @@ func plainScrollbar(h, total, view int, top float64) []string {
 
 func plainBar(cells int, pct float64) string {
 	filled := min(max(int(float64(cells)*pct/100), 0), cells)
-	return "\x1b[" + accentFG + "m" + strings.Repeat("█", filled) + "\x1b[90m" + strings.Repeat("░", cells-filled) + "\x1b[0m"
+	return acc(strings.Repeat("█", filled)) + dim(strings.Repeat("░", cells-filled))
 }
 
 // ---- external editor (config file) ----

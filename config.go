@@ -217,7 +217,7 @@ func configText(c Config) string {
 	kv("The label and frame around code blocks.", "code_frame", tomlBool(c.CodeFrame))
 	kv("Links: \"footnotes\" (numbered, listed at the end), \"inline\" (URL next to the\ntext) or \"hidden\" (text only). Links are clickable in every mode.", "links", tomlStr(c.Links))
 	kv("Braille decoration: heading marks, progress bar, scrollbar, spinner.\nfalse = plain glyphs (for fonts without braille).", "braille", tomlBool(c.Braille))
-	kv("Accent color of the interface: blue, cyan, green, magenta, yellow, red, white.\nIt is one of your terminal's 16 colors, so it follows your theme.", "accent", tomlStr(c.Accent))
+	kv("Accent color of the interface: blue, cyan, green, magenta, yellow, red, gray, white (your\nterminal's own 16 colors, so they follow its theme) or orange, violet, teal, pink, lime,\nslate (fixed 256-color presets). The headings, the quote bars and the rules follow it too.", "accent", tomlStr(c.Accent))
 
 	section("Scrollbar and footer")
 	kv("Scrollbar on the right.", "scrollbar", tomlBool(c.Scrollbar))

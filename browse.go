@@ -427,7 +427,7 @@ func overlayLabel(line string, runeCol int, label string, plain string) string {
 	if cell+w < total {
 		right = ansi.Cut(line, cell+w, total)
 	}
-	return left + style("30;103", label) + right
+	return left + onAccent(label) + right
 }
 
 // ---- bookmarks ----

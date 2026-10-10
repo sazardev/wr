@@ -150,7 +150,7 @@ func (m *model) settingsOptions() []option {
 		enumOpt(L, "Links", "Footnotes: numbered and listed at the end. Inline: the address next to the text. Hidden: text only. Links stay clickable in every mode.",
 			func(c *Config) *string { return &c.Links }, linkModes, true),
 		boolOpt(L, "Braille decoration", "Heading marks, scrollbar, progress bar and spinner drawn in braille. Turn off if your font lacks it.", func(c *Config) *bool { return &c.Braille }, true),
-		enumOpt(L, "Accent color", "The color of panels, shortcut keys, marks and bars. One of your terminal's 16 colors.", func(c *Config) *string { return &c.Accent }, accentNames, true),
+		enumOpt(L, "Accent color", "The color of panels, shortcut keys, marks and bars, and the one the headings walk. The first eight are your terminal's own 16 colors, so they follow its theme; orange, violet, teal, pink, lime and slate are fixed presets that do not.", func(c *Config) *string { return &c.Accent }, accentNames, true),
 
 		boolOpt(F, "Scrollbar", "The scrollbar on the right edge.", func(c *Config) *bool { return &c.Scrollbar }, false),
 		boolOpt(F, "Footer", "The footer row. Turn it off for a clean, full-height page.", func(c *Config) *bool { return &c.Footer }, false),

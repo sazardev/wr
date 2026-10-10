@@ -20,8 +20,9 @@ import (
 )
 
 // A custom Markdown-to-ANSI-lines renderer:
-//   - it only uses the 16 ANSI colors, so the terminal picks the shades and
-//     everything follows your theme (gruvbox, nord, ...);
+//   - the colors come from the terminal's own 16 ANSI palette (or a fixed
+//     256-color preset), so the terminal picks the shades and everything
+//     follows your theme (gruvbox, nord, ...);
 //   - every line is self-contained (no open styles), so lines can be painted
 //     one by one in a TUI;
 //   - Markdown marks (#, **, `) disappear: you see the formatting, not the syntax.
@@ -105,9 +106,6 @@ var plainGlyphs = Glyphs{
 	Quote:   "▎",
 }
 
-// Heading colors per level (SGR codes from the 16-color palette).
-var headColor = [6]string{"94", "96", "92", "93", "95", "97"}
-
 var mdParser = goldmark.New(goldmark.WithExtensions(extension.GFM)).Parser()
 
 type renderer struct {
@@ -170,7 +168,7 @@ func renderDoc(md string, width int, cfg Config) *Doc {
 	if len(r.links) > 0 && cfg.Links == "footnotes" {
 		out = append(out, "", "", style("1;"+headColor[2], r.g.Head[2]+"Links"), "")
 		for i, u := range r.links {
-			line := style("90", "["+strconv.Itoa(i+1)+"]") + " " + mLinkStart(r.linkID(u)) + style("36", u) + mLinkEnd
+			line := dim("["+strconv.Itoa(i+1)+"]") + " " + mLinkStart(r.linkID(u)) + link(u) + mLinkEnd
 			out = append(out, strings.Split(ansi.Hardwrap(line, width, true), "\n")...)
 		}
 	}
@@ -383,11 +381,11 @@ func (r *renderer) block(n ast.Node, w int) []string {
 		ls := wrap(style("1;"+col, r.g.Head[lvl-1])+body, w)
 		if lvl <= 2 && r.cfg.HeadingRules {
 			rule := strings.Repeat(r.g.Rule[lvl-1], max(w, 1))
-			rcol := "34"
+			rcol := accDim
 			if lvl == 2 {
-				rcol = "90"
+				rcol = dim
 			}
-			ls = append(ls, style(rcol, rule))
+			ls = append(ls, rcol(rule))
 		}
 		return ls
 	case *ast.Paragraph, *ast.TextBlock:
@@ -396,7 +394,7 @@ func (r *renderer) block(n ast.Node, w int) []string {
 		inner := r.blocks(n, w-2, false)
 		out := make([]string, len(inner))
 		for i, l := range inner {
-			out[i] = style("35", r.g.Quote) + " " + l
+			out[i] = accDim(r.g.Quote) + " " + l
 		}
 		return out
 	case *ast.List:
@@ -409,7 +407,7 @@ func (r *renderer) block(n ast.Node, w int) []string {
 		}
 		return r.code(lang, hl, w)
 	case *ast.ThematicBreak:
-		return []string{style("90", strings.Repeat(r.g.HR, max(w, 1)))}
+		return []string{dim(strings.Repeat(r.g.HR, max(w, 1)))}
 	case *east.Table:
 		return r.table(v, w)
 	case *ast.HTMLBlock:
@@ -461,7 +459,7 @@ func (r *renderer) list(l *ast.List, w, depth int) []string {
 		for i, line := range inner {
 			switch {
 			case i == 0:
-				out = append(out, style(accentFG, marker)+" "+line)
+				out = append(out, acc(marker)+" "+line)
 			case line == "":
 				out = append(out, "")
 			default:
@@ -481,7 +479,7 @@ func (r *renderer) code(lang string, hl []string, w int) []string {
 	}
 	var out []string
 	if r.cfg.CodeFrame {
-		out = append(out, mTop+style("90", "╭─ ")+style("1", label))
+		out = append(out, mTop+dim("╭─ ")+bold(label))
 	}
 	inner := max(w-2, 8)
 	for _, ln := range hl {
@@ -490,11 +488,11 @@ func (r *renderer) code(lang string, hl []string, w int) []string {
 			if i > 0 {
 				gutter, mk = "┆", mCont
 			}
-			out = append(out, mk+style("90", gutter)+" "+seg)
+			out = append(out, mk+dim(gutter)+" "+seg)
 		}
 	}
 	if r.cfg.CodeFrame {
-		out = append(out, mBottom+style("90", "╰─"))
+		out = append(out, mBottom+dim("╰─"))
 	}
 	return out
 }
@@ -653,9 +651,9 @@ func (r *renderer) table(t *east.Table, w int) []string {
 		for i, wd := range widths {
 			parts[i] = strings.Repeat("─", wd+2)
 		}
-		return style("90", l+strings.Join(parts, m)+r2)
+		return dim(l + strings.Join(parts, m) + r2)
 	}
-	bar := style("90", "│")
+	bar := dim("│")
 	out := []string{line("┌", "┬", "┐")}
 	for ri, row := range rows {
 		wrapped := make([][]string, cols)
@@ -666,7 +664,7 @@ func (r *renderer) table(t *east.Table, w int) []string {
 				cell = row[i]
 			}
 			if header[ri] {
-				cell = style("1;"+accentFG, ansi.Strip(cell))
+				cell = accBold(ansi.Strip(cell))
 			}
 			wrapped[i] = wrapRaw(cell, widths[i])
 			height = max(height, len(wrapped[i]))
@@ -755,9 +753,9 @@ func (r *renderer) walkInline(x *inl, n ast.Node) {
 			x.pop()
 		case *east.TaskCheckBox:
 			if v.IsChecked {
-				x.b.WriteString(style("92", "☑") + " ")
+				x.b.WriteString(good("☑") + " ")
 			} else {
-				x.b.WriteString(style("90", "☐") + " ")
+				x.b.WriteString(dim("☐") + " ")
 			}
 		case *ast.Link:
 			dest := string(v.Destination)
@@ -783,9 +781,9 @@ func (r *renderer) walkInline(x *inl, n ast.Node) {
 					i = len(r.links) - 1
 					r.linkIdx[dest] = i
 				}
-				x.b.WriteString(style("90", "["+strconv.Itoa(i+1)+"]"))
+				x.b.WriteString(dim("[" + strconv.Itoa(i+1) + "]"))
 			case "inline":
-				x.b.WriteString(style("90", " ("+dest+")"))
+				x.b.WriteString(dim(" (" + dest + ")"))
 			}
 		case *ast.AutoLink:
 			u := string(v.URL(r.src))
@@ -795,7 +793,7 @@ func (r *renderer) walkInline(x *inl, n ast.Node) {
 			x.pop()
 			x.b.WriteString(mLinkEnd)
 		case *ast.Image:
-			x.b.WriteString(style("90", "[image: ") + nodeText(v, r.src) + style("90", "]"))
+			x.b.WriteString(dim("[image: ") + nodeText(v, r.src) + dim("]"))
 		case *ast.RawHTML:
 			// stray HTML is ignored
 		default:
