@@ -96,6 +96,15 @@ and nothing else — there is no theme-specific markup.
   accent, the way the program highlights a line. It lives as a child of `<body>`
   (`components/ThemeDialog.astro`), not inside the header, so the fixed footer
   cannot paint over it.
+- **`.cmd-trigger`** — the app bar's command palette button: the `ctrl` `K` chips
+  and the word "command". It opens `.palette`.
+- **`.palette`** — the command palette (`components/CommandPalette.astro`):
+  the same dialog shape with a filter row (`›` prompt) over the list, whose items
+  are real markup grouped by *go to*, *the guide*, *theme* and *this site*.
+  Filtering is a subsequence match scored so prefixes and word starts come
+  first; `↑↓` `Home` `End` `Tab` move, `↵` runs, `esc` closes. Items with a
+  destination are links without JavaScript; the themes, the copy, the print and
+  the top-of-page actions are the ones the script runs.
 - **`.site-foot`** — the app's footer: hints on the left with the braille key,
   braille progress bar and percentage on the right.
 - **`.reel`** — the hero: a `.term` frame whose `.reel-stage` crossfades the

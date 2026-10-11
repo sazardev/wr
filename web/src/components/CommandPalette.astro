@@ -1,0 +1,116 @@
+---
+import { docPath, repo, withBase } from '../lib/urls';
+import { splitDocument } from '../lib/split';
+import { readRepo } from '../lib/repo';
+import { THEMES } from '../data/themes';
+
+// The command palette: everything the site can do, one dialog away. The items
+// are real markup, so the palette works without JavaScript for the links and
+// the script only opens, filters and runs them. The guide's sections come from
+// the document itself, so they cannot go stale.
+
+const guide = splitDocument(readRepo('docs/GUIDE.md'));
+
+const go = [
+  { label: 'Home', href: withBase('/'), keys: 'start inicio' },
+  { label: 'The guide', href: docPath('guide'), keys: 'guide docs manual' },
+  { label: 'The design language', href: docPath('design'), keys: 'design ds tokens' },
+  { label: 'Changelog', href: docPath('changelog'), keys: 'releases versions history' },
+  { label: 'Reference', href: docPath('reference'), keys: 'reference overview' },
+  { label: 'Every shortcut', href: docPath('reference', 'shortcuts'), keys: 'keys bindings keyboard' },
+  { label: 'Every setting', href: docPath('reference', 'settings'), keys: 'config configuration toml' },
+  { label: 'Search the docs', href: withBase('/docs/search/'), keys: 'find search grep' },
+];
+
+const sections = guide.sections.map((section) => ({
+  label: section.heading,
+  href: docPath('guide', section.slug),
+  keys: 'guide ' + section.slug.replace(/-/g, ' '),
+}));
+
+const site = [
+  { label: 'Copy this link', action: 'copy', keys: 'url share clipboard copy' },
+  { label: 'Top of the page', action: 'top', keys: 'up beginning scroll' },
+  { label: 'Print this page', action: 'print', keys: 'pdf print paper' },
+  { label: 'The repository', href: repo.url, keys: 'github source code' },
+  { label: 'Releases', href: repo.releases, keys: 'download install binaries' },
+];
+
+interface Command {
+  label: string;
+  href?: string;
+  action?: string;
+  theme?: string;
+  keys?: string;
+}
+
+const groups: { id: string; title: string; items: Command[] }[] = [
+  { id: 'go', title: 'go to', items: go },
+  { id: 'guide', title: 'the guide', items: sections },
+  {
+    id: 'theme',
+    title: 'theme',
+    items: THEMES.map((theme) => ({
+      label: `${theme.id} (${theme.scheme})`,
+      action: 'theme',
+      theme: theme.id,
+      keys: `theme palette colors ${theme.id}`,
+    })),
+  },
+  { id: 'site', title: 'this site', items: site },
+];
+---
+
+<div class="palette" data-palette hidden>
+  <div class="pal-box" role="dialog" aria-modal="true" aria-label="Command palette">
+    <div class="pal-top">
+      <span class="glyph">⣿</span> command
+      <span class="fill" aria-hidden="true">──────────────────────────────────────────</span>
+    </div>
+    <div class="pal-input">
+      <span class="prompt" aria-hidden="true">›</span>
+      <input
+        type="text"
+        data-palette-input
+        placeholder="a page, a theme, a command…"
+        aria-label="Filter commands"
+        role="combobox"
+        aria-expanded="true"
+        aria-controls="palette-list"
+        aria-autocomplete="list"
+        autocomplete="off"
+        spellcheck="false"
+      />
+    </div>
+    <div class="pal-list" id="palette-list" role="listbox" aria-label="Commands" data-palette-list>
+      {groups.map((group) => (
+        <div class="pal-group" data-palette-group>
+          <div class="pal-cap" aria-hidden="true">{group.title}</div>
+          {group.items.map((item) => (
+            <div
+              class="pal-opt"
+              role="option"
+              aria-selected="false"
+              data-palette-option
+              data-label={item.label}
+              data-keys={item.keys ?? ''}
+              data-href={item.href ?? ''}
+              data-action={item.action ?? ''}
+              data-theme={item.theme ?? ''}
+            >
+              <span class="mark" aria-hidden="true">▸</span>
+              <span class="nm">{item.label}</span>
+              {item.href && <span class="where" aria-hidden="true">{new URL(item.href, 'https://wr.test').pathname}</span>}
+              {item.action === 'theme' && <span class="where" aria-hidden="true">apply</span>}
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+    <div class="pal-foot">
+      <span><span class="key">↑↓</span> move</span>
+      <span><span class="key">↵</span> run</span>
+      <span><span class="key">esc</span> close</span>
+    </div>
+  </div>
+</div>
