@@ -10,12 +10,18 @@ function isTyping(target: EventTarget | null): boolean {
   return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el.isContentEditable;
 }
 
+/** A dialog owns the keyboard while it is open: nothing global runs. */
+function inDialog(): boolean {
+  return document.querySelector('.theme-modal:not([hidden])') !== null;
+}
+
 export function startHotkeys(): void {
   if (document.body.dataset.hotkeysOn === '1') return;
   document.body.dataset.hotkeysOn = '1';
 
   document.addEventListener('keydown', (event) => {
     if (event.metaKey || event.ctrlKey || event.altKey) return;
+    if (inDialog()) return;
     if (event.key === 'Escape' && document.activeElement instanceof HTMLInputElement) {
       document.activeElement.blur();
       return;
