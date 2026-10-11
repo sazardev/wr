@@ -281,6 +281,83 @@ body.menu-open { overflow: hidden; }
   padding: 0 5px; font-size: 11px; margin-right: 4px;
 }
 
+/* ------------------------------------------------------ command palette */
+/* The app bar trigger: the key that opens the palette, plus its name. */
+.cmd-trigger {
+  display: inline-flex; align-items: center; gap: 7px; padding: 4px 9px;
+  border: 1px solid var(--line-strong); background: var(--bg); color: var(--dim);
+  font: 12px/1 var(--mono); cursor: pointer;
+  transition: color .18s ease, border-color .18s ease;
+}
+.cmd-trigger:hover, .cmd-trigger[aria-expanded="true"] { color: var(--fg); border-color: var(--accent); }
+.cmd-trigger .keys { display: flex; gap: 3px; }
+.cmd-trigger .k { color: var(--accent); }
+.cmd-trigger .nm { letter-spacing: .08em; }
+
+/* The palette: the theme dialog with a filter row over the list. */
+.palette {
+  position: fixed; inset: 0; z-index: 400;
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 12vh 16px 24px;
+  background: color-mix(in srgb, var(--bg) 74%, transparent);
+}
+.palette[hidden] { display: none; }
+body.palette-open { overflow: hidden; }
+.pal-box {
+  width: min(520px, 100%);
+  background: var(--bg); border: 1px solid var(--line-strong);
+  font-size: 13px; animation: tmIn .14s ease-out both;
+  transition: background-color .28s ease, border-color .28s ease;
+}
+.pal-top {
+  display: flex; align-items: baseline; gap: 8px; padding: 7px 12px;
+  border-bottom: 1px solid var(--line); color: var(--dim);
+  font-size: 11.5px; letter-spacing: .14em;
+}
+.pal-top .glyph { color: var(--accent); font-size: 13px; }
+.pal-top .fill { flex: 1; overflow: hidden; white-space: pre; color: var(--line-strong); }
+.pal-input { display: flex; align-items: center; gap: 9px; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+.pal-input .prompt { color: var(--accent); font-size: 15px; }
+.pal-input input {
+  flex: 1; min-width: 0; background: none; border: 0; color: var(--fg);
+  font: 14px var(--mono); outline: none; padding: 0;
+}
+.pal-input input::placeholder { color: var(--dim); }
+.pal-list { max-height: min(52vh, 420px); overflow-y: auto; outline: none; }
+.pal-list:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
+.pal-group[hidden] { display: none; }
+.pal-cap {
+  padding: 7px 12px 4px; color: var(--dim); font-size: 10.5px;
+  letter-spacing: .22em; text-transform: uppercase;
+}
+.pal-opt {
+  display: flex; align-items: center; gap: 10px; padding: 7px 12px;
+  color: var(--dim); cursor: pointer; user-select: none;
+  transition: background-color .12s ease, color .12s ease;
+}
+.pal-opt .mark { width: 1ch; color: var(--accent); visibility: hidden; }
+.pal-opt .nm { color: inherit; }
+.pal-opt .where { margin-left: auto; font-size: 11px; opacity: .7; white-space: nowrap; overflow: hidden; }
+.pal-opt[aria-selected="true"] { background: var(--accent); color: var(--bg); }
+.pal-opt[aria-selected="true"] .mark { visibility: visible; color: var(--bg); }
+.pal-empty { display: flex; align-items: center; gap: 10px; padding: 18px 12px; color: var(--dim); }
+.pal-empty[hidden] { display: none; }
+.pal-empty .glyph { color: var(--accent); font-size: 18px; }
+.pal-foot {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 7px 12px; border-top: 1px solid var(--line); color: var(--dim); font-size: 11.5px;
+}
+.pal-foot .key {
+  color: var(--accent); border: 1px solid var(--line-strong);
+  padding: 0 5px; font-size: 11px; margin-right: 4px;
+}
+@media (max-width: 640px) {
+  .palette { padding-top: 8vh; }
+  .pal-box { width: 100%; }
+  /* A touch device has no ctrl key to hint at: the name says it. */
+  .cmd-trigger .keys { display: none; }
+}
+
 /* ----------------------------------------------------------------- footer */
 .site-foot {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
@@ -530,7 +607,7 @@ pre.astro-code[data-language]::before {
 
 /* ------------------------------------------------------------------ print */
 @media print {
-  #field, .site-head, .site-foot, .doc-aside, .pager, .reel, .strip, .search-box, .search-scopes, .theme-modal { display: none !important; }
+  #field, .site-head, .site-foot, .doc-aside, .pager, .reel, .strip, .search-box, .search-scopes, .theme-modal, .palette { display: none !important; }
   body { background: #fff; color: #000; padding: 0; }
   .doc-shell { display: block; }
   .prose { max-width: none; }

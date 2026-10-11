@@ -7,6 +7,7 @@ import { startCopy } from './copy';
 import { startCursor } from './cursor';
 import { startField } from './field';
 import { startHotkeys } from './hotkeys';
+import { startPalette } from './palette';
 import { startProgress } from './progress';
 import { startReel } from './reel';
 import { fillRules } from './rules';
@@ -28,6 +29,7 @@ export function enhance(): void {
   // navigation, so the theme wiring runs again: each element guards itself.
   startThemes();
   startThemeMenu();
+  startPalette();
   // per page: the reel, the search results and the copy buttons belong to the
   // page's markup and are wired again after a view-transition navigation
   startReel();

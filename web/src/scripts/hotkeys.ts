@@ -1,4 +1,5 @@
 import { withBase } from '../lib/urls';
+import { toggle } from './palette';
 
 // The site behaves like the program it documents: `/` starts a search from
 // anywhere, `Esc` lets go of the input. On the search page it focuses the box;
@@ -12,7 +13,7 @@ function isTyping(target: EventTarget | null): boolean {
 
 /** A dialog owns the keyboard while it is open: nothing global runs. */
 function inDialog(): boolean {
-  return document.querySelector('.theme-modal:not([hidden])') !== null;
+  return document.querySelector('.theme-modal:not([hidden]), .palette:not([hidden])') !== null;
 }
 
 export function startHotkeys(): void {
@@ -20,6 +21,13 @@ export function startHotkeys(): void {
   document.body.dataset.hotkeysOn = '1';
 
   document.addEventListener('keydown', (event) => {
+    // The palette opens from anywhere, typing included — that is its point —
+    // and it toggles, so a second press gives the page back.
+    if ((event.ctrlKey || event.metaKey) && (event.key === 'k' || event.key === 'K')) {
+      event.preventDefault();
+      toggle();
+      return;
+    }
     if (event.metaKey || event.ctrlKey || event.altKey) return;
     if (inDialog()) return;
     if (event.key === 'Escape' && document.activeElement instanceof HTMLInputElement) {
