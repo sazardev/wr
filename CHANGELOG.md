@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/sazardev/wr/compare/v0.4.0...v0.5.0) (2026-10-11)
+
+
+### Features
+
+* **web:** command palette for the docs site ([#20](https://github.com/sazardev/wr/issues/20)) ([d9bb4c0](https://github.com/sazardev/wr/commit/d9bb4c0919fc06ad787183bd02825963eb53ed3c))
+
 ## [0.4.0](https://github.com/sazardev/wr/compare/v0.3.0...v0.4.0) (2026-10-10)
 
 
