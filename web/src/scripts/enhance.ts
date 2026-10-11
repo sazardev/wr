@@ -12,19 +12,22 @@ import { startReel } from './reel';
 import { fillRules } from './rules';
 import { startSearch } from './search';
 import { startSpin } from './spin';
-import { startThemes } from './themes';
+import { startThemeMenu, startThemes } from './themes';
 
 let chromeReady = false;
 
 export function enhance(): void {
   if (!chromeReady) {
     chromeReady = true;
-    startThemes();
     startField();
     startCursor();
     startHotkeys();
     startProgress();
   }
+  // The app bar and its swatches arrive fresh after a view-transition
+  // navigation, so the theme wiring runs again: each element guards itself.
+  startThemes();
+  startThemeMenu();
   // per page: the reel, the search results and the copy buttons belong to the
   // page's markup and are wired again after a view-transition navigation
   startReel();
