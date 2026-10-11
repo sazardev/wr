@@ -80,16 +80,44 @@ function sectionsOf(docId: string, markdown: string): { intro: SectionSource; re
     markdown: doc.introMarkdown,
     text: '',
   };
-  const rest: SectionSource[] = doc.sections.map((section) => ({
-    section: section.slug,
-    order: section.order,
-    title: section.heading,
-    summary: leadParagraph(section.markdown),
-    editAnchor: section.slug,
-    markdown: section.markdown,
-    text: '',
-  }));
+  const rest: SectionSource[] = doc.sections.map((section) => {
+    const summary = leadParagraph(section.markdown);
+    // The summary is printed above the body, so the paragraph it came from is
+    // lifted out instead of being read twice.
+    const body = withoutLeadParagraph(section.markdown, summary);
+    return {
+      section: section.slug,
+      order: section.order,
+      title: section.heading,
+      summary,
+      editAnchor: section.slug,
+      markdown: body,
+      // The lift keeps the sentence searchable.
+      text: [summary, plainText(body)].filter(Boolean).join(' '),
+    };
+  });
   return { intro, rest };
+}
+
+/**
+ * Removes the paragraph that became a section's summary, when there is one:
+ * the first non-blank, non-table line and the rest of its block. Lists, tables
+ * and code keep their body — only a plain paragraph is lifted.
+ */
+function withoutLeadParagraph(markdown: string, summary: string): string {
+  const lines = markdown.split('\n');
+  let start = 0;
+  while (start < lines.length && !lines[start]!.trim()) start++;
+  const first = (lines[start] ?? '').trim();
+  if (!summary || !first || first.startsWith('|') || /^[-*+]\s/.test(first) || /^\d+\.\s/.test(first)) {
+    return markdown;
+  }
+  let end = start;
+  while (end < lines.length && lines[end]!.trim()) end++;
+  const block = lines.slice(start, end).join(' ');
+  const wanted = summary.replace(/…$/, '').trim();
+  if (!plainText(block).startsWith(wanted)) return markdown;
+  return [...lines.slice(0, start), ...lines.slice(end)].join('\n').trim();
 }
 
 /** Very small plain-text conversion, enough for a search index. */
