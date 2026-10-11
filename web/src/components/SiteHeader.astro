@@ -54,31 +54,3 @@ const links = [
     </button>
   </div>
 </header>
-
-<div class="theme-modal" data-theme-modal hidden>
-  <div class="tm-box" role="dialog" aria-modal="true" aria-label="Theme">
-    <div class="tm-top">
-      <span class="glyph">⣿</span> theme
-      <span class="fill" aria-hidden="true">──────────────────────────────────────────</span>
-    </div>
-    <div class="tm-list" role="listbox" aria-label="Theme" tabindex="0" data-theme-list>
-      {THEMES.map((theme) => (
-        <div class="tm-opt" role="option" data-theme-option={theme.id} aria-selected="false">
-          <span class="mark" aria-hidden="true">▸</span>
-          <span class="nm">{theme.id}</span>
-          <span class="sc">{theme.scheme}</span>
-          <span class="chips" aria-hidden="true">
-            {[theme.colors[0], theme.colors[1], theme.colors[2], theme.colors[4]].map((color) => (
-              <i style={`background:${color}`} />
-            ))}
-          </span>
-        </div>
-      ))}
-    </div>
-    <div class="tm-foot">
-      <span><span class="key">↑↓</span> move</span>
-      <span><span class="key">↵</span> apply</span>
-      <span><span class="key">esc</span> cancel</span>
-    </div>
-  </div>
-</div>

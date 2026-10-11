@@ -16,8 +16,9 @@ cannot draw itself. Version: **DS-1.2** (2026-10-09).
 
 1. **Flat.** No `border-radius`, no `box-shadow`, no `text-shadow`, no gradient
    (`linear-gradient` appears in no file), no `backdrop-filter`, no translucent
-   panels: `rgba()` over backgrounds is limited to the braille field, where
-   opacity over one accent color is the encoding of height.
+   panels. Two exceptions exist on purpose: the braille field, where opacity
+   over one accent color is the encoding of height, and the theme dialog's
+   scrim, whose job is to dim the page behind it.
 2. **Terminals draw lines and glyphs.** Separation between blocks is a `1px`
    border or a braille rule (`⣀⣀⣀…`); a "window" is a box-drawing frame; a
    label is a caption row above the content, like the reader's code frames.
@@ -72,7 +73,7 @@ and nothing else — there is no theme-specific markup.
 | `⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏` | spinner | "loading" states (hero prompt) |
 | `⠁⠃⠇⡇⣇⣿` | single column | small icons |
 | `╭─ ╰─ │ ┆ 🬖` | box drawing | code frames (drawn by the reader) |
-| `▸ ▊ ⬡ ✓` | ASCII-adjacent | markers and cursor |
+| `▸ ▾ ▊ ⬡ ✓` | ASCII-adjacent | markers, the dialog caret and the cursor |
 
 ## Components
 
@@ -83,8 +84,18 @@ and nothing else — there is no theme-specific markup.
 - **`.cards`** — a 1px-gap grid, so separation is the line of the grid itself.
 - **`.demos` / `.demo`** — recorded frames with a caption row (`b` name,
   `.k` key).
-- **`.swatches`** — one button per theme with three color chips; it calls
-  `setTheme()`.
+- **`.swatches`** — one button per theme with its color chips, on the landing
+  page; every element carrying `data-theme-pick` is wired by
+  `web/src/scripts/themes.ts` (`applyTheme`).
+- **`.theme-trigger`** — the app bar's theme button: chips, the current theme
+  and its scheme, with a `▾`. It opens `.theme-modal` (`scripts/themes.ts` →
+  `startThemeMenu`).
+- **`.theme-modal`** — the theme dialog: a caption row (`⣿ theme`), a list of
+  palettes with `▸` and color chips, and a caption row of key hints
+  (`↑↓ move`, `↵ apply`, `esc cancel`). The selected row is inverted with the
+  accent, the way the program highlights a line. It lives as a child of `<body>`
+  (`components/ThemeDialog.astro`), not inside the header, so the fixed footer
+  cannot paint over it.
 - **`.site-foot`** — the app's footer: hints on the left with the braille key,
   braille progress bar and percentage on the right.
 - **`.reel`** — the hero: a `.term` frame whose `.reel-stage` crossfades the

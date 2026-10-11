@@ -2,6 +2,7 @@
 import { ClientRouter } from 'astro:transitions';
 import SiteHeader from '../components/SiteHeader.astro';
 import SiteFooter from '../components/SiteFooter.astro';
+import ThemeDialog from '../components/ThemeDialog.astro';
 import { siteVersion } from '../lib/version';
 import { THEMES } from '../data/themes';
 import { assetUrl } from '../lib/urls';
@@ -68,6 +69,7 @@ const icon = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewB
   <slot />
 </main>
 <SiteFooter version={version} />
+<ThemeDialog />
 <script>
   import '../scripts/enhance';
 </script>
