@@ -1,4 +1,4 @@
-import { DEFAULT_THEME, STORAGE_KEY, THEMES, themeById } from '../data/themes';
+import { DEFAULT_THEME, LIGHT_THEME, STORAGE_KEY, THEMES, themeById } from '../data/themes';
 
 // Themes: the visitor opens the theme dialog in the app bar, walks the palettes
 // with the arrow keys and applies one with Enter. The choice is remembered, and
@@ -58,7 +58,7 @@ export function initialTheme(search = location.search): string {
   } catch {
     /* no storage: fall through to the system preference */
   }
-  return matchMedia('(prefers-color-scheme: light)').matches ? 'paper' : 'wr';
+  return matchMedia('(prefers-color-scheme: light)').matches ? LIGHT_THEME : DEFAULT_THEME;
 }
 
 /** Applies the initial theme and wires every chip on the page. */
@@ -72,28 +72,14 @@ export function startThemes(): void {
   syncPicked();
 }
 
-/** Palette of a theme, for scripts that need the color (not the CSS token). */
-export function themeColor(id: string): string {
-  return themeById(id).colors[4]!;
-}
-
 /* --------------------------------------------------------- theme dialog */
 
 function syncTrigger(): void {
   const theme = themeById(current);
-  const name = document.querySelector<HTMLElement>('[data-theme-name]');
-  const scheme = document.querySelector<HTMLElement>('[data-theme-scheme]');
-  const chips = document.querySelector<HTMLElement>('[data-theme-chips]');
-  if (name) name.textContent = theme.id;
-  if (scheme) scheme.textContent = theme.scheme;
-  if (chips) {
-    chips.innerHTML = [0, 1, 2, 4].map((i) => `<i style="background:${theme.colors[i]}"></i>`).join('');
-  }
-  if (trigger) {
-    const label = `theme: ${theme.id} (${theme.scheme})`;
-    trigger.title = label;
-    trigger.setAttribute('aria-label', label);
-  }
+  if (!trigger) return;
+  const label = `Theme: ${theme.id} (${theme.scheme})`;
+  trigger.title = `${label} · t`;
+  trigger.setAttribute('aria-label', label);
 }
 
 function syncMenu(): void {
@@ -112,6 +98,10 @@ function moveTo(index: number): void {
   syncMenu();
 }
 
+export function openThemeMenu(): void {
+  openMenu();
+}
+
 function openMenu(): void {
   if (!modal || !list) return;
   openedWith = current;
@@ -121,7 +111,7 @@ function openMenu(): void {
   );
   modal.hidden = false;
   trigger?.setAttribute('aria-expanded', 'true');
-  document.body.classList.add('menu-open');
+  document.body.classList.add('lock');
   syncMenu();
   list.focus();
 }
@@ -130,7 +120,7 @@ function closeMenu(apply: boolean): void {
   if (!modal || modal.hidden) return;
   modal.hidden = true;
   trigger?.setAttribute('aria-expanded', 'false');
-  document.body.classList.remove('menu-open');
+  document.body.classList.remove('lock');
   applyTheme(apply ? THEMES[cursor]!.id : openedWith, true);
   trigger?.focus();
 }
@@ -200,3 +190,11 @@ export function startThemeMenu(): void {
   });
   syncTrigger();
 }
+
+/** A view-transition navigation swaps the <html> attributes for the new
+ *  page's: carry the theme and the js marker over, or the page flashes. */
+document.addEventListener('astro:before-swap', (event) => {
+  const root = (event as Event & { newDocument: Document }).newDocument.documentElement;
+  root.dataset.theme = current;
+  root.classList.add('js');
+});

@@ -25,13 +25,14 @@ export default defineConfig({
   markdown: {
     // The pipeline the whole site uses: GFM tables, smart quotes, an id on
     // every heading (for the tables of contents and the section links) and
-    // Shiki with a light and a dark theme, so code stays readable in every
-    // palette of this site (the stylesheet picks one per theme).
+    // Shiki in its css-variables mode: the highlighter only names the kind of
+    // each token and the stylesheet (styles/tokens.css) paints them with the
+    // active palette, so code follows every theme with no per-theme overrides.
     gfm: true,
     smartypants: true,
     rehypePlugins: [rehypeSlug],
     shikiConfig: {
-      themes: { light: 'github-light', dark: 'github-dark' },
+      theme: 'css-variables',
     },
   },
 });

@@ -1,25 +1,26 @@
 // Theme data, shared by the server (which renders the chips) and the client
-// script (which applies and remembers the choice). The colours live in the
-// stylesheet; this file only decides the order and the chip previews.
+// script (which applies and remembers the choice). The colours live in
+// styles/tokens.css; this file only decides the order and the chip previews.
+//
+// Every palette is monochrome: one hue, a ramp of it for the surfaces and the
+// lines, and the same hue at full strength as the accent.
 
 export interface Theme {
   id: string;
   scheme: 'dark' | 'light';
-  /** [bg, surface, fg, dim, accent] — exactly what a chip shows. */
+  /** [bg, panel, fg, dim, accent] — exactly what a chip shows. */
   colors: readonly [string, string, string, string, string];
 }
 
 export const THEMES: readonly Theme[] = [
-  { id: 'wr', scheme: 'dark', colors: ['#07090d', '#0d1117', '#c9d3e3', '#5f7089', '#4da3ff'] },
-  { id: 'gruvbox', scheme: 'dark', colors: ['#282828', '#32302f', '#ebdbb2', '#928374', '#fabd2f'] },
-  { id: 'nord', scheme: 'dark', colors: ['#2e3440', '#343b49', '#d8dee9', '#616e88', '#88c0d0'] },
-  { id: 'catppuccin', scheme: 'dark', colors: ['#1e1e2e', '#181825', '#cdd6f4', '#6c7086', '#cba6f7'] },
-  { id: 'solarized', scheme: 'dark', colors: ['#002b36', '#073642', '#93a1a1', '#586e75', '#268bd2'] },
-  { id: 'matrix', scheme: 'dark', colors: ['#050805', '#0a120a', '#b6f3c4', '#4e8a5b', '#2ee66f'] },
-  { id: 'paper', scheme: 'light', colors: ['#f2efe9', '#e9e5db', '#20242a', '#6b7178', '#0b5cad'] },
+  { id: 'blueprint', scheme: 'dark', colors: ['#050912', '#0a1222', '#e6eefc', '#647a9e', '#6cb4ff'] },
+  { id: 'graphite', scheme: 'dark', colors: ['#0a0a0a', '#121212', '#ededed', '#7a7a7a', '#ffffff'] },
+  { id: 'phosphor', scheme: 'dark', colors: ['#040a06', '#08140c', '#d2f5dc', '#4f8a62', '#3dff85'] },
+  { id: 'amber', scheme: 'dark', colors: ['#0b0802', '#150f04', '#f7e6c4', '#8f7440', '#ffb224'] },
+  { id: 'paper', scheme: 'light', colors: ['#f4f7fc', '#e9eff8', '#0b1f44', '#5c6f93', '#1550c8'] },
 ];
 
-export const DEFAULT_THEME = 'wr';
+export const DEFAULT_THEME = 'blueprint';
 export const LIGHT_THEME = 'paper';
 export const STORAGE_KEY = 'wr-docs-theme';
 

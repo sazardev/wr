@@ -1,83 +1,58 @@
 ---
 import Page from '../../../layouts/Page.astro';
-import RuleBar from '../../../components/RuleBar.astro';
-import { withBase } from '../../../lib/urls';
-import { repo } from '../../../lib/urls';
+import { settingRows, shortcutGroups } from '../../../lib/reference';
+import { repo, withBase } from '../../../lib/urls';
 
 // /docs/reference/ — the generated pages: shortcuts, settings and the paths wr
 // keeps things in. None of this is typed by hand; each page is built from the
 // file the program itself uses.
 
+const shortcuts = shortcutGroups().reduce((sum, group) => sum + group.items.length, 0);
+const settings = settingRows().length;
+
 const pages = [
-  {
-    glyph: '⣤',
-    title: 'Shortcuts',
-    href: withBase('/docs/reference/shortcuts/'),
-    text: 'Every default key binding, grouped like the program’s shortcuts panel, generated from keys.go.',
-    source: 'keys.go',
-  },
-  {
-    glyph: '⣶',
-    title: 'Settings',
-    href: withBase('/docs/reference/settings/'),
-    text: 'Every option of config.toml with its default and what it does, generated from the README table.',
-    source: 'README.md',
-  },
-  {
-    glyph: '⣷',
-    title: 'Where wr keeps things',
-    href: withBase('/docs/reference/settings/#where-things-live'),
-    text: 'The config file, the page cache, the history and the bookmarks — and how to clear them.',
-    source: 'README.md',
-  },
+  { no: '01', title: 'Shortcuts', href: withBase('/docs/reference/shortcuts/'), text: `All ${shortcuts} default key bindings, grouped like the program’s shortcuts panel, with a live filter.`, source: 'keys.go' },
+  { no: '02', title: 'Settings', href: withBase('/docs/reference/settings/'), text: `All ${settings} options of config.toml with their defaults and what each one does.`, source: 'README.md' },
+  { no: '03', title: 'Where wr keeps things', href: withBase('/docs/reference/settings/#where-things-live'), text: 'The config file, the page cache, the history and the bookmarks — and how to clear them.', source: 'README.md' },
 ];
 ---
 
 <Page
   title="Reference"
   description="Generated reference of wr: every key binding from keys.go and every setting from the README."
-  glyph="⣿"
-  summary="Three pages the site builds for you, so they cannot fall behind the program."
+  summary="Three pages the site builds for you from the program’s own files, so they cannot fall behind it."
   source={{ label: 'keys.go + README.md', href: repo.url }}
 >
-  <section style="padding-top:6px">
-    <div class="sec-head">
-      <span class="glyph">⡇</span>
-      <h2>GENERATED, NOT WRITTEN</h2>
-    </div>
-    <RuleBar fill={20} />
-    <div class="cards">
-      {pages.map((page) => (
-        <a class="card" href={page.href}>
-          <div class="top">
-            <span class="glyph">{page.glyph}</span>
-            <h3>{page.title}</h3>
-            <span class="meta">{page.source}</span>
-          </div>
-          <p>{page.text}</p>
-          <span class="go">open ▸</span>
-        </a>
-      ))}
-    </div>
-  </section>
+  <div class="ref-cards">
+    {pages.map((page, i) => (
+      <a class="ref-card rv" style={`--d:${i}`} href={page.href}>
+        <span class="no">{page.no}<small>{page.source}</small></span>
+        <h3>{page.title}</h3>
+        <p>{page.text}</p>
+        <span class="go">open <span class="arr">→</span></span>
+      </a>
+    ))}
+  </div>
 
-  <section style="padding-top:52px">
-    <div class="sec-head">
-      <span class="glyph">⣀</span>
-      <h2>READ IT IN THE GUIDE</h2>
-    </div>
-    <RuleBar fill={16} />
-    <div class="cards">
-      <a class="card" href={withBase('/docs/guide/rebinding-keys/')}>
-        <div class="top"><span class="glyph">⣿</span><h3>Rebinding keys</h3></div>
-        <p>Change any binding from inside the program, or in config.toml under [keys].</p>
-        <span class="go">guide ▸</span>
-      </a>
-      <a class="card" href={withBase('/docs/guide/make-it-yours/')}>
-        <div class="top"><span class="glyph">⡇</span><h3>Make it yours</h3></div>
-        <p>The settings panel, ~30 options applied live and saved for you.</p>
-        <span class="go">guide ▸</span>
-      </a>
-    </div>
-  </section>
+  <div class="sub-h"><h2>Read it in the guide</h2><span>the same topics, explained</span></div>
+  <div class="ref-cards">
+    <a class="ref-card rv" href={withBase('/docs/guide/rebinding-keys/')}>
+      <span class="no">guide<small>docs/GUIDE.md</small></span>
+      <h3>Rebinding keys</h3>
+      <p>Change any binding from inside the program, or in config.toml under [keys].</p>
+      <span class="go">read <span class="arr">→</span></span>
+    </a>
+    <a class="ref-card rv" style="--d:1" href={withBase('/docs/guide/make-it-yours/')}>
+      <span class="no">guide<small>docs/GUIDE.md</small></span>
+      <h3>Make it yours</h3>
+      <p>The settings panel: about thirty options applied live and saved for you.</p>
+      <span class="go">read <span class="arr">→</span></span>
+    </a>
+    <a class="ref-card rv" style="--d:2" href={withBase('/docs/guide/troubleshooting/')}>
+      <span class="no">guide<small>docs/GUIDE.md</small></span>
+      <h3>Troubleshooting</h3>
+      <p>When something does not look right: the usual causes and their fixes.</p>
+      <span class="go">read <span class="arr">→</span></span>
+    </a>
+  </div>
 </Page>

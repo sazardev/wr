@@ -1,0 +1,84 @@
+/* ===================================================================== ui */
+
+/* key caps */
+kbd, .k {
+  display: inline-block; font: 500 11.5px/1.5 var(--mono); color: var(--fg-2);
+  background: var(--panel); border: 1px solid var(--line-2); border-bottom-width: 2px;
+  padding: 0 6px; white-space: nowrap; vertical-align: 1px;
+}
+
+.tag {
+  display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px;
+  border: 1px solid var(--line-2); color: var(--dim); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap;
+}
+.tag.solid { background: var(--accent); border-color: var(--accent); color: var(--ink); }
+.tag .dot { width: 6px; height: 6px; background: var(--accent); }
+.tag.solid .dot { background: var(--ink); }
+
+/* buttons: a sharp box that fills on hover, arrow slides */
+.btn {
+  position: relative; display: inline-flex; align-items: center; gap: 10px; height: 42px; padding: 0 18px;
+  border: 1px solid var(--line-2); background: var(--bg); color: var(--fg); font: 500 13.5px/1 var(--mono);
+  white-space: nowrap; cursor: pointer;
+  transition: background-color var(--fast) ease, border-color var(--fast) ease, color var(--fast) ease;
+}
+.btn:hover { border-color: var(--fg-2); background: var(--panel); }
+.btn .arr { display: inline-block; transition: transform var(--fast) var(--ease); }
+.btn:hover .arr { transform: translateX(4px); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--ink); font-weight: 600; }
+.btn.primary:hover { background: var(--fg); border-color: var(--fg); color: var(--bg); }
+.btn.ghost { border-color: transparent; padding-inline: 10px; color: var(--fg-2); }
+.btn.ghost:hover { color: var(--fg); background: none; border-color: transparent; }
+.btn-row { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* text link with a sliding underline (a scaled rule, no gradient) */
+.tlink { position: relative; color: var(--fg); transition: color var(--fast) ease; }
+.tlink::after { content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 1px; background: currentColor; transform: scaleX(0); transform-origin: left; transition: transform 0.25s var(--ease); }
+.tlink:hover { color: var(--accent); }
+.tlink:hover::after { transform: scaleX(1); }
+
+/* ------------------------------------------------------- terminal window */
+.win { border: 1px solid var(--line-2); background: var(--panel); position: relative; }
+.win-bar { display: flex; align-items: center; gap: 12px; min-height: 38px; padding: 0 12px; border-bottom: 1px solid var(--line-2); color: var(--dim); font-size: 12px; }
+.win-dots { display: flex; gap: 6px; }
+.win-dots i { width: 9px; height: 9px; border: 1px solid var(--line-2); display: block; }
+.win-title { flex: 1; text-align: center; letter-spacing: 0.02em; }
+.win-r { margin-left: auto; font-size: 11px; letter-spacing: 0.06em; }
+.win pre { margin: 0; padding: 16px 18px; overflow-x: auto; font-size: 13px; line-height: 1.7; color: var(--fg-2); }
+.win .p { color: var(--accent); user-select: none; }
+.win .c { color: var(--dim); }
+
+/* ------------------------------------------------- install command + tabs */
+.install { border: 1px solid var(--line-2); background: var(--panel); max-width: 640px; }
+.install-tabs { display: flex; border-bottom: 1px solid var(--line-2); }
+.install-tabs button {
+  position: relative; height: 38px; padding: 0 16px; color: var(--dim); font-size: 12px; letter-spacing: 0.04em;
+  border-right: 1px solid var(--line); transition: color var(--fast) ease, background-color var(--fast) ease;
+}
+.install-tabs button:hover { color: var(--fg); }
+.install-tabs button[aria-selected="true"] { color: var(--fg); background: var(--bg); }
+.install-tabs button[aria-selected="true"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--accent); }
+.install-body { display: flex; align-items: center; gap: 12px; padding: 0 0 0 16px; min-height: 54px; }
+.install-cmd { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; font-size: 13.5px; color: var(--fg); scrollbar-width: none; padding: 16px 0; }
+.install-cmd::-webkit-scrollbar { display: none; }
+.install-cmd .p { color: var(--accent); margin-right: 10px; user-select: none; }
+.install-note { margin: 0; padding: 8px 16px; border-top: 1px solid var(--line); color: var(--dim); font-size: 11.5px; }
+
+.copy {
+  align-self: stretch; display: inline-flex; align-items: center; gap: 8px; padding: 0 16px; color: var(--dim);
+  border-left: 1px solid var(--line-2); font-size: 12px; min-width: 92px; justify-content: center;
+  transition: color var(--fast) ease, background-color var(--fast) ease;
+}
+.copy:hover { color: var(--fg); background: var(--bg); }
+.copy[data-copied="1"] { color: var(--accent); }
+.copy svg { width: 14px; height: 14px; flex: none; }
+
+/* the single-line command used in steps and the footer CTA */
+.cmd { display: flex; align-items: center; border: 1px solid var(--line-2); background: var(--panel); min-width: 0; }
+.cmd code { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; padding: 14px 16px; font-size: 13px; color: var(--fg); scrollbar-width: none; }
+.cmd code::-webkit-scrollbar { display: none; }
+.cmd .p { color: var(--accent); margin-right: 10px; user-select: none; }
+
+/* ----------------------------------------------------------------- icons */
+.ico { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: square; }
+.ico.fill { fill: currentColor; stroke: none; }

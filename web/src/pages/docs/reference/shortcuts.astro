@@ -1,10 +1,10 @@
 ---
 import Page from '../../../layouts/Page.astro';
-import RuleBar from '../../../components/RuleBar.astro';
 import { shortcutGroups } from '../../../lib/reference';
 import { cellText, tableUnderHeading } from '../../../lib/tables';
 import { readReadme } from '../../../lib/repo';
 import { repo, withBase } from '../../../lib/urls';
+import Icon from '../../../components/Icon.astro';
 
 // /docs/reference/shortcuts/ — every default key binding, grouped like the
 // program's shortcuts panel, parsed from keys.go. The mouse table comes from
@@ -13,60 +13,55 @@ import { repo, withBase } from '../../../lib/urls';
 const groups = shortcutGroups();
 const mouse = tableUnderHeading(readReadme(), 'Mouse');
 const total = groups.reduce((sum, group) => sum + group.items.length, 0);
+const all = total + (mouse?.rows.length ?? 0);
 ---
 
 <Page
   title="Shortcuts"
+  page="shortcuts"
   description="Every default key binding of wr, grouped like the program's shortcuts panel and generated from keys.go."
-  glyph="⣤"
-  summary={`${total} actions in ${groups.length} groups, with the mouse on top. Generated from keys.go — the same file the program binds keys from.`}
+  summary={`${total} actions in ${groups.length} groups, plus the mouse. Generated from keys.go — the same file the program binds keys from.`}
   source={{ label: 'keys.go', href: repo.file('keys.go') }}
 >
-  <div class="sec-head">
-    <span class="glyph">⣿</span>
-    <h2>DEFAULT KEY BINDINGS</h2>
-    <span class="note">keys.go</span>
+  <div class="tools-row">
+    <label class="filter">
+      <Icon name="search" />
+      <input type="search" data-filter-input placeholder="Filter: back, search, ctrl…" aria-label="Filter the shortcuts" autocomplete="off" spellcheck="false" />
+      <span class="count" data-filter-count aria-live="polite">{all}</span>
+    </label>
   </div>
-  <RuleBar fill={22} />
 
-  <div class="ref-grid" style="margin-top:4px">
+  <div class="ref-grid">
     {groups.map((group) => (
-      <div class="ref-group">
-        <h3><span class="glyph">⡇</span> {group.group} <span class="count">{group.items.length}</span></h3>
-        <div class="ref-rows">
-          {group.items.map((item) => (
-            <div class="ref-row">
-              <div class="keys">
-                {item.keys.map((key) => <kbd>{key}</kbd>)}
-                {item.keys.length === 0 && <span class="action-id">no default key</span>}
-              </div>
-              <div class="label">
-                {item.label} <span class="action-id">{item.id}</span>
-              </div>
+      <div class="ref-group" data-filter-group>
+        <h3><span>{group.group}</span><span class="count">{group.items.length}</span></h3>
+        {group.items.map((item) => (
+          <div class="ref-row" data-filter-row>
+            <div class="keys">
+              {item.keys.map((key) => <kbd>{key}</kbd>)}
+              {item.keys.length === 0 && <span class="aid">no default key</span>}
             </div>
-          ))}
-        </div>
+            <div class="label">{item.label}<span class="aid">{item.id}</span></div>
+          </div>
+        ))}
       </div>
     ))}
 
     {mouse && (
-      <div class="ref-group">
-        <h3><span class="glyph">⣶</span> Mouse <span class="count">{mouse.rows.length}</span></h3>
-        <div class="ref-rows">
-          {mouse.rows.map((row) => (
-            <div class="ref-row">
-              <div class="keys">
-                {(row[0] ?? '').split(/\s*\/\s*/).map((key) => <kbd>{cellText(key)}</kbd>)}
-              </div>
-              <div class="label">{cellText(row[1] ?? '')}</div>
-            </div>
-          ))}
-        </div>
+      <div class="ref-group" data-filter-group>
+        <h3><span>Mouse</span><span class="count">{mouse.rows.length}</span></h3>
+        {mouse.rows.map((row) => (
+          <div class="ref-row" data-filter-row>
+            <div class="keys">{(row[0] ?? '').split(/\s*\/\s*/).map((key) => <kbd>{cellText(key)}</kbd>)}</div>
+            <div class="label">{cellText(row[1] ?? '')}</div>
+          </div>
+        ))}
       </div>
     )}
   </div>
+  <div class="ref-empty" data-filter-empty hidden>No binding matches that. Try a shorter word.</div>
 
-  <p class="search-hint" style="margin-top:18px">
+  <p class="note-line">
     Rebind any of them from the menu (<kbd>m</kbd>) or the shortcuts panel (<kbd>,</kbd>):
     see <a href={withBase('/docs/guide/rebinding-keys/')}>Rebinding keys</a>.
   </p>

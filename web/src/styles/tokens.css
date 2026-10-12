@@ -1,0 +1,77 @@
+/* ==========================================================================
+   wr docs — blueprint design system
+   Monochrome by rule: one hue per palette, a ramp of it for panels and lines,
+   the same hue at full strength as the accent. No gradients, no shadows, no
+   radius. Decoration is ruled lines, crosshair marks and a hatched margin.
+
+   Files, in the order they are imported by site.css:
+     tokens  → palettes and scales            (this file)
+     base    → reset, type, primitives
+     ui      → buttons, keys, windows, install, code copy
+     chrome  → header, footer, status line, dialogs
+     landing → the home page
+     docs    → the documentation shell
+     prose   → rendered Markdown and code
+     pages   → reference, search, 404
+   ========================================================================== */
+
+:root {
+  /* blueprint (default) */
+  --bg: #050912;
+  --panel: #0a1222;
+  --hatch: #0b1527;
+  --line: #131f36;
+  --line-2: #22365b;
+  --dim: #6f86ab;
+  --fg-2: #a3b5d3;
+  --fg: #e8f0fd;
+  --accent: #6cb4ff;
+  --ink: #050912;
+
+  --mono: "Geist Mono Variable", ui-monospace, SFMono-Regular, "SF Mono", "JetBrains Mono", Menlo, Consolas,
+    "DejaVu Sans Mono", monospace;
+  --sans: "Geist Variable", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --frame: 1240px;
+  --pad: clamp(20px, 4vw, 48px);
+  --head-h: 52px;
+  --status-h: 28px;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --fast: 140ms;
+
+  color-scheme: dark;
+}
+
+html[data-theme="graphite"] {
+  --bg: #0a0a0a; --panel: #111111; --hatch: #0e0e0e; --line: #1c1c1c; --line-2: #343434;
+  --dim: #8a8a8a; --fg-2: #b8b8b8; --fg: #ededed; --accent: #ffffff; --ink: #0a0a0a;
+}
+html[data-theme="phosphor"] {
+  --bg: #040a06; --panel: #08140c; --hatch: #07110a; --line: #0f2216; --line-2: #1d4a2c;
+  --dim: #5a9a6d; --fg-2: #9fd8b1; --fg: #d8f7e2; --accent: #3dff85; --ink: #04100a;
+}
+html[data-theme="amber"] {
+  --bg: #0b0802; --panel: #140f04; --hatch: #100b03; --line: #231a08; --line-2: #46340f;
+  --dim: #9a7e45; --fg-2: #cdb27a; --fg: #f9e9c8; --accent: #ffb224; --ink: #0b0802;
+}
+html[data-theme="paper"] {
+  --bg: #f4f7fc; --panel: #e8eef8; --hatch: #e8eef8; --line: #d5deee; --line-2: #aebcd8;
+  --dim: #566a8f; --fg-2: #2c4270; --fg: #0b1f44; --accent: #1550c8; --ink: #f4f7fc;
+  color-scheme: light;
+}
+
+/* Shiki runs in css-variables mode (astro.config.mjs): it only names the kind
+   of each token, and these decide how the active palette paints them. */
+:root {
+  --astro-code-foreground: var(--fg-2);
+  --astro-code-background: var(--panel);
+  --astro-code-token-constant: var(--accent);
+  --astro-code-token-string: var(--fg);
+  --astro-code-token-comment: var(--dim);
+  --astro-code-token-keyword: var(--accent);
+  --astro-code-token-parameter: var(--fg-2);
+  --astro-code-token-function: var(--fg);
+  --astro-code-token-string-expression: var(--fg);
+  --astro-code-token-punctuation: var(--dim);
+  --astro-code-token-link: var(--accent);
+}

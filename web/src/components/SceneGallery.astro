@@ -2,18 +2,15 @@
 import { SCENES, sceneAsset } from '../data/scenes';
 import { assetUrl } from '../lib/urls';
 
-// The gallery of recorded scenes under every documentation page: the same
-// frames the script regenerates, each with the key that produces it.
+// The gallery of recorded scenes under every document overview: the same frames
+// the script regenerates, each with the key that produces it.
 ---
 
-<div class="demos">
+<div class="gallery">
   {SCENES.map((scene) => (
-    <figure class="demo">
-      <img src={assetUrl(sceneAsset(scene))} alt={scene.alt} loading="lazy" decoding="async" />
-      <figcaption class="cap">
-        <b>{scene.name}</b>
-        <span class="k">{scene.cmd}</span>
-      </figcaption>
+    <figure>
+      <img src={assetUrl(sceneAsset(scene))} alt={scene.alt} width="828" height="538" loading="lazy" decoding="async" />
+      <figcaption><b>{scene.name}</b><kbd>{scene.cmd}</kbd></figcaption>
     </figure>
   ))}
 </div>

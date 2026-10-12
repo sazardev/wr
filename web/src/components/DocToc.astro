@@ -1,0 +1,30 @@
+---
+import Icon from './Icon.astro';
+
+interface Props {
+  headings: readonly { depth: number; slug: string; text: string }[];
+  /** Where the page's Markdown lives, for "edit this page". */
+  edit?: string;
+}
+
+const { headings, edit } = Astro.props;
+---
+
+<aside class="toc" aria-label="On this page">
+  {headings.length > 0 && (
+    <>
+      <div class="aside-h"><span>On this page</span></div>
+      <ul data-toc>
+        {headings.map((heading) => (
+          <li class={heading.depth > 2 ? 'l3' : ''}><a href={`#${heading.slug}`}>{heading.text}</a></li>
+        ))}
+      </ul>
+    </>
+  )}
+  <div class="aside-h"><span>Tools</span></div>
+  <div class="tools">
+    {edit && <a href={edit}><Icon name="edit" />Edit on GitHub</a>}
+    <button type="button" data-copy-url><Icon name="link" /><span class="copy-l">Copy link</span></button>
+    <a href="#main" data-top><Icon name="up" />Back to top</a>
+  </div>
+</aside>

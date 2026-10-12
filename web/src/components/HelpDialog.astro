@@ -1,0 +1,29 @@
+---
+// The keyboard map of the site, one key away (?). The site behaves like the
+// program it documents: the keyboard is the first-class way around.
+const keys: { keys: string[]; what: string }[] = [
+  { keys: ['/'], what: 'search the docs' },
+  { keys: ['Ctrl', 'K'], what: 'command palette, from anywhere' },
+  { keys: ['['], what: 'previous page of the document' },
+  { keys: [']'], what: 'next page of the document' },
+  { keys: ['t'], what: 'change the theme' },
+  { keys: ['g', 'h'], what: 'go home' },
+  { keys: ['g', 'd'], what: 'go to the documentation' },
+  { keys: ['?'], what: 'this help' },
+  { keys: ['esc'], what: 'close a dialog, leave a field' },
+];
+---
+
+<div class="pal" data-help data-modal hidden>
+  <div class="pal-box" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" style="max-width:460px">
+    <div class="pal-title">keyboard <span class="esc"><kbd>esc</kbd></span></div>
+    <dl class="help-grid">
+      {keys.map((row) => (
+        <>
+          <dt>{row.keys.map((key) => <kbd>{key}</kbd>)}</dt>
+          <dd>{row.what}</dd>
+        </>
+      ))}
+    </dl>
+  </div>
+</div>

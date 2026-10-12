@@ -1,25 +1,26 @@
 ---
+import Icon from './Icon.astro';
 import { docPath, repo, withBase } from '../lib/urls';
 import { splitDocument } from '../lib/split';
 import { readRepo } from '../lib/repo';
 import { THEMES } from '../data/themes';
 
-// The command palette: everything the site can do, one dialog away. The items
-// are real markup, so the palette works without JavaScript for the links and
-// the script only opens, filters and runs them. The guide's sections come from
-// the document itself, so they cannot go stale.
+// The command palette: search the text of every page, jump to a section, change
+// the theme. The commands are real markup, so the links work without
+// JavaScript; palette.ts opens it, filters it, and adds the full-text hits of
+// the search index above them as you type.
 
 const guide = splitDocument(readRepo('docs/GUIDE.md'));
 
 const go = [
-  { label: 'Home', href: withBase('/'), keys: 'start inicio' },
-  { label: 'The guide', href: docPath('guide'), keys: 'guide docs manual' },
-  { label: 'The design language', href: docPath('design'), keys: 'design ds tokens' },
+  { label: 'Home', href: withBase('/'), keys: 'start inicio landing' },
+  { label: 'Documentation', href: withBase('/docs/'), keys: 'docs hub index' },
+  { label: 'The guide', href: docPath('guide'), keys: 'guide manual' },
+  { label: 'Design language', href: docPath('design'), keys: 'design ds tokens' },
   { label: 'Changelog', href: docPath('changelog'), keys: 'releases versions history' },
-  { label: 'Reference', href: docPath('reference'), keys: 'reference overview' },
-  { label: 'Every shortcut', href: docPath('reference', 'shortcuts'), keys: 'keys bindings keyboard' },
-  { label: 'Every setting', href: docPath('reference', 'settings'), keys: 'config configuration toml' },
-  { label: 'Search the docs', href: withBase('/docs/search/'), keys: 'find search grep' },
+  { label: 'Every shortcut', href: docPath('reference', 'shortcuts'), keys: 'keys bindings keyboard reference' },
+  { label: 'Every setting', href: docPath('reference', 'settings'), keys: 'config configuration toml reference' },
+  { label: 'Search page', href: withBase('/docs/search/'), keys: 'find grep results' },
 ];
 
 const sections = guide.sections.map((section) => ({
@@ -29,9 +30,10 @@ const sections = guide.sections.map((section) => ({
 }));
 
 const site = [
-  { label: 'Copy this link', action: 'copy', keys: 'url share clipboard copy' },
+  { label: 'Copy this link', action: 'copy', keys: 'url share clipboard' },
   { label: 'Top of the page', action: 'top', keys: 'up beginning scroll' },
-  { label: 'Print this page', action: 'print', keys: 'pdf print paper' },
+  { label: 'Keyboard shortcuts of this site', action: 'help', keys: 'help keys hotkeys ?' },
+  { label: 'Print this page', action: 'print', keys: 'pdf paper' },
   { label: 'The repository', href: repo.url, keys: 'github source code' },
   { label: 'Releases', href: repo.releases, keys: 'download install binaries' },
 ];
@@ -51,38 +53,39 @@ const groups: { id: string; title: string; items: Command[] }[] = [
     id: 'theme',
     title: 'theme',
     items: THEMES.map((theme) => ({
-      label: `${theme.id} (${theme.scheme})`,
+      label: `theme: ${theme.id}`,
       action: 'theme',
       theme: theme.id,
-      keys: `theme palette colors ${theme.id}`,
+      keys: `palette colors ${theme.scheme}`,
     })),
   },
   { id: 'site', title: 'this site', items: site },
 ];
 ---
 
-<div class="palette" data-palette hidden>
-  <div class="pal-box" role="dialog" aria-modal="true" aria-label="Command palette">
-    <div class="pal-top">
-      <span class="glyph">⣿</span> command
-      <span class="fill" aria-hidden="true">──────────────────────────────────────────</span>
-    </div>
+<div class="pal" data-palette data-modal hidden>
+  <div class="pal-box" role="dialog" aria-modal="true" aria-label="Search and commands">
     <div class="pal-input">
-      <span class="prompt" aria-hidden="true">›</span>
+      <Icon name="search" />
       <input
         type="text"
         data-palette-input
-        placeholder="a page, a theme, a command…"
-        aria-label="Filter commands"
+        placeholder="Search the docs, jump to a page, change the theme…"
+        aria-label="Search the docs and run commands"
         role="combobox"
         aria-expanded="true"
         aria-controls="palette-list"
         aria-autocomplete="list"
         autocomplete="off"
+        autocapitalize="off"
         spellcheck="false"
       />
+      <kbd aria-hidden="true">esc</kbd>
     </div>
-    <div class="pal-list" id="palette-list" role="listbox" aria-label="Commands" data-palette-list>
+    <div class="pal-list" id="palette-list" role="listbox" aria-label="Results" data-palette-list>
+      <div class="pal-group" data-palette-hits hidden>
+        <div class="pal-cap" aria-hidden="true">in the docs</div>
+      </div>
       {groups.map((group) => (
         <div class="pal-group" data-palette-group>
           <div class="pal-cap" aria-hidden="true">{group.title}</div>
@@ -100,17 +103,16 @@ const groups: { id: string; title: string; items: Command[] }[] = [
             >
               <span class="mark" aria-hidden="true">▸</span>
               <span class="nm">{item.label}</span>
-              {item.href && <span class="where" aria-hidden="true">{new URL(item.href, 'https://wr.test').pathname}</span>}
-              {item.action === 'theme' && <span class="where" aria-hidden="true">apply</span>}
+              {item.href && <span class="where" aria-hidden="true">{new URL(item.href, 'https://wr.test').pathname.replace(withBase('/').slice(0, -1), '') || '/'}</span>}
             </div>
           ))}
         </div>
       ))}
     </div>
     <div class="pal-foot">
-      <span><span class="key">↑↓</span> move</span>
-      <span><span class="key">↵</span> run</span>
-      <span><span class="key">esc</span> close</span>
+      <span><kbd>↑</kbd><kbd>↓</kbd> move</span>
+      <span><kbd>↵</kbd> open</span>
+      <span><kbd>esc</kbd> close</span>
     </div>
   </div>
 </div>

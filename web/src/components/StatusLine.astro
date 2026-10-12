@@ -1,0 +1,16 @@
+---
+interface Props {
+  version: string;
+}
+const { version } = Astro.props;
+---
+
+<div class="status">
+  <span class="st-mode" data-st-mode aria-hidden="true">WR</span>
+  <span class="st-path" data-st-path aria-hidden="true">~/</span>
+  <span class="st-sp"></span>
+  <button type="button" class="st-item st-hide" data-palette-open><kbd>/</kbd> search</button>
+  <button type="button" class="st-item st-hide" data-help-open><kbd>?</kbd> keys</button>
+  <span class="st-item st-pct" data-st-pct aria-hidden="true">0%</span>
+  <span class="st-item st-hide" aria-hidden="true">v{version}</span>
+</div>

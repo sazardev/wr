@@ -1,29 +1,18 @@
 ---
+import Icon from './Icon.astro';
+
 interface Props {
   /** The command to show and copy. */
   cmd: string;
-  /** Window title of the fake terminal. */
-  title?: string;
-  /** Right-hand label of the fake title bar. */
-  right?: string;
-  /** Optional dim comment under the command. */
-  comment?: string;
-  /** Show the blinking cursor. */
-  blink?: boolean;
-  /** Blink/ellipsis placeholder title for the prompt. */
   prompt?: string;
 }
 
-const { cmd, title = 'sh', right = '80×24', comment, blink = true, prompt = '$' } = Astro.props;
+const { cmd, prompt = '$' } = Astro.props;
 ---
 
-<div class="term">
-  <div class="term-bar">
-    <span class="dots" data-spin>⣶</span>
-    <span class="title">{title}</span>
-    <span class="right">{right}</span>
-    <button class="copy" type="button" data-copy={cmd}><span class="copy-label">⣿ copy</span></button>
-  </div>
-  <pre><span class="p">{prompt}</span> {cmd}{blink && <span class="blinker">▊</span>}
-{comment && <span class="dim"># {comment}</span>}</pre>
+<div class="cmd">
+  <code><span class="p">{prompt}</span>{cmd}</code>
+  <button class="copy" type="button" data-copy={cmd} aria-label={`Copy: ${cmd}`}>
+    <Icon name="copy" /><span class="copy-l">copy</span>
+  </button>
 </div>

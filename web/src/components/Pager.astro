@@ -9,23 +9,22 @@ interface Props {
 }
 
 const { doc, previous, next } = Astro.props;
-const label = (entry: DocEntry): string =>
-  entry.data.section === 'index' ? 'overview' : entry.data.title;
+const label = (entry: DocEntry): string => (entry.data.section === 'index' ? 'Overview' : entry.data.title);
 ---
 
-<nav class="pager" aria-label="Section navigation">
+<nav class="pager" aria-label="Pages of this document">
   {previous ? (
-    <a href={docPath(doc, previous.data.section)} rel="prev">
-      <span class="dir">◂ PREV</span>
-      <span class="what">{label(previous)}</span>
+    <a href={docPath(doc, previous.data.section)} rel="prev" class="prev">
+      <span class="dir"><kbd>[</kbd> previous</span>
+      <span class="what"><span class="arr">←</span>{label(previous)}</span>
     </a>
   ) : (
-    <span class="end">first section</span>
+    <span class="end">first page</span>
   )}
   {next ? (
     <a href={docPath(doc, next.data.section)} rel="next" class="next">
-      <span class="dir">NEXT ▸</span>
-      <span class="what">{label(next)}</span>
+      <span class="dir">next <kbd>]</kbd></span>
+      <span class="what">{label(next)}<span class="arr">→</span></span>
     </a>
   ) : (
     <span class="end" style="text-align:right">end of the {doc}</span>

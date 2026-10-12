@@ -1,38 +1,44 @@
 ---
 import Base from './Base.astro';
 import Crumbs from '../components/Crumbs.astro';
+import DocAside from '../components/DocAside.astro';
 import { withBase } from '../lib/urls';
 
 interface Props {
   /** Page title, also used in the document title. */
   title: string;
   description: string;
-  /** Braille mark next to the heading. */
-  glyph?: string;
   /** Short line under the heading. */
   summary?: string;
-  /** Where the page comes from, shown in the actions row. */
+  /** Which reference page this is: index, shortcuts, settings. */
+  page?: string;
+  /** Where the page comes from, shown as a tag. */
   source?: { label: string; href: string };
-  current?: string;
 }
 
-const { title, description, glyph = '⣤', summary, source, current = 'reference' } = Astro.props;
+const { title, description, summary, page = 'index', source } = Astro.props;
 ---
 
-<Base title={`${title} — wr docs`} description={description} current={current}>
-  <div class="wrap" style="padding-top:32px">
-    <Crumbs items={[{ label: 'docs', href: withBase('/docs/') }, { label: title }]} />
-    <div class="doc-head">
-      <span class="glyph">{glyph}</span>
-      <h1>{title}</h1>
+<Base title={`${title} — wr docs`} description={description} current="reference">
+  <div class="docbar">
+    <b>reference / {title.toLowerCase()}</b>
+    <button type="button" data-aside-toggle aria-expanded="false" aria-controls="docs-aside">contents ▾</button>
+  </div>
+  <div class="docs no-toc">
+    <DocAside doc="reference" section={page} />
+    <div class="doc-main">
+      <Crumbs items={[{ label: 'docs', href: withBase('/docs/') }, { label: 'reference', href: page === 'index' ? undefined : withBase('/docs/reference/') }, ...(page === 'index' ? [] : [{ label: title }])]} />
+      <header class="doc-head">
+        <h1>{title}</h1>
+        {summary && <p class="doc-sum">{summary}</p>}
+        {source && (
+          <div class="doc-meta">
+            <span class="tag solid"><span class="dot"></span>generated</span>
+            <a class="tag" href={source.href}>{source.label} ↗</a>
+          </div>
+        )}
+      </header>
+      <slot />
     </div>
-    {summary && <p class="doc-summary">{summary}</p>}
-    {source && (
-      <div class="doc-actions">
-        <a href={source.href}>source: {source.label}</a>
-        <a href={withBase('/docs/search/')}>search the docs</a>
-      </div>
-    )}
-    <slot />
   </div>
 </Base>

@@ -1,0 +1,23 @@
+---
+import { THEMES } from '../data/themes';
+
+// One tile per palette, drawn with the palette's own colors (not the page's),
+// so each shows what it will look like. Clicking applies it.
+---
+
+<div class="tiles">
+  {THEMES.map((theme) => {
+    const [bg, panel, fg, dim, accent] = theme.colors;
+    return (
+      <button class="tile" type="button" data-theme-pick={theme.id} aria-pressed={theme.id === 'blueprint'}>
+        <span class="tile-pv" style={`background:${bg};border-color:${dim}`} aria-hidden="true">
+          <i style={`background:${accent};width:38%`} />
+          <i style={`background:${fg};width:86%`} />
+          <i style={`background:${dim};width:64%`} />
+          <i style={`background:${panel};width:100%;height:20px;border:1px solid ${dim}`} />
+        </span>
+        <span class="tile-nm">{theme.id}<small>{theme.scheme}</small></span>
+      </button>
+    );
+  })}
+</div>

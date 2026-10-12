@@ -42,11 +42,19 @@ README.md ──────┼─▶ src/lib/reference.ts ─▶ /docs/referenc
 - **`src/lib/search.ts`** — a small, tested scorer. The search page is static;
   its state is the query string (`/docs/search/?q=links&scope=guide`), and the
   index is a JSON file built at build time.
-- **`src/scripts/`** — the client side, one module per job (themes, braille
-  field, cursor, rules, progress, reel, search, hotkeys), composed by
-  `enhance.ts` on load and after view-transition navigations.
-- **`src/styles/site.css`** — the whole design system (DS-1.2): tokens, the
-  seven palettes, the landing, the docs shell, the prose and the tables.
+- **`src/scripts/`** — the client side, one module per job (themes, command
+  palette with full-text search, hotkeys, status line, scroll reveals, the
+  product window, the noise demo, install tabs, copy buttons, table of contents
+  scroll-spy, filters, search), composed by `enhance.ts` on load and after
+  view-transition navigations.
+- **`src/styles/`** — the design system (DS-2.0, documented in
+  `docs/DESIGN.md`), split by job and imported by `site.css`: `tokens` (the five
+  monochrome palettes), `base`, `ui`, `chrome` (header, footer, status line,
+  dialogs), `landing`, `docs`, `prose` and `pages`.
+- **`src/components/`** — small Astro components: the chrome (`SiteHeader`,
+  `SiteFooter`, `StatusLine`, `CommandPalette`…), the landing blocks
+  (`Install`, `ProductWindow`, `ThemeTiles`, `Blueprint`) and the docs shell
+  (`DocAside`, `DocToc`, `Pager`, `SectionCards`).
 
 ## Conventions
 

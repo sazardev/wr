@@ -1,0 +1,18 @@
+---
+interface Props {
+  /** The number of the sheet, shown in accent: 01, 02… */
+  no: string;
+  title: string;
+  /** Small note at the right end of the rule. */
+  note?: string;
+}
+
+const { no, title, note } = Astro.props;
+---
+
+<div class="sec-label">
+  <span class="no">[{no}]</span>
+  <span>{title}</span>
+  <span class="rule"></span>
+  {note && <span class="note">{note}</span>}
+</div>

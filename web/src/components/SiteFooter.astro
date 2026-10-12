@@ -1,33 +1,58 @@
 ---
-import { repo, withBase, docPath } from '../lib/urls';
+import { docPath, repo, withBase } from '../lib/urls';
 
 interface Props {
   version: string;
 }
-
 const { version } = Astro.props;
-const hints = [
-  { href: withBase('/'), key: '⣿', label: 'home' },
-  { href: docPath('guide'), key: '⡇', label: 'guide' },
-  { href: docPath('design'), key: '⣷', label: 'design' },
-  { href: docPath('changelog'), key: '⣄', label: 'changelog' },
-  { href: withBase('/docs/reference/shortcuts/'), key: '⣤', label: 'shortcuts' },
-  { href: repo.url, key: '⡇', label: 'github' },
-  { href: repo.releases, key: '⣶', label: 'releases' },
+
+const cols = [
+  {
+    title: 'Docs',
+    links: [
+      { label: 'Start here', href: withBase('/docs/guide/start/') },
+      { label: 'The guide', href: docPath('guide') },
+      { label: 'Design language', href: docPath('design') },
+      { label: 'Changelog', href: docPath('changelog') },
+    ],
+  },
+  {
+    title: 'Reference',
+    links: [
+      { label: 'Shortcuts', href: withBase('/docs/reference/shortcuts/') },
+      { label: 'Settings', href: withBase('/docs/reference/settings/') },
+      { label: 'Search', href: withBase('/docs/search/') },
+      { label: 'RSS', href: withBase('/rss.xml') },
+    ],
+  },
+  {
+    title: 'Project',
+    links: [
+      { label: 'GitHub', href: repo.url },
+      { label: 'Releases', href: repo.releases },
+      { label: 'Issues', href: repo.issues },
+      { label: 'License · MIT', href: repo.file('LICENSE') },
+    ],
+  },
 ];
 ---
 
-<footer class="site-foot">
-  <div class="hints">
-    {hints.map((hint) => (
-      <a href={hint.href}>
-        <span class="k">{hint.key}</span> {hint.label}
-      </a>
+<footer class="foot">
+  <div class="foot-grid">
+    <div class="foot-brand">
+      <a class="logo" href={withBase('/')}>wr<span class="cur" aria-hidden="true"></span></a>
+      <p>A reader and browser for your terminal. The web, without the noise.</p>
+    </div>
+    {cols.map((col) => (
+      <div>
+        <h4>{col.title}</h4>
+        <ul>{col.links.map((link) => <li><a href={link.href}>{link.label}</a></li>)}</ul>
+      </div>
     ))}
   </div>
-  <div class="foot-right">
-    <span class="foot-version">v{version}</span>
-    <span id="progress" aria-hidden="true"></span>
-    <span id="pct">0%</span>
+  <div class="foot-base">
+    <span>wr v{version} · MIT · pages generated from the repository</span>
+    <span>press <kbd>?</kbd> for keyboard shortcuts</span>
   </div>
+  <div class="foot-mark" aria-hidden="true">wr</div>
 </footer>

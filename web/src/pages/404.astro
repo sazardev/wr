@@ -1,5 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
+import Blueprint from '../components/Blueprint.astro';
 import { withBase } from '../lib/urls';
 
 // The 404 page. It doubles as the compatibility shim for the addresses of the
@@ -10,20 +11,23 @@ const base = withBase('/');
 ---
 
 <Base title="Not found — wr docs" description="That page does not exist. The documentation starts at /docs.">
-  <div class="wrap notfound">
-    <span class="glyph">⠿</span>
-    <h1>That page is not here.</h1>
-    <p class="lead">
-      The documentation was rebuilt as an Astro site with one page per section. Whatever you were
-      looking for is one of these:
-    </p>
-    <div class="links">
-      <a class="btn primary" href={withBase('/docs/')}><span class="k">⣿</span> Documentation</a>
-      <a class="btn" href={withBase('/docs/guide/start/')}><span class="k">⡇</span> Start reading</a>
-      <a class="btn" href={withBase('/docs/search/')}><span class="k">⣶</span> Search</a>
-      <a class="btn" href={withBase('/')}><span class="k">⣄</span> Home</a>
+  <section class="nf">
+    <Blueprint id="nf" />
+    <div class="nf-in">
+      <p class="code rise">404<span class="cur"></span></p>
+      <h1 class="rise" style="--d:1">That page is not here.</h1>
+      <p class="lead rise" style="--d:2">
+        The documentation was rebuilt with one page per section. Whatever you were looking for is
+        one of these — or press <kbd>/</kbd> and search for it.
+      </p>
+      <div class="btn-row rise" style="--d:3">
+        <a class="btn primary" href={withBase('/docs/')}>Documentation <span class="arr">→</span></a>
+        <a class="btn" href={withBase('/docs/guide/start/')}>Start reading</a>
+        <a class="btn" href={withBase('/docs/search/')}>Search</a>
+        <a class="btn ghost" href={withBase('/')}>Home</a>
+      </div>
     </div>
-  </div>
+  </section>
 
   <script is:inline define:vars={{ base, docsBase: withBase('/docs/') }}>
     // Addresses of the previous static site, and where they live now.

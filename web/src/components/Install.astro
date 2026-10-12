@@ -1,0 +1,45 @@
+---
+import Icon from './Icon.astro';
+import { repo } from '../lib/urls';
+
+// The install box: three ways in, one command each. Tabs switch the command
+// (scripts/install.ts); the first one is server-rendered.
+const methods = [
+  {
+    id: 'script',
+    label: 'script',
+    cmd: `curl -fsSL ${repo.installScript} | sh`,
+    note: 'linux and macOS · verifies the SHA-256 checksum · no Go needed',
+  },
+  {
+    id: 'go',
+    label: 'go install',
+    cmd: 'go install github.com/sazardev/wr@latest',
+    note: 'Go 1.26 or newer · lands in $(go env GOPATH)/bin',
+  },
+  {
+    id: 'source',
+    label: 'source',
+    cmd: `git clone ${repo.url} && cd wr && go build -o ~/.local/bin/wr .`,
+    note: 'build it yourself · one static binary',
+  },
+];
+const first = methods[0]!;
+---
+
+<div class="install" data-install>
+  <div class="install-tabs" role="tablist" aria-label="Install method">
+    {methods.map((method, i) => (
+      <button type="button" role="tab" aria-selected={i === 0} data-cmd={method.cmd} data-note={method.note}>
+        {method.label}
+      </button>
+    ))}
+  </div>
+  <div class="install-body">
+    <div class="install-cmd"><span class="p">$</span><span data-install-cmd>{first.cmd}</span></div>
+    <button class="copy" type="button" data-copy={first.cmd} aria-label="Copy the install command">
+      <Icon name="copy" /><span class="copy-l">copy</span>
+    </button>
+  </div>
+  <p class="install-note" data-install-note>{first.note}</p>
+</div>

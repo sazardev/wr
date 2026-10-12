@@ -1,5 +1,6 @@
 import { searchEntries, tokenize, type SearchEntry } from '../lib/search';
 import { withBase } from '../lib/urls';
+import { go } from './go';
 
 // The search page: one static page whose state lives in the query string, so a
 // search is a link that can be shared, bookmarked and gone back to. The index
@@ -78,6 +79,16 @@ export async function startSearch(): Promise<void> {
   let query = initial.get('q') ?? '';
   let scope = SCOPES.includes(initial.get('scope') ?? '') ? initial.get('scope')! : 'all';
   search.input.value = query;
+  let selected = -1;
+
+  const rows = (): HTMLAnchorElement[] => [...search.results.querySelectorAll<HTMLAnchorElement>('a.result')];
+  const select = (next: number): void => {
+    const list = rows();
+    if (!list.length) return;
+    selected = (next + list.length) % list.length;
+    list.forEach((row, i) => row.classList.toggle('sel', i === selected));
+    list[selected]!.scrollIntoView({ block: 'nearest' });
+  };
 
   const entries = await loadIndex();
 
@@ -95,16 +106,17 @@ export async function startSearch(): Promise<void> {
     if (hits.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'empty';
-      const glyph = document.createElement('span');
-      glyph.className = 'glyph';
-      glyph.textContent = '⠿';
-      const text = document.createElement('p');
-      text.textContent = `Nothing matches “${query}”. Try a single word: links, keys, cache, install…`;
-      empty.append(glyph, text);
+      const lead = document.createElement('b');
+      lead.textContent = `Nothing matches “${query}”.`;
+      const hint = document.createElement('span');
+      hint.textContent = 'Try a single word: links, keys, cache, install…';
+      empty.append(lead, hint);
       search.results.append(empty);
+      selected = -1;
       return;
     }
     for (const hit of hits) search.results.append(hitElement(hit, terms));
+    selected = -1;
   };
 
   const syncUrl = (): void => {
@@ -121,6 +133,16 @@ export async function startSearch(): Promise<void> {
     render();
   });
 
+  search.input.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      select(selected + 1);
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      select(selected - 1);
+    }
+  });
+
   for (const button of search.scopes) {
     button.setAttribute('aria-pressed', String(button.dataset.scope === scope));
     button.addEventListener('click', () => {
@@ -132,11 +154,10 @@ export async function startSearch(): Promise<void> {
   }
 
   search.form.addEventListener('submit', (event) => {
-    const [first] = searchEntries(entries, query, { scope });
-    if (first) {
-      event.preventDefault();
-      location.assign(first.entry.url);
-    }
+    const list = rows();
+    const target = list[selected] ?? list[0];
+    event.preventDefault();
+    if (target) go(target.href);
   });
 
   addEventListener('popstate', () => {
@@ -154,25 +175,23 @@ export async function startSearch(): Promise<void> {
 }
 
 function hitElement(hit: { entry: SearchEntry; snippet: string }, terms: string[]): HTMLElement {
-  const article = document.createElement('article');
-  article.className = 'result';
+  const link = document.createElement('a');
+  link.className = 'result';
+  link.href = hit.entry.url;
 
   const where = document.createElement('div');
   where.className = 'where';
   const doc = document.createElement('span');
   doc.className = 'doc';
-  doc.textContent = hit.entry.doc.toUpperCase();
+  doc.textContent = hit.entry.doc;
   where.append(doc);
 
   const heading = document.createElement('h3');
-  const link = document.createElement('a');
-  link.href = hit.entry.url;
-  link.textContent = hit.entry.title;
-  heading.append(link);
+  heading.textContent = hit.entry.title;
 
   const body = document.createElement('p');
   body.append(highlight(hit.snippet, terms));
 
-  article.append(where, heading, body);
-  return article;
+  link.append(where, heading, body);
+  return link;
 }

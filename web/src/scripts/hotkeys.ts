@@ -1,47 +1,97 @@
+import { go } from './go';
+import { closeHelp, helpOpen, openHelp } from './help';
+import { toggle, open as openPalette } from './palette';
+import { openThemeMenu } from './themes';
 import { withBase } from '../lib/urls';
-import { toggle } from './palette';
 
-// The site behaves like the program it documents: `/` starts a search from
-// anywhere, `Esc` lets go of the input. On the search page it focuses the box;
-// anywhere else it opens the search page.
+// The site behaves like the program it documents: the keyboard gets you
+// everywhere. Ctrl+K and "/" search, "[" and "]" turn the pages of a document,
+// "t" changes the theme, "g h" / "g d" jump home / to the docs, "?" lists them.
+// A dialog owns the keyboard while it is open; typing in a field is never
+// intercepted.
 
 function isTyping(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null;
   if (!el) return false;
-  return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el.isContentEditable;
+  return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement || el.isContentEditable;
 }
 
-/** A dialog owns the keyboard while it is open: nothing global runs. */
-function inDialog(): boolean {
-  return document.querySelector('.theme-modal:not([hidden]), .palette:not([hidden])') !== null;
+function modalOpen(): boolean {
+  return document.querySelector('[data-modal]:not([hidden])') !== null;
 }
+
+function turn(rel: 'prev' | 'next'): void {
+  const link = document.querySelector<HTMLAnchorElement>(`.pager a[rel="${rel}"]`);
+  if (link) go(link.href);
+}
+
+let chord = false;
+let chordTimer: ReturnType<typeof setTimeout> | undefined;
+let wired = false;
 
 export function startHotkeys(): void {
-  if (document.body.dataset.hotkeysOn === '1') return;
-  document.body.dataset.hotkeysOn = '1';
+  if (wired) return;
+  wired = true;
 
   document.addEventListener('keydown', (event) => {
-    // The palette opens from anywhere, typing included — that is its point —
-    // and it toggles, so a second press gives the page back.
-    if ((event.ctrlKey || event.metaKey) && (event.key === 'k' || event.key === 'K')) {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
       event.preventDefault();
+      if (helpOpen()) closeHelp();
       toggle();
       return;
     }
     if (event.metaKey || event.ctrlKey || event.altKey) return;
-    if (inDialog()) return;
-    if (event.key === 'Escape' && document.activeElement instanceof HTMLInputElement) {
-      document.activeElement.blur();
+
+    if (modalOpen()) {
+      if (helpOpen() && (event.key === 'Escape' || event.key === '?')) {
+        event.preventDefault();
+        closeHelp();
+      }
       return;
     }
-    if (event.key !== '/' || isTyping(event.target)) return;
-    event.preventDefault();
-    const input = document.querySelector<HTMLInputElement>('[data-search-input]');
-    if (input) {
-      input.focus();
-      input.select();
+    if (isTyping(event.target)) {
+      if (event.key === 'Escape') (event.target as HTMLElement).blur();
       return;
     }
-    location.assign(withBase('/docs/search/'));
+
+    if (chord) {
+      chord = false;
+      clearTimeout(chordTimer);
+      if (event.key === 'h') go(withBase('/'));
+      else if (event.key === 'd') go(withBase('/docs/'));
+      else return;
+      event.preventDefault();
+      return;
+    }
+
+    switch (event.key) {
+      case '/': {
+        event.preventDefault();
+        const field = document.querySelector<HTMLInputElement>('[data-search-input]');
+        if (field) {
+          field.focus();
+          field.select();
+        } else openPalette();
+        break;
+      }
+      case '?':
+        event.preventDefault();
+        openHelp();
+        break;
+      case 't':
+        event.preventDefault();
+        openThemeMenu();
+        break;
+      case '[':
+        turn('prev');
+        break;
+      case ']':
+        turn('next');
+        break;
+      case 'g':
+        chord = true;
+        chordTimer = setTimeout(() => (chord = false), 900);
+        break;
+    }
   });
 }

@@ -1,0 +1,40 @@
+---
+import { SCENES, sceneAsset } from '../data/scenes';
+import { assetUrl } from '../lib/urls';
+
+// The product window: the real captured frames, one tab each, with the command
+// that produced the frame typed underneath (scripts/reel.ts drives it; ?scene=
+// picks one to link to).
+---
+
+<div class="win" id="reel">
+  <div class="win-bar">
+    <span class="win-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+    <div class="win-tabs" role="tablist" aria-label="Scenes of the reader">
+      {SCENES.map((scene, i) => (
+        <button type="button" role="tab" aria-selected={i === 0} tabindex={i === 0 ? 0 : -1}>{scene.title}</button>
+      ))}
+    </div>
+    <span class="win-r">100×30</span>
+  </div>
+  <div class="win-stage">
+    {SCENES.map((scene, i) => (
+      <img
+        class={`win-frame${i === 0 ? ' is-on' : ''}`}
+        src={assetUrl(sceneAsset(scene))}
+        alt={scene.alt}
+        data-name={scene.name}
+        data-cmd={scene.cmd}
+        width="828"
+        height="538"
+        loading={i === 0 ? 'eager' : 'lazy'}
+        decoding="async"
+      />
+    ))}
+  </div>
+  <div class="win-cmd" aria-hidden="true">
+    <span class="p">$</span><span data-reel-type></span><span class="cur"></span>
+    <span class="hint">frames recorded from the real program</span>
+  </div>
+  <div class="win-prog" aria-hidden="true"><i></i></div>
+</div>

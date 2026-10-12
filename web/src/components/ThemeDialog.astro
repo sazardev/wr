@@ -1,37 +1,31 @@
 ---
 import { THEMES } from '../data/themes';
 
-// The theme dialog: a framed list of the palettes, opened by the app bar
-// trigger. It lives here, as a child of the body, and not inside the header:
-// the header is a stacking context of its own (z-index 50) and the fixed
-// footer sits above it (60), so a dialog rendered inside it would be painted
-// over by the footer. Here it joins the document's own stacking order.
+// The theme dialog: a framed list of the palettes. It is a child of the body,
+// not of the header, so it joins the document's own stacking order.
 ---
 
-<div class="theme-modal" data-theme-modal hidden>
-  <div class="tm-box" role="dialog" aria-modal="true" aria-label="Theme">
-    <div class="tm-top">
-      <span class="glyph">⣿</span> theme
-      <span class="fill" aria-hidden="true">──────────────────────────────────────────</span>
-    </div>
-    <div class="tm-list" role="listbox" aria-label="Theme" tabindex="0" data-theme-list>
+<div class="pal" data-theme-modal data-modal hidden>
+  <div class="pal-box" role="dialog" aria-modal="true" aria-label="Theme" style="max-width:380px">
+    <div class="pal-title">theme <span class="esc"><kbd>esc</kbd></span></div>
+    <div class="pal-list" role="listbox" aria-label="Theme" tabindex="0" data-theme-list>
       {THEMES.map((theme) => (
-        <div class="tm-opt" role="option" data-theme-option={theme.id} aria-selected="false">
+        <div class="pal-opt" role="option" data-theme-option={theme.id} aria-selected="false">
           <span class="mark" aria-hidden="true">▸</span>
           <span class="nm">{theme.id}</span>
-          <span class="sc">{theme.scheme}</span>
+          <span class="where" style="margin-left:0">{theme.scheme}</span>
           <span class="chips" aria-hidden="true">
-            {[theme.colors[0], theme.colors[1], theme.colors[2], theme.colors[4]].map((color) => (
+            {[theme.colors[0], theme.colors[1], theme.colors[3], theme.colors[4]].map((color) => (
               <i style={`background:${color}`} />
             ))}
           </span>
         </div>
       ))}
     </div>
-    <div class="tm-foot">
-      <span><span class="key">↑↓</span> move</span>
-      <span><span class="key">↵</span> apply</span>
-      <span><span class="key">esc</span> cancel</span>
+    <div class="pal-foot">
+      <span><kbd>↑</kbd><kbd>↓</kbd> preview</span>
+      <span><kbd>↵</kbd> keep</span>
+      <span><kbd>esc</kbd> cancel</span>
     </div>
   </div>
 </div>
