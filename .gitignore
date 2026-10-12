@@ -1,6 +1,7 @@
 wr
 dist/
 qa-out/
+bench-out/
 __pycache__/
 *.pyc
 media/out/

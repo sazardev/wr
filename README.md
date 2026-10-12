@@ -377,6 +377,21 @@ failures, overtaken loads, the address bar, history and bookmarks — driven wit
 local pages and synthetic input. It is deterministic: no timing, no network, no
 terminal emulator.
 
+Performance lives in the benchmarks (`docs/BENCHMARKS.md`): extraction, render,
+cache vs no cache, and the per-key cost of the model, all local and
+deterministic. `scripts/bench.sh` keeps the baseline and fails on regressions:
+
+```sh
+go test -run '^$' -bench . -benchmem
+sh scripts/bench.sh baseline   # capture the before
+sh scripts/bench.sh compare    # after: exits 1 on a regression over 25%
+```
+
+`wr --eval` runs 9 offline scenarios (107 checks) as a JSON report, exit 1 on
+failure — the same contract `scripts/qa/mcp_smoke.py` checks over the MCP
+server. The map of the whole codebase, the pipeline and every verification
+surface is in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
 ## Security
 
 Page content is untrusted. Before display, control characters (including `ESC`)
