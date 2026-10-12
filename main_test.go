@@ -66,3 +66,16 @@ func TestHelpIsStyledOnATerminal(t *testing.T) {
 		t.Error("the terminal help has no brand glyph")
 	}
 }
+
+func TestWantsPlainHonorsNoColorAndDumbTerminals(t *testing.T) {
+	for _, c := range []struct {
+		noColor, term string
+		want          bool
+	}{{"", "xterm-256color", false}, {"1", "xterm-256color", true}, {"", "dumb", true}} {
+		t.Setenv("NO_COLOR", c.noColor)
+		t.Setenv("TERM", c.term)
+		if got := wantsPlain(); got != c.want {
+			t.Errorf("NO_COLOR=%q TERM=%q: %v, want %v", c.noColor, c.term, got, c.want)
+		}
+	}
+}

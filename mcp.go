@@ -39,6 +39,10 @@ func newMCPServer(w io.Writer) *mcpServer {
 // runMCPServer serves MCP on stdin/stdout until the input ends or the client
 // sends a parse error twice in a row.
 func runMCPServer() error {
+	// the sessions read the config per tool call, but this setting lives in
+	// package state: without it render_js = false would be ignored here
+	cfg, _ := loadConfig()
+	jsRender = cfg.RenderJS
 	return newMCPServer(os.Stdout).serve(os.Stdin)
 }
 

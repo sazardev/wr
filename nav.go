@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"os/exec"
@@ -67,6 +68,28 @@ func looksLikeHost(s string) bool {
 	return true
 }
 
+// isLocalHost reports an address that points at this machine or its own network
+// (localhost, loopback, private ranges, .local/.test/.internal names), where
+// plain http is the sensible default.
+func isLocalHost(s string) bool {
+	host := s
+	if i := strings.IndexAny(host, "/?#"); i >= 0 {
+		host = host[:i]
+	}
+	if h, _, ok := strings.Cut(host, ":"); ok {
+		host = h
+	}
+	host = strings.ToLower(host)
+	switch {
+	case host == "localhost", strings.HasSuffix(host, ".localhost"),
+		strings.HasSuffix(host, ".local"), strings.HasSuffix(host, ".test"),
+		strings.HasSuffix(host, ".internal"), strings.HasSuffix(host, ".lan"):
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && (ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast())
+}
+
 // normalizeInput decides what an address-bar entry means: a URL, a local file
 // or a web search. search reports whether the engine was used.
 func normalizeInput(in, engine string) (target string, search bool) {
@@ -86,6 +109,9 @@ func normalizeInput(in, engine string) (target string, search bool) {
 		return fileURL(s).String(), false // local files are always file:// URLs
 	}
 	if looksLikeHost(s) {
+		if isLocalHost(s) {
+			return "http://" + s, false // a dev server on your own machine does not speak TLS
+		}
 		return "https://" + s, false
 	}
 	return searchURL(engine, s), true

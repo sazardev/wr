@@ -24,8 +24,11 @@ func TestNormalizeInput(t *testing.T) {
 		{"example.com", "https://example.com", false},
 		{"example.com/some/path?q=1", "https://example.com/some/path?q=1", false},
 		{"docs.rs", "https://docs.rs", false},
-		{"localhost:3000/app", "https://localhost:3000/app", false},
-		{"127.0.0.1:8080", "https://127.0.0.1:8080", false},
+		{"localhost:3000/app", "http://localhost:3000/app", false}, // a dev server has no TLS
+		{"127.0.0.1:8080", "http://127.0.0.1:8080", false},
+		{"192.168.1.20:5000", "http://192.168.1.20:5000", false},
+		{"nas.local/files", "http://nas.local/files", false},
+		{"8.8.8.8", "https://8.8.8.8", false},
 		{file, "file://" + filepath.ToSlash(file), false},
 		{"/etc/hosts", "file:///etc/hosts", false},
 		{"rust async book", "https://html.duckduckgo.com/html/?q=rust+async+book", true},

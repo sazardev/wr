@@ -254,6 +254,7 @@ and the defaults are used).
 | `spacing` | `1` | blank lines between blocks: 0 compact, 1 normal, 2 airy |
 | `heading_rules` | `true` | a rule under level 1 and 2 headings |
 | `code_frame` | `true` | label and frame around code blocks |
+| `guess_code_lang` | `true` | infer the language of unlabeled code when wr is sure (shown as `(guessed)`) |
 | `links` | `"footnotes"` | `footnotes`, `inline` or `hidden` (links stay clickable in all of them) |
 | `braille` | `true` | braille decoration; `false` = plain glyphs |
 | `accent` | `"blue"` | color of panels, keys, marks and bars, and the one the headings walk: blue, cyan, green, magenta, yellow, red, gray, white (your terminal's own colors) or orange, violet, teal, pink, lime, slate (fixed presets) |
@@ -347,8 +348,10 @@ which suits a dark one.
 
 - **Heuristic extraction.** It takes `<article>`/`<main>`; on unusual pages it
   may keep noise or cut content.
-- **No JavaScript and no forms.** If the page draws its content with JS, it will
-  come out empty or incomplete. Search engines that need JS will not work as
+- **No JavaScript of its own, and no forms.** A page that draws its content with
+  JS is rendered through an installed Chromium/Chrome (headless) when there is
+  one; without it you get a notice plus the summary the page ships without
+  scripts, and `x` opens it in your browser. Search engines that need JS will not work as
   the engine setting; the presets do.
 - **In-page `#links` match headings only**, by their text (the way most sites
   generate ids), not arbitrary element ids.

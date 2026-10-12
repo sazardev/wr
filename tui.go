@@ -767,7 +767,11 @@ func (m *model) loadingScreen(rows []string, bodyH int) {
 	}
 	if row+2 < len(rows) {
 		dots := strings.Repeat(".", int(m.elapsed()*3)%4)
-		rows[row+2] = m.center(dim("fetching ") + bold(host) + dim(dots))
+		verb := "fetching "
+		if renderingNow.Load() > 0 {
+			verb = "rendering with the browser "
+		}
+		rows[row+2] = m.center(dim(verb) + bold(host) + dim(dots))
 	}
 }
 
@@ -1029,6 +1033,8 @@ func (m *model) leftText(room int) string {
 			col = caution
 		}
 		return lead + col(shown)
+	case m.loading && renderingNow.Load() > 0:
+		return lead + dim("rendering the page with the browser…")
 	case m.focusID >= 0:
 		return lead + acc("→") + " " + acc2(m.focusedURL())
 	case !m.cfg.FooterHints:

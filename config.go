@@ -18,14 +18,15 @@ import (
 // defaults are used.
 type Config struct {
 	// Layout
-	Width        int    `toml:"width"`         // max width of the reading column (0 = full width)
-	Center       bool   `toml:"center"`        // center that column
-	Spacing      int    `toml:"spacing"`       // blank lines between blocks: 0, 1 or 2
-	HeadingRules bool   `toml:"heading_rules"` // a rule under h1 / h2
-	CodeFrame    bool   `toml:"code_frame"`    // label and frame around code blocks
-	Links        string `toml:"links"`         // footnotes | inline | hidden
-	Braille      bool   `toml:"braille"`       // braille decoration
-	Accent       string `toml:"accent"`        // color of the UI chrome
+	Width         int    `toml:"width"`           // max width of the reading column (0 = full width)
+	Center        bool   `toml:"center"`          // center that column
+	Spacing       int    `toml:"spacing"`         // blank lines between blocks: 0, 1 or 2
+	HeadingRules  bool   `toml:"heading_rules"`   // a rule under h1 / h2
+	CodeFrame     bool   `toml:"code_frame"`      // label and frame around code blocks
+	GuessCodeLang bool   `toml:"guess_code_lang"` // infer the language of code blocks the page does not label
+	Links         string `toml:"links"`           // footnotes | inline | hidden
+	Braille       bool   `toml:"braille"`         // braille decoration
+	Accent        string `toml:"accent"`          // color of the UI chrome
 
 	// Scrollbar and footer
 	Scrollbar      bool   `toml:"scrollbar"`
@@ -52,6 +53,7 @@ type Config struct {
 	// Browsing
 	SearchEngine string `toml:"search_engine"` // a preset name or a URL template with %s
 	Homepage     string `toml:"homepage"`      // "" = the start page
+	RenderJS     bool   `toml:"render_js"`     // render script-drawn pages with an installed Chromium/Chrome
 	History      bool   `toml:"history"`
 	HistoryLimit int    `toml:"history_limit"`
 
@@ -66,14 +68,14 @@ type Config struct {
 
 func defaultConfig() Config {
 	return Config{
-		Width: 100, Center: true, Spacing: 1, HeadingRules: true, CodeFrame: true,
+		Width: 100, Center: true, Spacing: 1, HeadingRules: true, CodeFrame: true, GuessCodeLang: true,
 		Links: "footnotes", Braille: true, Accent: "blue",
 		Scrollbar: true, Footer: true, FooterRule: true, FooterHints: true,
 		FooterProgress: "both", FooterChips: true,
 		Mouse: true, CopyOnSelect: true, WheelLines: 3,
 		Animations: true, AnimScroll: true, AnimReveal: true, AnimPanels: true,
 		AnimLoading: true, AnimNotices: true, ScrollSpeed: "normal",
-		SearchEngine: "duckduckgo", History: true, HistoryLimit: 1000,
+		SearchEngine: "duckduckgo", RenderJS: true, History: true, HistoryLimit: 1000,
 		Cache: true, CacheDays: 30, BackgroundRefresh: true,
 	}
 }
@@ -215,6 +217,7 @@ func configText(c Config) string {
 	kv("Blank lines between blocks: 0 compact, 1 normal, 2 airy.", "spacing", strconv.Itoa(c.Spacing))
 	kv("A rule under level 1 and 2 headings.", "heading_rules", tomlBool(c.HeadingRules))
 	kv("The label and frame around code blocks.", "code_frame", tomlBool(c.CodeFrame))
+	kv("Infer the language of code blocks the page does not label (shown as\n\"(guessed)\"); a block wr is not sure about stays plain.", "guess_code_lang", tomlBool(c.GuessCodeLang))
 	kv("Links: \"footnotes\" (numbered, listed at the end), \"inline\" (URL next to the\ntext) or \"hidden\" (text only). Links are clickable in every mode.", "links", tomlStr(c.Links))
 	kv("Braille decoration: heading marks, progress bar, scrollbar, spinner.\nfalse = plain glyphs (for fonts without braille).", "braille", tomlBool(c.Braille))
 	kv("Accent color of the interface: blue, cyan, green, magenta, yellow, red, gray, white (your\nterminal's own 16 colors, so they follow its theme) or orange, violet, teal, pink, lime,\nslate (fixed 256-color presets). The headings, the quote bars and the rules follow it too.", "accent", tomlStr(c.Accent))
@@ -244,6 +247,7 @@ func configText(c Config) string {
 	section("Browsing")
 	kv("Where plain words go when you type them in the address bar (o): a preset\n(\"duckduckgo\", \"wikipedia\", \"github\") or your own URL with %s for the query.", "search_engine", tomlStr(c.SearchEngine))
 	kv("Page to open when you start wr without an address. \"\" = the start page.", "homepage", tomlStr(c.Homepage))
+	kv("Pages that draw their content with JavaScript are rendered with an installed\nChromium/Chrome (headless). Off shows only their summary.", "render_js", tomlBool(c.RenderJS))
 	kv("Remember the pages you visit (the History panel and address-bar suggestions).", "history", tomlBool(c.History))
 	kv("How many visits to keep (50-20000).", "history_limit", strconv.Itoa(c.HistoryLimit))
 

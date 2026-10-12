@@ -382,8 +382,17 @@ func (r *renderer) codeOf(n ast.Node) (lang, code string, ok bool) {
 		seg := lines.At(i)
 		b.Write(seg.Value(r.src))
 	}
-	return lang, strings.TrimRight(b.String(), "\n"), true
+	code = strings.TrimRight(b.String(), "\n")
+	if lang == "" && r.cfg.GuessCodeLang {
+		if g := guessLang(code); g != "" {
+			lang = g + guessedMark // highlighted like any language, labelled as a guess
+		}
+	}
+	return lang, code, true
 }
+
+// guessedMark ends a language that wr inferred instead of reading it from the page.
+const guessedMark = "?"
 
 // prehighlight highlights every code block at once, one goroutine each:
 // tokenizing with chroma is the most expensive part of rendering a document.
@@ -519,6 +528,9 @@ func (r *renderer) list(l *ast.List, w, depth int) []string {
 
 func (r *renderer) code(lang string, hl []string, w int) []string {
 	label := lang
+	if base, guessed := strings.CutSuffix(lang, guessedMark); guessed {
+		label = base + " (guessed)"
+	}
 	if label == "" {
 		label = "text"
 	}
@@ -580,6 +592,7 @@ func highlightLines(lang, code string) []string {
 }
 
 func highlightUncached(lang, code string) []string {
+	lang = strings.TrimSuffix(lang, guessedMark)
 	code = strings.ReplaceAll(code, "\t", "    ")
 	var lexer chroma.Lexer
 	if lang != "" {

@@ -62,6 +62,11 @@ XDG_CONFIG_HOME=/tmp/agent/config XDG_CACHE_HOME=/tmp/agent/cache \
 XDG_STATE_HOME=/tmp/agent/state wr --mcp
 ```
 
+> Script-drawn pages are rendered through an installed headless Chromium/Chrome
+> (a few seconds) in MCP sessions too, as long as `render_js` is on in your
+> config; `render_js = false` (or `WR_BROWSER=/nonexistent`) keeps the server from
+> starting a browser.
+
 ## The tools
 
 | Tool | What it does |

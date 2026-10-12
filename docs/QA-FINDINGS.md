@@ -170,6 +170,7 @@ rendered code.
   wrongly.
 - **Resolución**: Sphinx/Pygments `highlight-<lang>` and MediaWiki `mw-highlight-lang-<lang>` are read as *weak* conventions, accepted only when chroma has a lexer of that name (`weakLangRes`, `langOf`); `highlight-none`/`-default`/`-text` mean no language. `langMap` gained `ipython`, `ipython3`, `python3`, `py3`, `pycon`, `cs`, `nodejs`. Strong conventions (`language-*`, …) still win over a wrapper. **Limit**: Sphinx `highlight-default` means "the project's default language" and the page does not say which (numpy: 123 of 138 blocks), so those stay `text` by the no-guessing principle; bare `<pre>` with no class is the same. The ≥70% target of the plan cannot be met by class conventions alone.
 - **Effort**: M · **Risk**: wrong guessing is worse than no color: prefer a precise map; optional heuristic must be labeled as such.
+- **Follow-up**: for pages that ship no language at all (Shiki/Torchlight output) `guess.go` adds a deliberately small, labelled heuristic: ten languages, each recognised by strong signals, and only when one clearly beats the rest (chroma's `Analyse` was rejected: it labelled Go as GDScript3 on 13 of 16 blocks of a real article). The frame says `go (guessed)`; `guess_code_lang = false` restores the strict behaviour.
 
 ### QA-F-009 · Tables die when a cell contains a list (or spans)
 
@@ -270,18 +271,43 @@ Verdict: the twelve fixed findings hold on their original pages (fasterthanli
 0 → 9,249 words, gov.uk/news 0 → 1,161, phoronix 8 → 5,886, fly.io/blog
 69 → 13,781, Wikipedia keeps its title and infobox, no mojibake in 421 pages),
 and the code body stays byte-identical except for documented wrapping and tabs.
-QA-F-012 stays open. The findings below come from this round and are open: each
-one has a scenario in `TestQARound2` that asserts the desired behavior, so
-`WR_QA_STRICT=1` is red on them until they are fixed.
+QA-F-012 stays open. The findings below come from this round; each one has a
+scenario in `TestQARound2`. All six are now fixed (line-number classes and gutter
+cells, leading breadcrumb strip, the converter's list-separator comment,
+`-L` on escaped image links; QA-F-015 turned out to be a wrong assertion: the
+blank line was never lost).
 
 | ID | State | Severity | Area | Summary |
 |---|---|---|---|---|
-| QA-F-014 | Abierto | Media | Code | Line numbers are glued to the code (Torchlight `div.line` > `span.line-number`) |
-| QA-F-015 | Abierto | Media | Code | The last blank line of a code block is lost (`fence()` trims trailing newlines) |
-| QA-F-016 | Abierto | Media | Extraction | A line-number gutter **cell** outside `<pre>` leaks as stray text |
-| QA-F-021 | Abierto | Media | Extraction | A leading breadcrumb/nav strip survives as the first line of content (pages without `<h1>`) |
-| QA-F-022 | Abierto | Baja | Convert | An HTML comment between two block lists leaks into the Markdown |
-| QA-F-023 | Abierto | Baja | CLI | `--md -L` keeps links written as `[\[image: …\]](url)` |
+| QA-F-014 | Resuelto | Media | Code | Line numbers are glued to the code (Torchlight `div.line` > `span.line-number`) |
+| QA-F-015 | Resuelto | Media | Code | The last blank line of a code block is lost (`fence()` trims trailing newlines) |
+| QA-F-016 | Resuelto | Media | Extraction | A line-number gutter **cell** outside `<pre>` leaks as stray text |
+| QA-F-021 | Resuelto | Media | Extraction | A leading breadcrumb/nav strip survives as the first line of content (pages without `<h1>`) |
+| QA-F-022 | Resuelto | Baja | Convert | An HTML comment between two block lists leaks into the Markdown |
+| QA-F-023 | Resuelto | Baja | CLI | `--md -L` keeps links written as `[\[image: …\]](url)` |
+
+## Round 3 — 2026-10-12 (v0.5.2 work: JS pages, polish)
+
+Audit over 72 fresh developer-documentation URLs (frameworks, languages, wikis,
+registries, blogs) with a script that flags backslash line breaks, empty links,
+repeated lines, template leaks, thin extractions, and the first lines of every
+page. All findings below are fixed and covered by a scenario.
+
+| ID | State | Severity | Area | Summary |
+|---|---|---|---|---|
+| QA-F-024 | Resuelto | Alta | Extraction | A page drawn by JavaScript (empty `#root`) showed only its title and rule: no content and no explanation. Now a notice plus the page's own summary (`<noscript>`, description, JSON-LD) |
+| QA-F-025 | Resuelto | Alta | Extraction | Script-drawn pages could not be read at all: they are now rendered by an installed headless Chromium/Chrome (`render_js`), with the process group killed on timeout, output capped, and nothing cached when it fails |
+| QA-F-026 | Resuelto | Media | Fetch | Relative links were resolved against the requested address, not the one after redirects |
+| QA-F-027 | Resuelto | Media | Extraction | Heading permalinks (`[¶](#…)`, a heading that is one big link) and `class="footer"` blocks stayed in the text |
+| QA-F-028 | Resuelto | Media | Extraction | Cards (a link wrapping title + text) came out as links with `\` hard breaks; empty links `[](url)` (GitHub anchors: 21 on one README, 479 on the Bash manual), "skip to content" links and repeated link lines |
+| QA-F-029 | Resuelto | Media | Code | Code whose lines are block elements (Expressive Code, Torchlight) was double spaced and carried the hidden frame label ("Terminal window") |
+| QA-F-030 | Resuelto | Media | Extraction | Elements the page hides (`hidden`, `display:none`: Vue and Next ship an "Are you an LLM?" notice) were shown |
+| QA-F-031 | Resuelto | Baja | Extraction | Navigation before the title stayed: `<ol>` breadcrumbs, a section label link, GNU `Next:/Up:` strips |
+| QA-F-032 | Resuelto | Media | Fetch | A 403 from a corporate proxy was reported as "the site refuses non-browser clients"; network errors showed Go plumbing (`Get "…": dial tcp …`). Now the error page's title is shown, errors read plainly, and a reset or timeout is retried once |
+| QA-F-033 | Resuelto | Media | CLI | `wr localhost:3000` tried `https://`; local and private addresses now default to `http://` |
+| QA-F-034 | Resuelto | Baja | CLI | `NO_COLOR` and `TERM=dumb` were ignored by the printed render |
+| QA-F-035 | Resuelto | Media | Code | Code from build-time highlighters (Shiki) carries no language: a conservative, labelled guess (`guess.go`) colors it only when sure |
+| QA-F-036 | Resuelto | Media | Robustness | Browser children outliving a timeout would have leaked (Chromium forks renderers) |
 
 Documented in [`QA-v2.md`](QA-v2.md) without an ID (no automatizable scenario
 yet): two files given to `wr` are treated as a web search, the title rule always

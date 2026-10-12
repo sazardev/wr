@@ -30,15 +30,8 @@ import (
 // scenario run for real and turns CI green on it. Empty means every finding
 // with a behavior fix is asserted on every run.
 var pendingFindings = map[string]bool{
-	// QA-F-012 is a product decision, the rest are round-2 findings awaiting a
-	// fix (docs/QA-v2.md): the scenario runs only with WR_QA_STRICT=1.
+	// QA-F-012 is a product decision: its scenario runs only with WR_QA_STRICT=1.
 	"QA-F-012": true,
-	"QA-F-014": true,
-	"QA-F-015": true,
-	"QA-F-016": true,
-	"QA-F-021": true,
-	"QA-F-022": true,
-	"QA-F-023": true,
 }
 
 // qaScenarioCoverage maps every finding ID to the subtest that covers it.
@@ -62,6 +55,19 @@ var qaScenarioCoverage = map[string]string{
 	"QA-F-021": "TestQARound2/QA-F-021_title_when_leading_chrome",
 	"QA-F-022": "TestQARound2/QA-F-022_comment_between_lists",
 	"QA-F-023": "TestQARound2/QA-F-023_no_links_keeps_escaped_image",
+	"QA-F-024": "TestJSShellShowsSummaryAndNotice",
+	"QA-F-025": "TestShellIsRenderedWhenABrowserCanDoIt",
+	"QA-F-026": "TestRelativeLinksFollowTheRedirect",
+	"QA-F-027": "TestHeadingPermalinksAreCleaned",
+	"QA-F-028": "TestCardsKeepTheTitleAsTheLink",
+	"QA-F-029": "TestBlockLineCodeIsNotDoubleSpaced",
+	"QA-F-030": "TestHiddenElementsAreDropped",
+	"QA-F-031": "TestLeadingNavigationIsDroppedButContentIsNot",
+	"QA-F-032": "TestErrorPageTitleNamesWhoBlocked",
+	"QA-F-033": "TestNormalizeInput",
+	"QA-F-034": "TestWantsPlainHonorsNoColorAndDumbTerminals",
+	"QA-F-035": "TestGuessLangStaysSilentWhenUnsure",
+	"QA-F-036": "TestHeadlessTimeoutKillsTheWholeProcessGroup",
 }
 
 // qaPending skips an open finding's assertion in the normal run.
@@ -666,7 +672,7 @@ func TestQALinkModes(t *testing.T) {
 // ---- round 2 (2026-10-09, build a4a1102): new failures ----
 //
 // These scenarios assert the *desired* behavior, so they are red until each
-// finding is fixed; that is why every ID also sits in pendingFindings. They come
+// finding is fixed (all of them are now). They come
 // from docs/QA-v2.md (round 2).
 
 func TestQARound2(t *testing.T) {
@@ -688,7 +694,8 @@ func TestQARound2(t *testing.T) {
 
 </code></pre>`))
 		qaPending(t, "QA-F-015")
-		if !strings.Contains(md, "a = 1\n\n\n```") && !strings.HasSuffix(strings.SplitN(md, "```python\n", 2)[1], "\n\n```") {
+		// the source has one blank line after "a = 1": it must still be there
+		if !strings.Contains(md, "a = 1\n\n```") {
 			t.Errorf("the last blank line of the code block was trimmed:\n%q", md)
 		}
 	})

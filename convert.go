@@ -33,7 +33,7 @@ var (
 		regexp.MustCompile(`(?i)(?:^|\s)mw-highlight-lang-([\w+#-]+)`),
 		regexp.MustCompile(`(?i)(?:^|\s)highlight-([\w+#-]+)`),
 	}
-	codeJunk = regexp.MustCompile(`(?i)line-?no|linenum|gutter|copy|clipboard`)
+	codeJunk = regexp.MustCompile(`(?i)line-?no|line-?num|gutter|copy|clipboard`)
 	// name used on the page -> lexer name chroma understands
 	langMap = map[string]string{
 		"shell": "bash", "sh": "bash", "zsh": "bash", "console": "bash", "shellsession": "bash",
@@ -47,16 +47,24 @@ var (
 	// never when the word only ends it ("has-toc" is a layout flag, not a TOC).
 	junkWords = []string{
 		"toc", "table-of-contents", "breadcrumb", "breadcrumbs", "sidebar", "cookie", "cookies",
-		"related", "newsletter", "social", "share", "sharing", "advert", "advertisement",
+		"related", "newsletter", "social", "share", "sharing", "advert", "advertisement", "footer",
 	}
 	// ARIA landmarks that are chrome even when the element is a plain <div>.
 	junkRoles = "[role=navigation],[role=banner],[role=contentinfo]"
 )
 
-var linkRe = regexp.MustCompile(`!?\[([^\]]*)\]\([^)]*\)`)
+// linkRe matches [text](url) and ![alt](url); the text may hold escaped
+// brackets, as in [\[image: alt\]](url).
+var linkRe = regexp.MustCompile(`!?\[((?:[^\]\\]|\\.)*)\]\([^)]*\)`)
+
+var bracketEsc = strings.NewReplacer(`\[`, "[", `\]`, "]")
 
 // stripLinks keeps only the link text (for --md -L).
-func stripLinks(md string) string { return linkRe.ReplaceAllString(md, "$1") }
+func stripLinks(md string) string {
+	return linkRe.ReplaceAllStringFunc(md, func(m string) string {
+		return bracketEsc.Replace(linkRe.FindStringSubmatch(m)[1])
+	})
+}
 
 var backtickRuns = regexp.MustCompile("`+")
 
@@ -146,6 +154,7 @@ func toMarkdown(page []byte, src string) (string, error) {
 		return "", err
 	}
 	title := strings.TrimSpace(doc.Find("title").First().Text())
+	hints := collectHints(doc) // before dropTags takes <noscript> and <script> away
 
 	root, isArticle := pickRoot(doc)
 	if root.Length() == 0 {
@@ -153,15 +162,18 @@ func toMarkdown(page []byte, src string) (string, error) {
 	}
 
 	root.Find(dropTags).Remove()
+	dropHidden(root)
 	if !isArticle {
 		dropHeaders(root)
 	}
 	dropChrome(root)
+	dropFrameLabels(root)
 	root.Find("pre *").Each(func(_ int, s *goquery.Selection) {
 		if cls, _ := s.Attr("class"); codeJunk.MatchString(cls) {
 			s.Remove()
 		}
 	})
+	flattenCodeLines(root)
 	// the language travels as class="language-xx", which is what the converter reads
 	root.Find("pre").Each(func(_ int, pre *goquery.Selection) {
 		if lang := langOf(pre); lang != "" {
@@ -170,7 +182,10 @@ func toMarkdown(page []byte, src string) (string, error) {
 		}
 		visibleEscapes(pre)
 	})
+	dropGutters(root)
+	stripComments(root)
 	flattenTables(root)
+	cleanHeadings(root)
 	root.Find("img").Each(func(_ int, img *goquery.Selection) {
 		alt := strings.TrimSpace(img.AttrOr("alt", ""))
 		dup := alt != "" && title != "" && strings.Contains(strings.ToLower(title), strings.ToLower(alt))
@@ -180,6 +195,7 @@ func toMarkdown(page []byte, src string) (string, error) {
 		}
 		img.ReplaceWithNodes(&nethtml.Node{Type: nethtml.TextNode, Data: "[image: " + alt + "]"})
 	})
+	tidyAnchors(root)
 	baseURL, _ := url.Parse(src)
 	root.Find("a[href]").Each(func(_ int, a *goquery.Selection) {
 		if baseURL != nil && baseURL.Scheme != "" {
@@ -200,16 +216,20 @@ func toMarkdown(page []byte, src string) (string, error) {
 		return "", err
 	}
 	// the prose cleanup never touches code: fenced blocks are quoted data
-	text := tidyMarkdown(string(md))
+	text := dedupeLinkLines(tidyMarkdown(string(md)))
 	// page content is untrusted: strip control characters (ESC, etc.) so a page
 	// cannot manipulate your terminal.
 	text = sanitize(text)
-	text = strings.TrimSpace(text) + "\n"
+	text = leadingRule.ReplaceAllString(dropLeadingCrumbs(strings.TrimSpace(text))+"\n", "$1")
+	text = withShellFallback(text, title, hints)
 	if title != "" && !hasTitleHeading(text) {
 		text = "# " + title + "\n\n" + text
 	}
 	return text, nil
 }
+
+// leadingRule is the thematic break some generators leave right under the title.
+var leadingRule = regexp.MustCompile(`\A((?:#[^\n]*\n\n)?)(?:(?:\* \* \*|---)\n\n)+`)
 
 var controlChars = regexp.MustCompile(`[\x00-\x08\x0b-\x1f\x7f-\x9f]`)
 

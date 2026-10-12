@@ -4,6 +4,7 @@ package main
 // fixes in here are tracked in docs/QA-FINDINGS.md (QA-F-001 ... QA-F-013).
 
 import (
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -210,6 +211,10 @@ func isLinkOnly(body string) bool {
 	return count >= 4
 }
 
+// listSeparator is what the converter writes between two adjacent lists to keep
+// them apart; it is markup for Markdown parsers, not something to read.
+const listSeparator = "<!--THE END-->"
+
 // tidyMarkdown cleans extracted Markdown in one pass. Outside code fences it
 // drops link-only lines, trims trailing whitespace and collapses runs of blank
 // lines to at most one, which is what tidyProse did with three regexp
@@ -242,7 +247,7 @@ func tidyMarkdown(text string) string {
 			mark = f
 			continue
 		}
-		if isLinkOnly(body) {
+		if isLinkOnly(body) || body == listSeparator {
 			body = ""
 		}
 		body = strings.TrimRight(body, " \t")
@@ -379,4 +384,320 @@ func expandSpans(table *goquery.Selection) {
 		fill(nil)
 	})
 	table.Find("[colspan],[rowspan]").RemoveAttr("colspan").RemoveAttr("rowspan")
+}
+
+// ---- headings ----
+
+// permalinkGlyphs are the texts of "link to this heading" anchors.
+var permalinkGlyphs = map[string]bool{
+	"¶": true, "#": true, "§": true, "¤": true, "🔗": true, "∞": true, "⚓": true,
+	"permalink": true, "link": true, "anchor": true, "copy link": true,
+}
+
+func isPermalinkText(t string) bool {
+	t = strings.ToLower(strings.TrimSpace(t))
+	return t == "" || permalinkGlyphs[t] ||
+		strings.HasPrefix(t, "link to this") || strings.HasPrefix(t, "direct link to") ||
+		strings.HasPrefix(t, "permalink to")
+}
+
+// cleanHeadings removes the permalink anchors generators put in headings
+// ("Title¶", "Title #") and unwraps headings that are one big link to
+// themselves (MDN), so a heading reads as a heading and not as a link.
+func cleanHeadings(root *goquery.Selection) {
+	root.Find("h1,h2,h3,h4,h5,h6").Each(func(_ int, h *goquery.Selection) {
+		h.Find("a").Each(func(_ int, a *goquery.Selection) {
+			txt := a.Text()
+			if isPermalinkText(txt) {
+				a.Remove()
+				return
+			}
+			if strings.HasPrefix(strings.TrimSpace(a.AttrOr("href", "")), "#") {
+				a.ReplaceWithSelection(a.Contents())
+			}
+		})
+	})
+}
+
+// ---- small leaks ----
+
+// gutterClass matches the class of a line-number gutter cell.
+var gutterClass = regexp.MustCompile(`(?i)(?:^|[\s_-])(?:line-?nos?|line-?numbers?|linenos|gutter)(?:$|[\s_-])`)
+
+// dropGutters removes the line-number cells of code tables (a <td class="line-no">
+// next to the <td> that holds the <pre>): outside the <pre> they would read as
+// stray numbers.
+func dropGutters(root *goquery.Selection) {
+	root.Find("td[class],th[class]").Each(func(_ int, c *goquery.Selection) {
+		cls, _ := c.Attr("class")
+		if gutterClass.MatchString(cls) && c.Closest("table").Find("pre").Length() > 0 {
+			c.Remove()
+		}
+	})
+}
+
+// stripComments removes HTML comments, which the converter would otherwise
+// keep between block elements.
+func stripComments(root *goquery.Selection) {
+	var walk func(n *nethtml.Node)
+	walk = func(n *nethtml.Node) {
+		for c := n.FirstChild; c != nil; {
+			next := c.NextSibling
+			if c.Type == nethtml.CommentNode {
+				n.RemoveChild(c)
+			} else {
+				walk(c)
+			}
+			c = next
+		}
+	}
+	for _, n := range root.Nodes {
+		walk(n)
+	}
+}
+
+// crumbSeparators are what sits between the links of a breadcrumb strip.
+const crumbSeparators = " \t/\\>»›|:·•–—-→"
+
+var (
+	loneLinkRe   = regexp.MustCompile(`^\[[^\]\n]{1,40}\]\([^)\s]*(?: "[^"]*")?\)$`)
+	prevNextRe   = regexp.MustCompile(`(?i)^(next|previous|prev|up|back|home)\s*:\s*\[`)
+	listItemRe   = regexp.MustCompile(`^\s*(?:\d+[.)]|[-*+])\s+(.*)$`)
+	crumbItemMax = 40
+)
+
+// isCrumbBlock reports whether a block (paragraph or list, up to the first
+// blank line) is navigation that precedes the page's own heading: a strip of
+// links and separators ([std](/a)::[vec](/b)), a lone link above the title
+// (a section label), a GNU-style "Next: …, Up: …" line, or a short list of
+// links or names (a breadcrumb written as <ol>). headingAhead says the page's
+// heading follows (directly, or after a one-line label); afterCrumb says a
+// crumb was already dropped, which is what allows a bare label to go too.
+func isCrumbBlock(block string, headingAhead, afterCrumb bool) bool {
+	block = strings.TrimSpace(block)
+	if block == "" || strings.HasPrefix(block, "#") || strings.HasPrefix(block, "```") {
+		return false
+	}
+	lines := strings.Split(block, "\n")
+	if len(lines) == 1 {
+		line := lines[0]
+		switch {
+		case prevNextRe.MatchString(line):
+			return true
+		case loneLinkRe.MatchString(line):
+			return headingAhead
+		case strings.Count(line, "](") >= 2 && strings.Trim(linkRe.ReplaceAllString(line, ""), crumbSeparators) == "":
+			return true
+		case afterCrumb && headingAhead && isBareLabel(line):
+			return true
+		}
+	}
+	// a short list whose items are all short: a breadcrumb trail
+	if !headingAhead || len(lines) < 2 || len(lines) > 5 {
+		return false
+	}
+	for _, l := range lines {
+		m := listItemRe.FindStringSubmatch(l)
+		if m == nil || len([]rune(linkRe.ReplaceAllString(m[1], "$1"))) > crumbItemMax {
+			return false
+		}
+	}
+	return true
+}
+
+// isBareLabel is a short line with no sentence in it ("Installation").
+func isBareLabel(line string) bool {
+	return len([]rune(line)) <= 30 && !strings.ContainsAny(line, ".!?:;[]()`*_<>|") && len(strings.Fields(line)) <= 4
+}
+
+// dropLeadingCrumbs removes the navigation blocks a page opens with, before
+// its first heading (at most three), so the reading starts at the title.
+func dropLeadingCrumbs(text string) string {
+	blocks := strings.Split(text, "\n\n")
+	startsHeading := func(i int) bool { return i < len(blocks) && strings.HasPrefix(strings.TrimSpace(blocks[i]), "#") }
+	dropped := 0
+	for dropped < 3 && dropped+1 < len(blocks) {
+		i := dropped
+		ahead := startsHeading(i+1) || (i+2 < len(blocks) && isBareLabel(strings.TrimSpace(blocks[i+1])) && startsHeading(i+2))
+		if !isCrumbBlock(blocks[i], ahead, dropped > 0) {
+			break
+		}
+		dropped++
+	}
+	if dropped == 0 {
+		return text
+	}
+	return strings.TrimLeft(strings.Join(blocks[dropped:], "\n\n"), "\n")
+}
+
+// dropHidden removes what the page itself hides from sight: the hidden
+// attribute and inline display:none / visibility:hidden. An element holding
+// most of the page's text stays, because some sites hide the whole article
+// until their script shows it.
+func dropHidden(root *goquery.Selection) {
+	total := textWeight(root.Nodes[0])
+	root.Find(`[hidden],[style*="display:none"],[style*="display: none"],[style*="visibility:hidden"],[style*="visibility: hidden"]`).Each(func(_ int, el *goquery.Selection) {
+		if v, ok := el.Attr("hidden"); ok && strings.EqualFold(v, "until-found") {
+			return // collapsed but real content, the browser finds it on search
+		}
+		if textWeight(el.Nodes[0])*2 <= total {
+			el.Remove()
+		}
+	})
+}
+
+// ---- anchors ----
+
+const blockTags = "div,p,h1,h2,h3,h4,h5,h6,li,ul,ol,section,article,header,footer,dl,dt,dd,figure,figcaption,table,blockquote,pre"
+
+var skipLinkRe = regexp.MustCompile(`(?i)^\s*(skip|jump) to (the )?(main |primary )?(content|navigation|menu|search|footer)`)
+
+// tidyAnchors fixes the three shapes of link that read badly once converted:
+//   - "skip to content" links: invisible in a browser, noise here;
+//   - anchors with no text at all (heading anchors, icon links, <a id=...>), which
+//     would be written as "[](url)";
+//   - cards: an anchor wrapping blocks (title + description). The converter joins
+//     them with hard breaks inside the link text; here the first block becomes the
+//     link and the rest stays as plain text after it.
+func tidyAnchors(root *goquery.Selection) {
+	root.Find("a").Each(func(_ int, a *goquery.Selection) {
+		text := strings.Join(strings.Fields(a.Text()), " ")
+		switch {
+		case text == "" && a.Find("img").Length() == 0:
+			a.Remove()
+			return
+		case skipLinkRe.MatchString(text) && len(text) < 40:
+			a.Remove()
+			return
+		}
+		if a.AttrOr("href", "") == "" {
+			a.ReplaceWithSelection(a.Contents()) // a named anchor with text: just the text
+			return
+		}
+		a.Find("br").ReplaceWithNodes(&nethtml.Node{Type: nethtml.TextNode, Data: " "})
+		if a.Find(blockTags).Length() == 0 {
+			return
+		}
+		// leaf blocks: those holding text and no block of their own; a heading
+		// is the best title for the link, else the first one
+		var first, firstHeading *goquery.Selection
+		a.Find(blockTags).Each(func(_ int, b *goquery.Selection) {
+			if b.Find(blockTags).Length() > 0 || strings.TrimSpace(b.Text()) == "" {
+				return
+			}
+			if first == nil {
+				first = b
+			}
+			if firstHeading == nil && len(goquery.NodeName(b)) == 2 && goquery.NodeName(b)[0] == 'h' {
+				firstHeading = b
+			}
+		})
+		if firstHeading != nil {
+			first = firstHeading
+		}
+		if first == nil {
+			return
+		}
+		link := &nethtml.Node{Type: nethtml.ElementNode, Data: "a", Attr: append([]nethtml.Attribute(nil), a.Get(0).Attr...)}
+		for c := first.Get(0).FirstChild; c != nil; {
+			next := c.NextSibling
+			first.Get(0).RemoveChild(c)
+			link.AppendChild(c)
+			c = next
+		}
+		first.Get(0).AppendChild(link)
+		a.ReplaceWithSelection(a.Contents()) // the card's other blocks become plain text
+	})
+}
+
+// dedupeLinkLines drops a link-bearing line that repeats the previous
+// non-blank one (an avatar link followed by the same name link, an image link
+// followed by its caption link), outside code fences.
+func dedupeLinkLines(text string) string {
+	var b strings.Builder
+	b.Grow(len(text))
+	mark, prev := "", ""
+	for _, line := range strings.SplitAfter(text, "\n") {
+		body := strings.TrimSuffix(line, "\n")
+		if mark != "" {
+			b.WriteString(line)
+			if fenceClosed(line, mark) {
+				mark = ""
+			}
+			continue
+		}
+		if f, ok := fenceOpens(body); ok {
+			mark, prev = f, ""
+			b.WriteString(line)
+			continue
+		}
+		if t := strings.TrimSpace(body); t != "" {
+			if t == prev && strings.Contains(t, "](") {
+				continue
+			}
+			prev = t
+		}
+		b.WriteString(line)
+	}
+	return b.String()
+}
+
+// ---- code lines ----
+
+// flattenCodeLines rewrites a <pre> whose lines are block elements (Expressive
+// Code's div.ec-line, Torchlight's div.line, tables of lines) into plain text,
+// one newline per line. Left alone, the converter separates the blocks with
+// blank lines and the code comes out double spaced. Pre blocks whose lines are
+// inline spans with real newlines between them (Shiki, Pygments) are untouched.
+func flattenCodeLines(root *goquery.Selection) {
+	root.Find("pre").Each(func(_ int, pre *goquery.Selection) {
+		if pre.Find("div,p,li,tr").Length() == 0 {
+			return
+		}
+		var b strings.Builder
+		var walk func(n *nethtml.Node)
+		walk = func(n *nethtml.Node) {
+			for c := n.FirstChild; c != nil; c = c.NextSibling {
+				switch {
+				case c.Type == nethtml.TextNode:
+					b.WriteString(c.Data)
+				case c.Type == nethtml.ElementNode && c.Data == "br":
+					b.WriteByte('\n')
+				case c.Type == nethtml.ElementNode:
+					walk(c)
+					switch c.Data {
+					case "div", "p", "li", "tr":
+						if s := b.String(); s != "" && !strings.HasSuffix(s, "\n") {
+							b.WriteByte('\n')
+						}
+					}
+				}
+			}
+		}
+		walk(pre.Get(0))
+		holder := pre.Find("code").First()
+		if holder.Length() == 0 {
+			holder = pre
+		}
+		text := &nethtml.Node{Type: nethtml.TextNode, Data: strings.TrimRight(b.String(), "\n")}
+		for c := holder.Get(0).FirstChild; c != nil; {
+			next := c.NextSibling
+			holder.Get(0).RemoveChild(c)
+			c = next
+		}
+		holder.Get(0).AppendChild(text)
+		if holder.Get(0) != pre.Get(0) { // anything beside the <code> (copy buttons, labels) goes
+			pre.Children().Not("code").Remove()
+		}
+	})
+}
+
+// dropFrameLabels removes the visually hidden label of a code frame
+// ("Terminal window"), which is chrome for screen readers.
+func dropFrameLabels(root *goquery.Selection) {
+	root.Find("figure").Each(func(_ int, f *goquery.Selection) {
+		if f.Find("pre").Length() > 0 {
+			f.Find("figcaption .sr-only, figcaption .visually-hidden").Remove()
+		}
+	})
 }

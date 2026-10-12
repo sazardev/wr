@@ -55,7 +55,7 @@ That is the whole command line. `wr` decides what you mean:
 
 | What you type | What happens |
 |---|---|
-| an address (`example.com`, `https://example.com/page`, `localhost:8080/app`) | opened; `https://` may be left out |
+| an address (`example.com`, `https://example.com/page`, `localhost:8080/app`) | opened; the scheme may be left out (`https://`, or `http://` for localhost, private IPs and `.local`/`.test`/`.lan` names) |
 | a file (`./notes.md`, `~/docs/readme.html`, `/etc/hosts`) | opened from disk |
 | anything else (`postgres vacuum bloat`) | searched on the web |
 
@@ -137,8 +137,10 @@ fastest way around: documentation, long articles and API references all get
 read top-down with `]` and `[`, or selectively with `t`.
 
 **Code blocks** are highlighted by language and shown in a labeled frame with the
-language name on the border. The language comes from the page, so a block the
-site did not label is drawn in plain color. *Code frames* off removes the label
+language name on the border. The language comes from the page. When a site ships
+no language at all (build-time highlighters such as Shiki), `wr` infers it only
+if it is sure, and says so (`go (guessed)`); otherwise the block is drawn in
+plain color. *Guess code language* off keeps only what the page declares. *Code frames* off removes the label
 and frame if you want the page tighter.
 
 **Width.** By default the text column is 100 columns wide and centered, which is
@@ -326,7 +328,7 @@ Every change applies immediately and is saved to the config file.
 
 | Group | Options (exact panel names) |
 |---|---|
-| **Layout** | Reading width, Center the column, Spacing, Heading rules, Code frames, Links, Braille decoration, Accent color |
+| **Layout** | Reading width, Center the column, Spacing, Heading rules, Code frames, Guess code language, Links, Braille decoration, Accent color |
 | **Footer and scrollbar** | Scrollbar, Footer, Footer rule, Shortcut hints, Reading progress, Footer notes |
 | **Mouse** | Mouse support, Copy on select, Wheel lines |
 | **Motion** | Animations (master switch), Smooth scrolling, Scroll speed, Page reveal, Panel animation, Loading wave, Typewriter notices |
@@ -423,7 +425,7 @@ Local files work the same way as remote ones: `wr notes.md`, `wr ~/docs/page.htm
 
 - **Print instead of browse:** `wr URL | less -R` prints the formatted page and
   exits — no interface, no interactivity, ideal for a quick look or a monitor.
-  Width comes from *Reading width* or the `COLUMNS` variable (`COLUMNS=60 wr URL | less -R`).
+  Width comes from *Reading width* or the `COLUMNS` variable (`COLUMNS=60 wr URL | less -R`). With `NO_COLOR` set (or `TERM=dumb`) the printed render has no colors at all; the interactive reader always uses them.
 - **Pipes of Markdown:** `wr --md URL` prints the Markdown, uncolored. Pipe it
   into whatever you like:
 
@@ -572,15 +574,29 @@ link addresses, `--fresh` when you know the cached copy is stale.
 
 ### When the page needs JavaScript
 
-If the page comes out nearly empty, the site draws its content with JavaScript,
-which `wr` does not run. In order:
+Some sites draw their content with JavaScript, which `wr` does not run itself.
+When it recognises such a page (an empty `#root`/`#app` mount point, a
+`<noscript>` asking for JavaScript, a bare module script) it does, in order:
 
-1. `x` — open it in your real browser and read it there.
-2. Look for the site's printable, AMP or plain-text version and open that.
-3. `wr --md URL` gives you the raw input `wr` had to work with, which tells you
-   whether the page arrives empty from the server.
+1. Follows a text version the page advertises
+   (`<link rel="alternate" type="text/markdown">`).
+2. Renders the page in a **headless Chromium/Chrome** if one is installed
+   (`chromium`, `google-chrome`, `brave-browser`, `microsoft-edge`…, or the one
+   named in `WR_BROWSER`) and reads the resulting page. It takes a few seconds,
+   uses its own throwaway profile and is only tried for pages detected this way.
+   Turn it off with `render_js = false` or in the settings.
+3. Otherwise it shows what the page says without scripts (its `<noscript>`
+   text, description and JSON-LD) under a notice, and does not cache it.
 
-This is the only kind of page the reader cannot help with: everything else —
+If you still get little, `x` opens the page in your real browser, or look for the
+site's printable, AMP or plain-text version. `wr --md URL` shows the Markdown
+`wr` ended up with.
+
+Note that a rendered page runs the site's own scripts inside the headless browser
+(sandboxed, with a throwaway profile): turn `render_js` off if you would rather
+not load a site's scripts at all.
+
+Without a browser installed this is the one kind of page the reader cannot help with: everything else —
 news, blogs, documentation, wikis, forums, mailing-list archives, man pages
 online — is ordinary HTML.
 
@@ -659,6 +675,7 @@ this can be changed live from Settings.
 | `spacing` | `1` | `0` `1` `2` | blank lines between blocks: compact, normal, airy |
 | `heading_rules` | `true` | bool | a rule under level 1 and 2 headings |
 | `code_frame` | `true` | bool | the label and frame around code blocks |
+| `guess_code_lang` | `true` | bool | infer the language of unlabeled code when wr is sure (shown as `(guessed)`) |
 | `links` | `"footnotes"` | `footnotes` `inline` `hidden` | how link addresses are shown |
 | `braille` | `true` | bool | braille decoration (marks, bars, spinner) |
 | `accent` | `"blue"` | 8 ANSI colors + 6 presets | the color of the UI chrome |

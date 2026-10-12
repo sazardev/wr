@@ -147,6 +147,7 @@ func (m *model) settingsOptions() []option {
 			func(c *Config) *int { return &c.Spacing }, spacingValues, func(v int) string { return []string{"compact", "normal", "airy"}[min(max(v, 0), 2)] }, true),
 		boolOpt(L, "Heading rules", "A thin rule under level 1 and 2 headings.", func(c *Config) *bool { return &c.HeadingRules }, true),
 		boolOpt(L, "Code frames", "The label and frame around code blocks.", func(c *Config) *bool { return &c.CodeFrame }, true),
+		boolOpt(L, "Guess code language", "Color code the page does not label, when wr is sure of the language (shown as guessed).", func(c *Config) *bool { return &c.GuessCodeLang }, true),
 		enumOpt(L, "Links", "Footnotes: numbered and listed at the end. Inline: the address next to the text. Hidden: text only. Links stay clickable in every mode.",
 			func(c *Config) *string { return &c.Links }, linkModes, true),
 		boolOpt(L, "Braille decoration", "Heading marks, scrollbar, progress bar and spinner drawn in braille. Turn off if your font lacks it.", func(c *Config) *bool { return &c.Braille }, true),
@@ -174,6 +175,7 @@ func (m *model) settingsOptions() []option {
 
 		engine,
 		home,
+		boolOpt(B, "Render JavaScript pages", "Pages drawn by scripts are rendered with an installed Chromium/Chrome (headless).", func(c *Config) *bool { return &c.RenderJS }, false),
 		boolOpt(B, "Remember history", "Keep the pages you visit (the History panel and address-bar suggestions).", func(c *Config) *bool { return &c.History }, false),
 		listOpt(B, "History size", "How many visits to keep.", func(c *Config) *int { return &c.HistoryLimit }, historyValues, nil, false),
 		boolOpt(B, "Refresh in the background", "Refresh a cached page while you read it, and tell you if it changed.", func(c *Config) *bool { return &c.BackgroundRefresh }, false),

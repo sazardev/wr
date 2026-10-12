@@ -20,6 +20,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/charmbracelet/x/ansi"
 )
 
 func main() {
@@ -108,7 +110,18 @@ func main() {
 	if width == 0 {
 		width = 100
 	}
-	fmt.Println(strings.Join(renderDoc(md, width, cfg).Lines, "\n"))
+	out := strings.Join(renderDoc(md, width, cfg).Lines, "\n")
+	if wantsPlain() {
+		out = ansi.Strip(out)
+	}
+	fmt.Println(out)
+}
+
+// wantsPlain reports a request for uncolored output: NO_COLOR (no-color.org)
+// set to anything, or a dumb terminal. Only the printed render honors it; the
+// interactive reader needs color and reverse video to show where you are.
+func wantsPlain() bool {
+	return os.Getenv("NO_COLOR") != "" || os.Getenv("TERM") == "dumb"
 }
 
 // fatal prints the error and stops. A bad command line is not here: it also
@@ -122,6 +135,7 @@ func fatal(err error) {
 func applyRuntime(cfg Config) {
 	cacheMaxAge = time.Duration(cfg.CacheDays) * 24 * time.Hour
 	cacheOn = cfg.Cache
+	jsRender = cfg.RenderJS
 	setAccent(cfg.Accent)
 	setScrollSpeed(cfg.ScrollSpeed)
 }
