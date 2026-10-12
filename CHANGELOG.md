@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/sazardev/wr/compare/v0.8.0...v0.9.0) (2026-10-12)
+
+
+### Features
+
+* move between search matches while typing with up/down, tab or ctrl+n/p ([3f866f3](https://github.com/sazardev/wr/commit/3f866f38320abeec4aee07e2629941f38f6bd829))
+
 ## [0.8.0](https://github.com/sazardev/wr/compare/v0.7.0...v0.8.0) (2026-10-12)
 
 
