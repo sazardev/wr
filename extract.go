@@ -4,7 +4,6 @@ package main
 // fixes in here are tracked in docs/QA-FINDINGS.md (QA-F-001 ... QA-F-013).
 
 import (
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -141,52 +140,159 @@ func visibleEscapes(pre *goquery.Selection) {
 
 // ---- Markdown text outside of code ----
 
-var fenceOpenRe = regexp.MustCompile("^[ \\t]*(`{3,}|~{3,})(.*)$")
-
-// mapOutsideFences applies f to every stretch of text that is not inside a
-// fenced code block and leaves the fenced blocks (fences included) untouched.
-func mapOutsideFences(text string, f func(string) string) string {
-	var out, prose strings.Builder
-	flush := func() {
-		if prose.Len() > 0 {
-			out.WriteString(f(prose.String()))
-			prose.Reset()
-		}
+// fenceOpens reports the fence a line opens (the run of backticks or tildes),
+// by hand: the regexp was the single most expensive line of the extraction on
+// a big article, running once per line of prose. An info string cannot hold
+// backticks after a backtick fence.
+func fenceOpens(body string) (string, bool) {
+	i := 0
+	for i < len(body) && (body[i] == ' ' || body[i] == '\t') {
+		i++
 	}
-	mark := "" // the fence that is open, "" when in prose
-	for _, line := range strings.SplitAfter(text, "\n") {
-		if mark == "" {
-			m := fenceOpenRe.FindStringSubmatch(strings.TrimRight(line, "\r\n"))
-			// an info string cannot hold backticks after a backtick fence
-			if m != nil && !(m[1][0] == '`' && strings.Contains(m[2], "`")) {
-				flush()
-				mark = m[1]
-				out.WriteString(line)
-				continue
-			}
-			prose.WriteString(line)
-			continue
-		}
-		out.WriteString(line)
-		if t := strings.TrimSpace(line); len(t) >= len(mark) && strings.Trim(t, mark[:1]) == "" {
-			mark = ""
-		}
+	if i >= len(body) || (body[i] != '`' && body[i] != '~') {
+		return "", false
 	}
-	flush()
-	return out.String()
+	start, c := i, body[i]
+	for i < len(body) && body[i] == c {
+		i++
+	}
+	if i-start < 3 {
+		return "", false
+	}
+	if c == '`' && strings.Contains(body[i:], "`") {
+		return "", false
+	}
+	return body[start:i], true
 }
 
-var titleHeadingRe = regexp.MustCompile(`(?m)^#\s`)
+// fenceClosed reports whether a line closes the open fence: nothing but the
+// fence character, at least as long as the opening run.
+func fenceClosed(line, mark string) bool {
+	t := strings.TrimSpace(line)
+	if len(t) < len(mark) {
+		return false
+	}
+	return strings.Trim(t, mark[:1]) == ""
+}
+
+// isLinkOnly reports whether a line is nothing but markdown links (four or
+// more), the shape a page of link lists takes: those rows carry no reading.
+// The rule is the old linkOnlyLine one, matched by hand.
+func isLinkOnly(body string) bool {
+	count := 0
+	for i := 0; i < len(body); {
+		for i < len(body) && (body[i] == ' ' || body[i] == '\t') {
+			i++
+		}
+		if i >= len(body) {
+			break
+		}
+		if body[i] != '[' {
+			return false
+		}
+		j := i + 1
+		for j < len(body) && body[j] != ']' {
+			j++
+		}
+		if j >= len(body) || j+1 >= len(body) || body[j+1] != '(' {
+			return false
+		}
+		k := j + 2
+		for k < len(body) && body[k] != ')' {
+			k++
+		}
+		if k >= len(body) {
+			return false
+		}
+		count++
+		i = k + 1
+	}
+	return count >= 4
+}
+
+// tidyMarkdown cleans extracted Markdown in one pass. Outside code fences it
+// drops link-only lines, trims trailing whitespace and collapses runs of blank
+// lines to at most one, which is what tidyProse did with three regexp
+// replacements per stretch; fenced blocks keep their bytes. The result is
+// identical: the trailing newline is settled later by the caller.
+func tidyMarkdown(text string) string {
+	var b strings.Builder
+	b.Grow(len(text))
+	mark := ""  // the fence currently open
+	blanks := 0 // newlines pending, so runs collapse across line boundaries
+	for _, line := range strings.SplitAfter(text, "\n") {
+		body := strings.TrimSuffix(line, "\n")
+		cr := strings.HasSuffix(body, "\r")
+		if cr {
+			body = strings.TrimSuffix(body, "\r")
+		}
+		if mark != "" { // inside a fence: copy the line, watch for the close
+			b.WriteString(line)
+			if fenceClosed(line, mark) {
+				mark = ""
+			}
+			continue
+		}
+		if f, ok := fenceOpens(body); ok {
+			if n := min(blanks, 2); n > 0 {
+				b.WriteString(strings.Repeat("\n", n))
+			}
+			blanks = 0
+			b.WriteString(line)
+			mark = f
+			continue
+		}
+		if isLinkOnly(body) {
+			body = ""
+		}
+		body = strings.TrimRight(body, " \t")
+		nl := strings.HasSuffix(line, "\n")
+		if body == "" {
+			if nl {
+				blanks++
+			}
+			continue
+		}
+		if n := min(blanks, 2); n > 0 {
+			b.WriteString(strings.Repeat("\n", n))
+		}
+		blanks = 0
+		b.WriteString(body)
+		if cr {
+			b.WriteByte('\r')
+		}
+		if nl {
+			blanks = 1
+		}
+	}
+	if n := min(blanks, 2); n > 0 {
+		b.WriteString(strings.Repeat("\n", n))
+	}
+	return b.String()
+}
 
 // hasTitleHeading reports whether the Markdown has a level-1 heading of its own.
-// A "# comment" line inside a code block is not one.
+// A "# comment" line inside a code block is not one, so the scan tracks fences
+// as it goes.
 func hasTitleHeading(md string) bool {
-	found := false
-	mapOutsideFences(md, func(p string) string {
-		found = found || titleHeadingRe.MatchString(p)
-		return p
-	})
-	return found
+	mark := ""
+	for _, line := range strings.SplitAfter(md, "\n") {
+		body := strings.TrimSuffix(strings.TrimSuffix(line, "\n"), "\r")
+		if mark != "" {
+			if fenceClosed(line, mark) {
+				mark = ""
+			}
+			continue
+		}
+		if f, ok := fenceOpens(body); ok {
+			mark = f
+			continue
+		}
+		if len(body) > 1 && body[0] == '#' && (body[1] == ' ' || body[1] == '\t') {
+			return true
+		}
+	}
+	return false
 }
 
 // ---- tables ----

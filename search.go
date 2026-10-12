@@ -32,9 +32,49 @@ func compileQuery(q string) *regexp.Regexp {
 	return re
 }
 
-// findMatches searches the escape-free lines and returns every match in
-// order of appearance.
+// findMatches searches where q appears in every line, in order of appearance.
+// The query is always a literal (it is quoted for the engine), so the common
+// case is matched by hand over a small window of runes: the regexp engine cost
+// nine tenths of a search over a long document. Smart-case applies, like vim:
+// case-insensitive unless the query has an uppercase rune.
 func findMatches(plain []string, q string) []match {
+	if q == "" {
+		return nil
+	}
+	fold := strings.IndexFunc(q, unicode.IsUpper) < 0
+	qr := []rune(q)
+	if len(qr) > maxLiteralQuery {
+		return findMatchesRegexp(plain, q) // absurdly long query: keep the engine
+	}
+	var out []match
+	var win [maxLiteralQuery]rune
+	for li, line := range plain {
+		n := 0    // runes in the window
+		seen := 0 // runes consumed on this line
+		for i := 0; i < len(line); {
+			r, size := utf8.DecodeRuneInString(line[i:])
+			if n == len(qr) { // the window is full: slide it
+				copy(win[:], win[1:len(qr)])
+			} else {
+				n++
+			}
+			win[n-1] = r
+			i += size
+			seen++
+			if n == len(qr) && equalFoldRunes(win[:n], qr, fold) {
+				out = append(out, match{li, span{seen - n, seen}})
+				n = 0 // matches do not overlap, like FindAllStringIndex
+			}
+		}
+	}
+	return out
+}
+
+const maxLiteralQuery = 64
+
+// findMatchesRegexp is the engine path, kept for queries too long for the
+// window (rare in practice: it is a search string typed by a person).
+func findMatchesRegexp(plain []string, q string) []match {
 	re := compileQuery(q)
 	if re == nil {
 		return nil
@@ -52,6 +92,21 @@ func findMatches(plain []string, q string) []match {
 		}
 	}
 	return out
+}
+
+// equalFoldRunes compares two equal-length rune slices, case-insensitively
+// when fold is set.
+func equalFoldRunes(a, b []rune, fold bool) bool {
+	for i := range b {
+		if fold {
+			if unicode.ToLower(a[i]) != unicode.ToLower(b[i]) {
+				return false
+			}
+		} else if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 const (

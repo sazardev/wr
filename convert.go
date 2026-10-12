@@ -200,7 +200,7 @@ func toMarkdown(page []byte, src string) (string, error) {
 		return "", err
 	}
 	// the prose cleanup never touches code: fenced blocks are quoted data
-	text := mapOutsideFences(string(md), tidyProse)
+	text := tidyMarkdown(string(md))
 	// page content is untrusted: strip control characters (ESC, etc.) so a page
 	// cannot manipulate your terminal.
 	text = sanitize(text)
@@ -209,19 +209,6 @@ func toMarkdown(page []byte, src string) (string, error) {
 		text = "# " + title + "\n\n" + text
 	}
 	return text, nil
-}
-
-var (
-	linkOnlyLine = regexp.MustCompile(`(?m)^(?:\[[^\]]*\]\([^)]*\)[ \t]*){4,}$`)
-	trailingWS   = regexp.MustCompile(`[ \t]+\n`)
-	blankRuns    = regexp.MustCompile(`\n{3,}`)
-)
-
-// tidyProse normalizes a stretch of Markdown that is not code.
-func tidyProse(text string) string {
-	text = linkOnlyLine.ReplaceAllString(text, "")
-	text = trailingWS.ReplaceAllString(text, "\n")
-	return blankRuns.ReplaceAllString(text, "\n\n")
 }
 
 var controlChars = regexp.MustCompile(`[\x00-\x08\x0b-\x1f\x7f-\x9f]`)

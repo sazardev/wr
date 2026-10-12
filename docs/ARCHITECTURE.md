@@ -114,11 +114,14 @@ and `go build ./...`; the git hooks repeat the fast ones on commit and push.
 ## The performance scenario
 
 The measured baseline, the hot paths and the bottlenecks live in
-[docs/BENCHMARKS.md](BENCHMARKS.md). The short version: extraction is the
-slowest stage (4–5 MB/s, mostly the Markdown writer and the regexp cleanups,
-not the HTML parse), rendering a large document costs ~25 ms and ~6.6 MB, the
-cache turns a 21 ms miss into a 2.5 ms hit, and the interactive path is ~100 ns
-per key with zero allocations. The budget every change should keep:
+[docs/BENCHMARKS.md](BENCHMARKS.md). The short version after the optimization
+pass: extraction was the slowest stage (~4 MB/s on a 300 KB article, mostly the
+Markdown writer and our own regexp cleanups) and is now ~30–37% faster with a
+one-pass cleaner; in-page search dropped 48% (and 42% end to end, allocations
+x100 down) once the matcher stopped using the regexp engine; renders are ~15%
+faster since `Plain` stopped paying for the full ANSI parser; the cache turns a
+15.8 ms miss into a 2.1 ms hit; and the interactive path is ~100 ns per key
+with zero allocations. The budget every change should keep:
 
 - a keypress stays in the microsecond range and allocates nothing;
 - a cached page open stays a single-digit millisecond;

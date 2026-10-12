@@ -190,9 +190,54 @@ func renderDoc(md string, width int, cfg Config) *Doc {
 		} else if open >= 0 { // a link wrapped across a line without markers
 			spans = scanLinks(l, i, &open, &start, spans)
 		}
-		plain[i] = ansi.Strip(l)
+		plain[i] = stripANSI(l)
 	}
 	return &Doc{Lines: out, Plain: plain, Heads: heads, Meta: meta, Links: spans, URLs: r.urls}
+}
+
+// stripANSI removes the escape sequences from a line. The renderer paints
+// with SGR sequences and APC markers (the markers are gone by the time Plain
+// is built), so the common case is a CSI walk plus OSC/DCS strings; the full
+// parser in x/ansi cost a sixth of a large-document render. The behavior on
+// everything wr emits matches ansi.Strip.
+func stripANSI(s string) string {
+	i := strings.IndexByte(s, 0x1b)
+	if i < 0 {
+		return s
+	}
+	var b strings.Builder
+	b.Grow(len(s))
+	for {
+		b.WriteString(s[:i])
+		rest := s[i:]
+		if len(rest) < 2 {
+			return b.String() // a dangling ESC carries nothing visible
+		}
+		switch rest[1] {
+		case '[': // CSI: parameter and intermediate bytes, then a final byte
+			j := 2
+			for j < len(rest) && !(rest[j] >= '@' && rest[j] <= '~') {
+				j++
+			}
+			if j >= len(rest) {
+				return b.String() // unterminated: drop the rest
+			}
+			s = rest[j+1:]
+		case ']', '_', 'P', 'X', '^': // OSC/APC/DCS/SOS/PM: a string until ST
+			j := strings.Index(rest[2:], "\x1b\\")
+			if j < 0 {
+				return b.String()
+			}
+			s = rest[2+j+2:]
+		default:
+			s = rest[2:]
+		}
+		i = strings.IndexByte(s, 0x1b)
+		if i < 0 {
+			b.WriteString(s)
+			return b.String()
+		}
+	}
 }
 
 // scanLinks finds the link ranges on one line. A link still open at the end of

@@ -11,3 +11,6 @@ web/node_modules/
 web/dist/
 web/.astro/
 web/*.tsbuildinfo
+
+# test binary from -o runs
+wr.test
