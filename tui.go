@@ -104,6 +104,7 @@ type model struct {
 	loadErr    error
 	newer      string // a newer version already downloaded, not applied yet
 	upd        updateUI
+	pf         panelFilter // the "/" filter of the menu, Settings, shortcuts and index
 
 	now, t0, lastTick time.Time
 	animRunning       bool
@@ -200,6 +201,7 @@ func (m *model) animating() (active, fast bool) {
 // the logical position and schedules the next animation frame if needed.
 func (m *model) afterUpdate(cmd tea.Cmd) tea.Cmd {
 	if m.mode != m.prevMode {
+		m.pf = panelFilter{}
 		if m.mode.isPanel() {
 			m.panelStart = m.now
 		}
@@ -474,6 +476,9 @@ func (m *model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	}
 	m.toast = "" // any key dismisses a notice at once
+	if handled, cmd, mdl := m.filterKey(msg); handled {
+		return mdl, cmd
+	}
 	switch m.mode {
 	case modeSearch:
 		return m.keySearch(msg)
@@ -956,13 +961,6 @@ func (m *model) footerRow() string {
 // progressText is the right side of the footer: what needs your attention
 // (a bookmark star, a newer version, search results), then the progress.
 func (m *model) progressText() string {
-	if m.cfg.FooterChips && m.w >= 90 && shortVersion() != "dev" {
-		return dim(shortVersion()) + "  " + m.progressCore()
-	}
-	return m.progressCore()
-}
-
-func (m *model) progressCore() string {
 	chips := ""
 	if m.cfg.FooterChips && m.w >= 70 {
 		if m.bookmarked {
@@ -1047,6 +1045,12 @@ func (m *model) leftText(room int) string {
 		return lead + hint("type a label", "to follow a link") + "  " + m.hintInput + "  " + hint("esc", "cancel")
 	case m.mode == modeOmni:
 		return lead + hint("↑↓", "choose") + "  " + hint("enter", "go") + "  " + hint("esc", "cancel")
+	case m.mode.isPanel() && m.filterable() && m.pf.typing:
+		return lead + hint("type", "to filter") + "  " + hint("↑↓", "move") + "  " + hint("enter", "accept") + "  " + hint("esc", "clear")
+	case m.mode.isPanel() && m.filterable() && m.pf.text != "":
+		return lead + hint("↑↓", "move") + "  " + hint("/", "edit filter") + "  " + hint("esc", "clear filter")
+	case m.mode.isPanel() && m.filterable():
+		return lead + hint("↑↓", "move") + "  " + hint("enter", "select") + "  " + hint("/", "find") + "  " + hint("esc", "close")
 	case m.mode.isPanel():
 		return lead + hint("↑↓", "move") + "  " + hint("enter", "select") + "  " + hint("esc", "close")
 	case m.toast != "":

@@ -99,8 +99,11 @@ Everything below is changed **from the menu**, live, and saved for you:
   languages, links mode, braille, accent color), footer and scrollbar (each part
   separately, including turning the footer off), mouse, every animation
   separately plus scroll speed, browsing (search engine, homepage, rendering
-  JavaScript pages, update checks and the what's-new window, history), cache. `←`/`→` change a value, `d` restores its
-  default, and the selected option's help is shown underneath.
+  JavaScript pages, update checks and the what's-new window, history), cache.
+  `←`/`→` change a value, `d` restores its default, and the selected option's
+  help is shown underneath. **`/` finds an option** by typing a few words (name,
+  group or help text); the menu, the keyboard shortcuts and the section index
+  have the same filter.
 - **Keyboard shortcuts** (menu → Keyboard shortcuts): rebind any key. Select an
   action, press `Enter`, press the new key. `a` adds another key to an action,
   `x` unbinds, `d` restores the defaults. The footer hints follow your bindings.
@@ -109,7 +112,7 @@ Everything below is changed **from the menu**, live, and saved for you:
 
 ### Stays current
 
-The version is always in sight (footer, menu title, start page). `wr` looks for
+The version is in the menu title, on the start page and in `wr --version`. `wr` looks for
 a newer release by itself — in the reader only, a few seconds after it starts, at
 most once every 12 hours, one request to `api.github.com` — and tells you once,
 then keeps `↑ v0.7.1 (U)` in the footer.
@@ -314,7 +317,7 @@ and the defaults are used).
 | `footer_rule` | `true` | the thin rule above the footer |
 | `footer_hints` | `true` | shortcut hints on the left |
 | `footer_progress` | `"both"` | `both`, `percent`, `bar` or `off` |
-| `footer_chips` | `true` | version, bookmark star, update available, search count |
+| `footer_chips` | `true` | bookmark star, update available, search count |
 | `mouse` | `true` | wheel, clicks and drag-to-copy |
 | `copy_on_select` | `true` | copy when you release the mouse |
 | `wheel_lines` | `3` | lines per wheel notch |

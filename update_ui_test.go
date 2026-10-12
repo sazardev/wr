@@ -30,22 +30,15 @@ func found(m *model, announce bool) {
 
 func screen(m *model) string { return ansi.Strip(m.render()) }
 
-func TestFooterShowsTheVersion(t *testing.T) {
+func TestFooterDoesNotShowTheVersion(t *testing.T) {
 	m := updModel(t, "v0.5.1", 120, 30, nil)
-	if !strings.Contains(lastRow(m), "v0.5.1") {
-		t.Errorf("the footer must show the version:\n%s", lastRow(m))
-	}
-	m = updModel(t, "v0.5.1", 80, 30, nil)
 	if strings.Contains(lastRow(m), "v0.5.1") {
-		t.Error("a narrow footer keeps its room for the progress")
+		t.Errorf("the footer stays free of the version:\n%s", lastRow(m))
 	}
-	m = updModel(t, "v0.5.1", 120, 30, func(c *Config) { c.FooterChips = false })
-	if strings.Contains(lastRow(m), "v0.5.1") {
-		t.Error("footer notes off hides the version too")
-	}
-	m = updModel(t, "dev", 120, 30, nil)
-	if strings.Contains(lastRow(m), "dev") {
-		t.Error("an unversioned build shows no version")
+	// the version lives in the menu title and on the start page
+	press(m, "m")
+	if !strings.Contains(screen(m), "wr v0.5.1") {
+		t.Errorf("the menu title carries the version:\n%s", screen(m))
 	}
 }
 

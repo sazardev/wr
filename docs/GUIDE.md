@@ -71,7 +71,8 @@ can do, with the key beside each entry: open an address, go back and forward,
 history, bookmarks, the section index, reload, settings, the key bindings,
 update wr and see what is new, open the page in your real browser, clear the
 cache, edit the config file, quit. The title of the menu carries the version
-you are running. If
+you are running. Press `/` to find an entry by typing (see
+[Finding an option](#finding-an-option)). If
 you forget a key, this list tells you.
 
 **The first five minutes.** With a page open, try these in order:
@@ -106,14 +107,12 @@ you forget a key, this list tells you.
   you scroll.
 - **The rule** over the page is a braille line: the reader's signature.
 - **The footer** has your most useful shortcuts on the left and your reading
-  progress on the right, preceded by the version of wr (from 90 columns up). It
-  adapts to the window: a narrow window shows fewer shortcuts, and a very short
-  one drops the rule above it.
+  progress on the right. It adapts to the window: a narrow window shows fewer
+  shortcuts, and a very short one drops the rule above it.
 - **Small notes** appear next to the progress when they matter:
 
 | Note | Meaning |
 |---|---|
-| `v0.7.0` | the version of wr you are running (`v0.7.1-dev` for a build between releases) |
 | `★` | this page is bookmarked |
 | `● new version (r)` | the *page* changed on the site while you were reading; `r` reloads it |
 | `↑ v0.7.1 (U)` | a newer *wr* exists; `U` shows what is new and updates |
@@ -348,6 +347,25 @@ options grouped by topic, the value of the selected one on the right and its
 | `Esc` or `q` | close |
 
 Every change applies immediately and is saved to the config file.
+
+### Finding an option
+
+The menu, Settings, the keyboard shortcuts and the section index (`t`) all have
+the same filter. Press **`/`** and type: only the entries that mention every word
+you typed stay, in any order and ignoring case. Settings looks at the name, the
+group and the help text (`cache`, `braille`, `scroll`, `update`), the menu at the
+name, shortcuts at the action and its keys, the index at the heading.
+
+| Key | What it does |
+|---|---|
+| `/` | start filtering (again, to edit what you typed) |
+| *typing* | narrows the list; `↑` `↓` move among the matches, `Backspace` deletes |
+| `Enter` | in the menu and the index: do it (open the entry, jump to the section). In Settings and shortcuts: keep the results so you can change the value you found, then `←` `→` or `Enter` act on it |
+| `Esc` | clears the filter (a second `Esc` closes the panel) |
+
+The footer shows the keys that apply at each moment. Everything you type goes
+into the filter, so `q`, `j` or a digit are letters there, not commands. When you
+are changing a key binding, `/` is a key like any other and can be bound.
 
 | Group | Options (exact panel names) |
 |---|---|
@@ -651,10 +669,9 @@ link addresses, `--fresh` when you know the cached copy is stale.
 
 ## Updating wr
 
-The version is always in sight: at the right of the footer (`v0.6.0`, when the
-terminal is at least 90 columns wide and *Footer notes* are on), in the title of
-the menu and on the start page. A build made between releases reads
-`v0.6.1-dev`.
+The version you are running is in the title of the menu (`m`), on the start page
+and in `wr --version`; the footer stays free of it. A build made between releases
+reads `v0.7.1-dev`.
 
 **wr looks for a newer release by itself.** In the reader, a few seconds after
 it starts, it asks GitHub for the latest release, at most once every 12 hours
@@ -786,7 +803,7 @@ this can be changed live from Settings.
 | `footer_rule` | `true` | bool | the thin rule above the footer |
 | `footer_hints` | `true` | bool | the shortcut hints on the left of the footer |
 | `footer_progress` | `"both"` | `both` `percent` `bar` `off` | what the footer shows on the right |
-| `footer_chips` | `true` | bool | the small notes: version, bookmark star, update available, search count |
+| `footer_chips` | `true` | bool | the small notes: bookmark star, update available, search count |
 | `mouse` | `true` | bool | wheel scrolling, clicking links, drag to select |
 | `copy_on_select` | `true` | bool | copy as soon as the mouse is released |
 | `wheel_lines` | `3` | 1–20 | lines per wheel notch |

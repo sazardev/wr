@@ -164,18 +164,21 @@ func (m *model) menuItems() []menuItem {
 
 func (m *model) menuBox() []string {
 	items := m.menuItems()
-	rows := make([]boxRow, len(items))
-	for i, it := range items {
-		label := it.label
-		if i < 10 { // 1-9 then 0: the number is the shortcut
-			label = fmt.Sprintf("%d  %s", (i+1)%10, it.label)
-		} else {
-			label = "   " + it.label
+	vis := m.visibleEntries()
+	m.snapSel(vis)
+	rows := make([]boxRow, 0, len(vis))
+	selRow := 0
+	for p, i := range vis {
+		label := "   " + items[i].label
+		if p < 10 && !m.filterOpen() { // 1-9 then 0: the number is the shortcut
+			label = fmt.Sprintf("%d  %s", (p+1)%10, items[i].label)
 		}
-		rows[i] = boxRow{label, it.hint}
+		if i == m.sel {
+			selRow = len(rows)
+		}
+		rows = append(rows, boxRow{label, items[i].hint})
 	}
-	vis, sel := window(rows, m.sel, m.bodyH()-2)
-	return box("wr "+shortVersion(), vis, sel, m.panelWidth(58))
+	return m.filteredBox("wr "+shortVersion(), rows, selRow, nil, m.panelWidth(58))
 }
 
 func (m *model) keyMenu(k string) (tea.Model, tea.Cmd) {
@@ -230,12 +233,21 @@ func (m *model) openTOC() tea.Cmd {
 
 func (m *model) tocBox() []string {
 	heads := m.doc.Heads
-	rows := make([]boxRow, len(heads))
-	for i, h := range heads {
-		rows[i] = boxRow{strings.Repeat("  ", max(h.Level-1, 0)) + h.Text, ""}
+	vis := m.visibleEntries()
+	m.snapSel(vis)
+	rows := make([]boxRow, 0, len(vis))
+	selRow := 0
+	for _, i := range vis {
+		if i == m.sel {
+			selRow = len(rows)
+		}
+		rows = append(rows, boxRow{strings.Repeat("  ", max(heads[i].Level-1, 0)) + heads[i].Text, ""})
 	}
-	vis, sel := window(rows, m.sel, min(m.bodyH()-2, 16))
-	return box(fmt.Sprintf("Index %d/%d", m.sel+1, len(heads)), vis, sel, m.panelWidth(76))
+	title := fmt.Sprintf("Index %d/%d", m.sel+1, len(heads))
+	if m.pf.text != "" {
+		title = fmt.Sprintf("Index · %d of %d", len(vis), len(heads))
+	}
+	return m.filteredBox(title, rows, selRow, nil, m.panelWidth(76))
 }
 
 func (m *model) keyTOC(k string) (tea.Model, tea.Cmd) {
@@ -267,11 +279,14 @@ func (m *model) keyTOC(k string) (tea.Model, tea.Cmd) {
 
 func (m *model) settingsBox() []string {
 	opts := m.settingsOptions()
+	vis := m.visibleEntries()
+	m.snapSel(vis)
 	m.sel = min(max(m.sel, 0), len(opts)-1)
 	width := m.panelWidth(66)
 	var rows []boxRow
 	selRow, last := 0, ""
-	for i, o := range opts {
+	for _, i := range vis {
+		o := opts[i]
 		if o.group != last {
 			rows = append(rows, boxRow{accBold(o.group), ""})
 			last = o.group
@@ -292,19 +307,24 @@ func (m *model) settingsBox() []string {
 		}
 		rows = append(rows, boxRow{"  " + o.label, val})
 	}
-	help := helpRows(opts[m.sel].help, width-4)
-	vis, sel := window(rows, selRow, m.bodyH()-2-len(help))
-	return box("Settings", append(vis, help...), sel, width)
+	var help []boxRow
+	if len(vis) > 0 {
+		help = helpRows(opts[m.sel].help, width-4)
+	}
+	return m.filteredBox("Settings", rows, selRow, help, width)
 }
 
 // ---- keyboard shortcuts ----
 
 func (m *model) keysBox() []string {
 	width := m.panelWidth(66)
+	vis := m.visibleEntries()
+	m.snapSel(vis)
 	m.sel = min(max(m.sel, 0), len(actionList)-1)
 	var rows []boxRow
 	selRow, last := 0, ""
-	for i, a := range actionList {
+	for _, i := range vis {
+		a := actionList[i]
 		if a.group != last {
 			rows = append(rows, boxRow{accBold(a.group), ""})
 			last = a.group
@@ -325,8 +345,33 @@ func (m *model) keysBox() []string {
 	if m.capture != "" {
 		help = helpRows("esc cancels", width-4)
 	}
-	vis, sel := window(rows, selRow, m.bodyH()-2-len(help))
-	return box("Keyboard shortcuts", append(vis, help...), sel, width)
+	return m.filteredBox("Keyboard shortcuts", rows, selRow, help, width)
+}
+
+// filteredBox draws a panel whose entries can be filtered with "/": the prompt
+// row on top while a filter is open, the visible entries in a window that keeps
+// the selection in view, and optional help rows underneath.
+func (m *model) filteredBox(title string, rows []boxRow, selRow int, help []boxRow, width int) []string {
+	var head []boxRow
+	if m.filterOpen() {
+		prompt := acc("/") + " " + m.pf.text
+		if m.pf.typing {
+			prompt += cursor()
+			if m.pf.text == "" {
+				prompt += dim(" type to filter")
+			}
+		}
+		head = []boxRow{{prompt, ""}}
+	}
+	empty := len(rows) == 0
+	if empty {
+		rows, selRow = []boxRow{{dim("nothing matches"), ""}}, -1
+	}
+	vis, sel := window(rows, selRow, max(m.bodyH()-2-len(head)-len(help), 3))
+	if empty || sel < 0 {
+		sel = -1 - len(head) // nothing to highlight
+	}
+	return box(title, append(append(head, vis...), help...), sel+len(head), width)
 }
 
 // ---- address bar ----

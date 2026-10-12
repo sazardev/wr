@@ -107,6 +107,7 @@ maintain.
 | `search.go` | in-page search (smart-case) and highlight spans |
 | `selection.go` | mouse selection, OSC 52 + external clipboard |
 | `overlays.go`, `settings.go`, `theme.go`, `style.go`, `anim.go`, `braille.go` | panels, live settings, palette, SGR, springs, glyphs |
+| `panelfilter.go` | the `/` filter shared by the menu, Settings, shortcuts and the section index (`m.sel` stays the real index; the selection steps over hidden entries) |
 | `store.go`, `cache.go` | history/bookmarks JSON; the sha256-keyed Markdown cache |
 | `mcp*.go`, `eval.go` | the agent harness: MCP server, headless sessions, eval scenarios |
 | `web/` | the docs site (Astro, separate build) |
