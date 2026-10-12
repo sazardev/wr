@@ -25,6 +25,8 @@ const (
 	actVersion = "version"
 	actClear   = "clear-cache"
 	actConfig  = "config"
+	actMCP     = "mcp"
+	actEval    = "eval"
 )
 
 // flagDef is one option: how it is written, what it does and how it is
@@ -43,6 +45,8 @@ var flagDefs = []flagDef{
 	{"", "--fresh", "ignore the cache and download again", func(o *options) { o.fresh = true }},
 	{"", "--clear-cache", "delete the cache (~/.cache/wr)", func(o *options) { o.action = actClear }},
 	{"", "--config", "create (if missing) and print the config file path", func(o *options) { o.action = actConfig }},
+	{"", "--mcp", "serve the MCP server (JSON-RPC over stdio) for AI agents", func(o *options) { o.action = actMCP }},
+	{"", "--eval", "run the eval scenarios and print a JSON report", func(o *options) { o.action = actEval }},
 	{"-h", "--help", "show this help", func(o *options) { o.action = actHelp }},
 	{"-V", "--version", "print the version", func(o *options) { o.action = actVersion }},
 }

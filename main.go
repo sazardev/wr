@@ -50,6 +50,16 @@ func main() {
 		}
 		fmt.Println(path)
 		return
+	case actMCP:
+		if err := runMCPServer(); err != nil {
+			fatal(err)
+		}
+		return
+	case actEval:
+		if err := runEval(); err != nil {
+			fatal(err)
+		}
+		return
 	}
 
 	cfg, cfgErr := loadConfig()

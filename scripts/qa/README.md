@@ -71,6 +71,20 @@ clicks and decodes the OSC 52 clipboard payload.
 python3 scripts/qa/copy_pty.py
 ```
 
+**5. Agent harness.** The MCP server (`wr --mcp`, see [`docs/MCP.md`](../../docs/MCP.md))
+with its client-side protocol smoke: handshake, `tools/list`, the reading tools
+and a full headless session, against any binary, in a sandboxed HOME.
+
+```sh
+WR=$PWD/wr python3 scripts/qa/mcp_smoke.py
+```
+
+And the deterministic contract, offline:
+
+```sh
+go run . --eval    # 9 scenarios, JSON report, exit 1 on failure
+```
+
 ## Go probes
 
 | Probe | What it does |

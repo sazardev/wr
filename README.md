@@ -185,6 +185,8 @@ wr --fresh URL     # ignore the cache and download again
 wr --clear-cache   # delete the cache
 wr --config        # create (if missing) and print the config file path
 wr --version       # print the version
+wr --mcp           # serve the MCP server for AI agents (docs/MCP.md)
+wr --eval          # run the eval scenarios, print a JSON report
 ```
 
 When the output is not a terminal (`wr URL | less -R`) it prints the rendered
