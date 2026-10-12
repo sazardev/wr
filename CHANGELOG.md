@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.6.0](https://github.com/sazardev/wr/compare/v0.5.1...v0.6.0) (2026-10-12)
+
+
+### Features
+
+* **mcp:** agent harness — MCP server, headless sessions and eval ([670841b](https://github.com/sazardev/wr/commit/670841b54f0348a783893645f08ae2652c72e066))
+* read script-drawn pages, guess code languages and polish extraction ([9420c56](https://github.com/sazardev/wr/commit/9420c56ed71bea90c6f63402739bf53426a34c29))
+* **web:** blueprint redesign of the docs site (DS-2.0) ([29db8e3](https://github.com/sazardev/wr/commit/29db8e3b51e5b70db359cba9e3792ac811ccb990))
+
+
+### Performance Improvements
+
+* faster extraction, search and render in three single-pass rewrites ([98e23e9](https://github.com/sazardev/wr/commit/98e23e9f6de2e5c2a297fd2d2684de83184e952e))
+
 ## [0.5.1](https://github.com/sazardev/wr/compare/v0.5.0...v0.5.1) (2026-10-12)
 
 
