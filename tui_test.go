@@ -187,6 +187,27 @@ func TestScrollKeysStayInBounds(t *testing.T) {
 	}
 }
 
+func TestSearchStepWhileTyping(t *testing.T) {
+	m := newTestModel(t, 100, 30)
+	press(m, "/", "m", "a", "r", "k", "e", "r")
+	if len(m.matches) < 2 {
+		t.Skip("fixture has fewer than two matches")
+	}
+	first := m.cur
+	press(m, "down")
+	if m.mode != modeSearch || m.cur != (first+1)%len(m.matches) {
+		t.Errorf("down must go to the next match: mode=%v cur=%d", m.mode, m.cur)
+	}
+	press(m, "up")
+	if m.cur != first {
+		t.Errorf("up must go back: cur=%d want %d", m.cur, first)
+	}
+	press(m, "down", "enter")
+	if m.mode != modeRead || m.cur != (first+1)%len(m.matches) {
+		t.Errorf("enter must keep the chosen match: mode=%v cur=%d", m.mode, m.cur)
+	}
+}
+
 func TestSearchFlow(t *testing.T) {
 	m := newTestModel(t, 100, 30)
 	press(m, "/", "m", "a", "r", "k", "e", "r", "1")

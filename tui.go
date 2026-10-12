@@ -656,6 +656,10 @@ func (m *model) keySearch(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if m.query != "" && len(m.matches) == 0 {
 			return m, m.setToast("no results for «"+m.query+"»", true)
 		}
+	case "down", "tab", "ctrl+n": // move between the matches while typing
+		m.step(1)
+	case "up", "shift+tab", "ctrl+p":
+		m.step(-1)
 	case "backspace":
 		if r := []rune(m.input); len(r) > 0 {
 			m.input = string(r[:len(r)-1])
@@ -1037,10 +1041,10 @@ func (m *model) leftText(room int) string {
 			if len(m.matches) == 0 {
 				count = fail("no results")
 			} else {
-				count = acc2(fmt.Sprintf("%d results", len(m.matches)))
+				count = acc2(fmt.Sprintf("%d/%d", m.cur+1, len(m.matches)))
 			}
 		}
-		return lead + acc("/") + m.input + cursor() + "  " + count + "  " + hint("enter", "accept") + "  " + hint("esc", "cancel")
+		return lead + acc("/") + m.input + cursor() + "  " + count + "  " + hint("↑↓", "next") + "  " + hint("enter", "accept") + "  " + hint("esc", "cancel")
 	case m.mode == modeHints:
 		return lead + hint("type a label", "to follow a link") + "  " + m.hintInput + "  " + hint("esc", "cancel")
 	case m.mode == modeOmni:

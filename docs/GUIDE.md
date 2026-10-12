@@ -83,7 +83,7 @@ you forget a key, this list tells you.
 | `space` / `b` | a page down / up |
 | `t` | the page's headings: pick one and jump to it |
 | `f` | a letter on every link: type the letter to open it |
-| `/` then a word | the word highlighted as you type, `n` for the next match |
+| `/` then a word | the word highlighted as you type; `↑`/`↓` move between matches, `enter` keeps the one you are on, `n`/`N` for the next and previous |
 | `o` | the address bar; with nothing typed it lists bookmarks and recent pages |
 | `*` | bookmarks the page (press again to remove) |
 | `m` | the menu, where everything else lives |
