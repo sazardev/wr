@@ -42,6 +42,7 @@ const (
 	actYank      action = "yank"
 	actMenu      action = "menu"
 	actSettings  action = "settings"
+	actUpdateKey action = "update"
 	actQuit      action = "quit"
 )
 
@@ -83,6 +84,7 @@ var actionList = []actionInfo{
 	{actYank, "Reading", "Copy the selection"},
 	{actMenu, "Interface", "Menu"},
 	{actSettings, "Interface", "Settings"},
+	{actUpdateKey, "Interface", "Update wr / what's new"},
 	{actQuit, "Interface", "Quit"},
 }
 
@@ -117,6 +119,7 @@ var defaultKeys = map[action][]string{
 	actYank:      {"y"},
 	actMenu:      {"m", "?"},
 	actSettings:  {","},
+	actUpdateKey: {"U"},
 	actQuit:      {"q"},
 }
 

@@ -299,6 +299,8 @@ func modeName(m mode) string {
 		return "keys"
 	case modeList:
 		return "list"
+	case modeUpdate:
+		return "update"
 	}
 	return "read"
 }

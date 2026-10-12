@@ -142,6 +142,7 @@ func (m *model) menuItems() []menuItem {
 		{"Reload page", k(actReload), func(m *model) tea.Cmd { return m.reload() }},
 		{"Settings…", k(actSettings), func(m *model) tea.Cmd { m.mode, m.sel = modeSettings, 0; return nil }},
 		{"Keyboard shortcuts…", "", func(m *model) tea.Cmd { m.mode, m.sel = modeKeys, 0; return nil }},
+		{"Update wr / what's new…", m.updateMenuHint(), func(m *model) tea.Cmd { return m.openUpdate() }},
 		{"Open in your browser", k(actExternal), func(m *model) tea.Cmd { return m.openExternalNow() }},
 		{"Clear cache for this page", "", func(m *model) tea.Cmd {
 			if !isHTTP(m.src) {
@@ -174,7 +175,7 @@ func (m *model) menuBox() []string {
 		rows[i] = boxRow{label, it.hint}
 	}
 	vis, sel := window(rows, m.sel, m.bodyH()-2)
-	return box("wr", vis, sel, m.panelWidth(58))
+	return box("wr "+shortVersion(), vis, sel, m.panelWidth(58))
 }
 
 func (m *model) keyMenu(k string) (tea.Model, tea.Cmd) {

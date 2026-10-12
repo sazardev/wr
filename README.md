@@ -163,6 +163,14 @@ its lexers). Tested on Linux (WSL2, CachyOS) with Alacritty and Go 1.27; the
 macOS and arm64 builds are cross-compiled and have not been run by me. Windows:
 use WSL.
 
+**Updating:** wr looks for a newer release by itself (in the reader, at most once
+every 12 hours, one request to `api.github.com`) and tells you in the footer;
+press `U` to read what is new and update from there, or run `wr --update`. The
+download comes from the project's GitHub release, its SHA-256 is checked, the new
+binary must run and report the right version, and only then does it replace the
+old one. The "what's new" window is off by default (`whats_new`); the check is
+off with `update_check = false` or `WR_NO_UPDATE_CHECK=1`.
+
 **New to wr? Read the [guide](docs/GUIDE.md)** (also on the
 [docs site](https://sazardev.github.io/wr/docs/guide/), one page per section,
 with six palettes — [the design system](docs/DESIGN.md) describes them): how to
@@ -184,6 +192,7 @@ wr --md URL        # print the Markdown as is, for pipes (always fetches fresh)
 wr --fresh URL     # ignore the cache and download again
 wr --clear-cache   # delete the cache
 wr --config        # create (if missing) and print the config file path
+wr --update        # check for a newer release and install it
 wr --version       # print the version
 wr --mcp           # serve the MCP server for AI agents (docs/MCP.md)
 wr --eval          # run the eval scenarios, print a JSON report
@@ -216,6 +225,7 @@ These are the defaults; every one can be rebound.
 | `r` | reload (or apply the newer version already downloaded) |
 | `y` | copy the current selection again |
 | `,` | settings |
+| `U` | update wr / what's new |
 | `m` | menu (`1`–`9` and `0` pick an entry directly) |
 | `esc` | clear the search, the selection and the link focus |
 | `q` | quit |
@@ -255,6 +265,9 @@ and the defaults are used).
 | `heading_rules` | `true` | a rule under level 1 and 2 headings |
 | `code_frame` | `true` | label and frame around code blocks |
 | `guess_code_lang` | `true` | infer the language of unlabeled code when wr is sure (shown as `(guessed)`) |
+| `render_js` | `true` | render script-drawn pages with an installed Chromium/Chrome |
+| `update_check` | `true` | look for a newer wr in the background (at most every 12 hours) |
+| `whats_new` | `false` | a small window with the release notes when there is an update |
 | `links` | `"footnotes"` | `footnotes`, `inline` or `hidden` (links stay clickable in all of them) |
 | `braille` | `true` | braille decoration; `false` = plain glyphs |
 | `accent` | `"blue"` | color of panels, keys, marks and bars, and the one the headings walk: blue, cyan, green, magenta, yellow, red, gray, white (your terminal's own colors) or orange, violet, teal, pink, lime, slate (fixed presets) |
@@ -402,6 +415,12 @@ are stripped, so a page cannot inject escape sequences into your terminal. This
 also applies to what is read back from the cache, and an entry whose header does
 not match the requested URL is discarded. Only `http`, `https` and `file` links
 are followed; `mailto:`, `javascript:` and similar are refused with a notice.
+
+The self-update downloads only from `github.com/sazardev/wr/releases/download/`
+(any other address is refused), checks the archive against the release's
+`checksums.txt` and runs the new binary before replacing the installed one. That
+is the same trust as `install.sh`: it protects against corrupt or tampered
+downloads, not against a compromised release.
 
 ## Contributing
 

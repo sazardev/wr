@@ -54,6 +54,8 @@ type Config struct {
 	SearchEngine string `toml:"search_engine"` // a preset name or a URL template with %s
 	Homepage     string `toml:"homepage"`      // "" = the start page
 	RenderJS     bool   `toml:"render_js"`     // render script-drawn pages with an installed Chromium/Chrome
+	UpdateCheck  bool   `toml:"update_check"`  // look for a newer wr in the background (at most every 12 h)
+	WhatsNew     bool   `toml:"whats_new"`     // show the release notes in a small window when there is an update
 	History      bool   `toml:"history"`
 	HistoryLimit int    `toml:"history_limit"`
 
@@ -75,7 +77,7 @@ func defaultConfig() Config {
 		Mouse: true, CopyOnSelect: true, WheelLines: 3,
 		Animations: true, AnimScroll: true, AnimReveal: true, AnimPanels: true,
 		AnimLoading: true, AnimNotices: true, ScrollSpeed: "normal",
-		SearchEngine: "duckduckgo", RenderJS: true, History: true, HistoryLimit: 1000,
+		SearchEngine: "duckduckgo", RenderJS: true, UpdateCheck: true, WhatsNew: false, History: true, HistoryLimit: 1000,
 		Cache: true, CacheDays: 30, BackgroundRefresh: true,
 	}
 }
@@ -248,6 +250,8 @@ func configText(c Config) string {
 	kv("Where plain words go when you type them in the address bar (o): a preset\n(\"duckduckgo\", \"wikipedia\", \"github\") or your own URL with %s for the query.", "search_engine", tomlStr(c.SearchEngine))
 	kv("Page to open when you start wr without an address. \"\" = the start page.", "homepage", tomlStr(c.Homepage))
 	kv("Pages that draw their content with JavaScript are rendered with an installed\nChromium/Chrome (headless). Off shows only their summary.", "render_js", tomlBool(c.RenderJS))
+	kv("Look for a newer wr in the background (one request to api.github.com, at most\nevery 12 hours) and say so in the footer. WR_NO_UPDATE_CHECK=1 also turns it off.", "update_check", tomlBool(c.UpdateCheck))
+	kv("Show the release notes in a small window when a new version is found, and after\nyou update. U opens it any time.", "whats_new", tomlBool(c.WhatsNew))
 	kv("Remember the pages you visit (the History panel and address-bar suggestions).", "history", tomlBool(c.History))
 	kv("How many visits to keep (50-20000).", "history_limit", strconv.Itoa(c.HistoryLimit))
 

@@ -110,7 +110,7 @@ A failure comes back with `isError: true` and the reason in the text.
 ```
 
 `mode` is the reader's own: `read`, `search`, `hints`, `omni` (address bar),
-`menu`, `confirm`, `toc`, `settings`, `keys`, `list`. After a key that loads a
+`menu`, `confirm`, `toc`, `settings`, `keys`, `list`, `update`. After a key that loads a
 page the state may still say `loading: true` — the load runs on a per-session
 goroutine pool exactly like the app, so the next `wr_session_screen` shows it.
 

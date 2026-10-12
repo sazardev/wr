@@ -80,6 +80,7 @@ you forget a key, this list tells you.
 | `*` | bookmarks the page (press again to remove) |
 | `m` | the menu, where everything else lives |
 | `,` | Settings, where every option has a one-line explanation at the bottom |
+| `U` | update wr and see what is new in it (see [Updating wr](#updating-wr)) |
 
 ## The screen
 
@@ -600,6 +601,58 @@ Without a browser installed this is the one kind of page the reader cannot help 
 news, blogs, documentation, wikis, forums, mailing-list archives, man pages
 online — is ordinary HTML.
 
+## Updating wr
+
+The version is always in sight: at the right of the footer (`v0.6.0`, when the
+terminal is at least 90 columns wide and *Footer notes* are on), in the title of
+the menu and on the start page. A build made between releases reads
+`v0.6.1-dev`.
+
+**wr looks for a newer release by itself.** In the reader, a few seconds after
+it starts, it asks GitHub for the latest release, at most once every 12 hours
+(one request to `api.github.com`, nothing about you is sent; the answer is
+remembered in `~/.local/state/wr/update.json`). If there is a newer one you get a
+notice once, and the footer keeps a reminder: `↑ v0.6.1 (U)`. Nothing is
+downloaded until you ask, and the check never runs for `--md`, pipes or the MCP
+server. Turn it off with *Check for updates* in Settings, `update_check = false`
+or the environment variable `WR_NO_UPDATE_CHECK=1`.
+
+**To update, press `U`** (or menu → *Update wr / what's new…*). The window shows
+what the new version brings and asks for `enter`:
+
+```
+╭─ wr v0.6.1 is available ─────────────────────────────────╮
+│ You have v0.6.0.                                         │
+│                                                          │
+│ Released 2026-10-20                                      │
+│                                                          │
+│ Features                                                 │
+│ • read script-drawn pages, guess code languages …        │
+│                                                          │
+│ enter update now  esc later  o release page              │
+╰──────────────────────────────────────────────────────────╯
+```
+
+`wr` downloads the archive for your system from the project's GitHub release,
+checks its SHA-256 against the release's `checksums.txt`, runs the new binary to
+make sure it works and is the version it claims to be, and only then replaces
+the running one (atomically, so a failure leaves your current wr untouched).
+You can keep reading while it works; when it finishes, restart `wr` to use it.
+If the folder is not writable (a system-wide install), it says so and points to
+`install.sh` or `sudo wr --update`.
+
+**From the command line:** `wr --update` does the same without the reader,
+printing the release notes first.
+
+**The "what's new" window is off by default.** Turn on *Show what's new*
+(`whats_new = true`) and the window opens by itself, once per version, when an
+update is found (never while you are typing a search or an address), and again
+on the first launch after you update, with the notes of the version you are now
+on. `U` opens it whenever you like, whatever the setting.
+
+Builds that carry no release version (a plain `go build` between tags reads
+`dev`) never look for updates: there is nothing to compare.
+
 ## Keyboard quick reference
 
 The default bindings, as shown by the menu → *Keyboard shortcuts*. Every one of
@@ -658,6 +711,7 @@ shows the keys you actually have.
 |---|---|
 | `m` or `?` | the menu |
 | `,` | settings |
+| `U` | update wr / what's new |
 | `q` | quit |
 
 Reserved everywhere: `Ctrl+C` (always quits) and `Esc` (cancel).
@@ -697,6 +751,9 @@ this can be changed live from Settings.
 | `scroll_speed` | `"normal"` | `slow` `normal` `fast` | how quickly scrolling catches up |
 | `search_engine` | `"duckduckgo"` | `duckduckgo` `wikipedia` `github`, or a URL with `%s` | where plain words go |
 | `homepage` | `""` | an address or a file | what `wr` opens with no address; `""` = the start page |
+| `render_js` | `true` | bool | render pages drawn by JavaScript with an installed Chromium/Chrome |
+| `update_check` | `true` | bool | look for a newer wr in the background (at most every 12 hours) |
+| `whats_new` | `false` | bool | show the release notes in a small window when there is an update, and after you update |
 | `history` | `true` | bool | remember the pages you visit |
 | `history_limit` | `1000` | 50–20000 | how many visits to keep |
 | `background_refresh` | `true` | bool | refresh a cached page while you read it, and tell you if it changed |
@@ -772,6 +829,7 @@ to reset those too, menu → *Keyboard shortcuts* → `R`.
 | `~/.cache/wr/` | the page cache |
 | `~/.local/state/wr/history.jsonl` | your history, one JSON line per visit |
 | `~/.local/state/wr/bookmarks.json` | your bookmarks |
+| `~/.local/state/wr/update.json` | the newest release seen, and which version was announced |
 
 (The config and state locations follow `XDG_CONFIG_HOME` and `XDG_STATE_HOME`
 if you set them.) Folders are private (`0700`) and files readable only by you

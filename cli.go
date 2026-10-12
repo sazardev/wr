@@ -27,6 +27,7 @@ const (
 	actConfig  = "config"
 	actMCP     = "mcp"
 	actEval    = "eval"
+	actUpdate  = "update"
 )
 
 // flagDef is one option: how it is written, what it does and how it is
@@ -47,6 +48,7 @@ var flagDefs = []flagDef{
 	{"", "--config", "create (if missing) and print the config file path", func(o *options) { o.action = actConfig }},
 	{"", "--mcp", "serve the MCP server (JSON-RPC over stdio) for AI agents", func(o *options) { o.action = actMCP }},
 	{"", "--eval", "run the eval scenarios and print a JSON report", func(o *options) { o.action = actEval }},
+	{"", "--update", "check for a newer release and install it", func(o *options) { o.action = actUpdate }},
 	{"-h", "--help", "show this help", func(o *options) { o.action = actHelp }},
 	{"-V", "--version", "print the version", func(o *options) { o.action = actVersion }},
 }

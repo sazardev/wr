@@ -176,6 +176,8 @@ func (m *model) settingsOptions() []option {
 		engine,
 		home,
 		boolOpt(B, "Render JavaScript pages", "Pages drawn by scripts are rendered with an installed Chromium/Chrome (headless).", func(c *Config) *bool { return &c.RenderJS }, false),
+		boolOpt(B, "Check for updates", "Look for a newer wr in the background (one request to api.github.com, at most every 12 hours) and say so in the footer.", func(c *Config) *bool { return &c.UpdateCheck }, false),
+		boolOpt(B, "Show what's new", "A small window with the release notes when a new version is found, and after you update. U opens it any time.", func(c *Config) *bool { return &c.WhatsNew }, false),
 		boolOpt(B, "Remember history", "Keep the pages you visit (the History panel and address-bar suggestions).", func(c *Config) *bool { return &c.History }, false),
 		listOpt(B, "History size", "How many visits to keep.", func(c *Config) *int { return &c.HistoryLimit }, historyValues, nil, false),
 		boolOpt(B, "Refresh in the background", "Refresh a cached page while you read it, and tell you if it changed.", func(c *Config) *bool { return &c.BackgroundRefresh }, false),

@@ -52,6 +52,11 @@ func main() {
 		}
 		fmt.Println(path)
 		return
+	case actUpdate:
+		if err := runUpdateCLI(os.Stdout); err != nil {
+			fatal(err)
+		}
+		return
 	case actMCP:
 		if err := runMCPServer(); err != nil {
 			fatal(err)

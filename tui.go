@@ -26,7 +26,8 @@ const (
 	modeTOC
 	modeSettings
 	modeKeys
-	modeList // history or bookmarks
+	modeList   // history or bookmarks
+	modeUpdate // the update / what's new window
 )
 
 func (m mode) isPanel() bool { return m >= modeOmni }
@@ -102,6 +103,7 @@ type model struct {
 	refreshing bool
 	loadErr    error
 	newer      string // a newer version already downloaded, not applied yet
+	upd        updateUI
 
 	now, t0, lastTick time.Time
 	animRunning       bool
@@ -135,6 +137,7 @@ func newModel(src string, cfg Config, fresh bool, cfgErr error) *model {
 }
 
 func runTUI(src string, cfg Config, fresh bool, cfgErr error) error {
+	updateEnabled = true // the interactive reader is the only place that looks for updates
 	_, err := tea.NewProgram(newModel(src, cfg, fresh, cfgErr)).Run()
 	return err
 }
@@ -166,6 +169,9 @@ func (m *model) Init() tea.Cmd {
 	if m.toast != "" {
 		cmds = append(cmds, m.setToast(m.toast, m.toastWarn))
 	}
+	if c := m.startUpdateCheck(); c != nil {
+		cmds = append(cmds, c)
+	}
 	return m.afterUpdate(tea.Batch(cmds...))
 }
 
@@ -177,7 +183,7 @@ func (m *model) anim(flag bool) bool { return m.cfg.Animations && flag }
 // animating reports whether anything on screen is still moving, and whether it
 // needs smooth (60 fps) frames or just the slow spinner tick.
 func (m *model) animating() (active, fast bool) {
-	spinner := m.loading || m.refreshing
+	spinner := m.loading || m.refreshing || m.upd.phase == updBusy || m.upd.phase == updChecking
 	_, toastDone := typed(m.toast, m.toastStart, m.now, typeSpeed)
 	switch {
 	case m.anim(m.cfg.AnimScroll) && !m.scroll.settled(),
@@ -450,6 +456,12 @@ func (m *model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case updateCheckedMsg:
+		return m.onUpdateChecked(msg)
+
+	case updateDoneMsg:
+		return m.onUpdateDone(msg)
+
 	case tea.KeyPressMsg:
 		return m.key(msg)
 	}
@@ -481,6 +493,8 @@ func (m *model) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.keyKeys(msg)
 	case modeList:
 		return m.keyList(msg)
+	case modeUpdate:
+		return m.keyUpdate(k)
 	}
 	return m.keyRead(k)
 }
@@ -573,6 +587,8 @@ func (m *model) keyRead(k string) (tea.Model, tea.Cmd) {
 		m.mode, m.sel = modeMenu, 0
 	case actSettings:
 		m.mode, m.sel = modeSettings, 0
+	case actUpdateKey:
+		return m, m.openUpdate()
 	case actYank:
 		return m, m.copySelection()
 	case actOpen:
@@ -728,6 +744,8 @@ func (m *model) render() string {
 		body = m.compose(body, m.keysBox())
 	case modeList:
 		body = m.compose(body, m.listBox())
+	case modeUpdate:
+		body = m.compose(body, m.updateBox())
 	}
 	return strings.Join(append(body, m.footer()...), "\n")
 }
@@ -938,11 +956,19 @@ func (m *model) footerRow() string {
 // progressText is the right side of the footer: what needs your attention
 // (a bookmark star, a newer version, search results), then the progress.
 func (m *model) progressText() string {
+	if m.cfg.FooterChips && m.w >= 90 && shortVersion() != "dev" {
+		return dim(shortVersion()) + "  " + m.progressCore()
+	}
+	return m.progressCore()
+}
+
+func (m *model) progressCore() string {
 	chips := ""
 	if m.cfg.FooterChips && m.w >= 70 {
 		if m.bookmarked {
 			chips += caution("★") + "  "
 		}
+		chips += m.updateChip()
 		if m.newer != "" {
 			chips += caution("● new version ("+keyHint(&m.cfg, actReload)+")") + "  "
 		}

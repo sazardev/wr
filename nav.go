@@ -275,5 +275,6 @@ func startPageMD(c *Config, bookmarks, recent []Visit) string {
 	if len(bookmarks) == 0 && len(recent) == 0 {
 		fmt.Fprintf(&b, "Nothing here yet. Open a page with `%s`; the pages you visit show up here.\n", open)
 	}
+	fmt.Fprintf(&b, "\n*wr %s · `%s` checks for updates*\n", shortVersion(), keyHint(c, actUpdateKey))
 	return b.String()
 }
