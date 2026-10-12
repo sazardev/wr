@@ -5,7 +5,9 @@ How to read and browse the web from your terminal with `wr`.
 `wr` fetches a page, keeps the article, drops everything else and draws it in
 your terminal with your own colors — so it looks like part of your terminal, not
 like a website. It has no tabs, no sidebar and no ads: one page at a time, read
-with the keyboard.
+with the keyboard. Pages that only exist once their JavaScript runs are rendered
+for you when a Chromium or Chrome is installed, and `wr` keeps itself up to date
+if you let it.
 
 **The thirty-second version:** run `wr`, press `o`, type an address (or a
 question), press `Enter`. `q` quits. Everything else — links, history,
@@ -27,10 +29,13 @@ back for the details.
 - [Make it yours](#make-it-yours)
 - [Rebinding keys](#rebinding-keys)
 - [Local files, Markdown and other content](#local-files-markdown-and-other-content)
+- [Pages drawn by JavaScript](#pages-drawn-by-javascript)
 - [Using it with other tools](#using-it-with-other-tools)
 - [Real use cases](#real-use-cases)
+- [Updating wr](#updating-wr)
 - [Keyboard quick reference](#keyboard-quick-reference)
 - [Configuration reference](#configuration-reference)
+- [Environment variables](#environment-variables)
 - [Troubleshooting](#troubleshooting)
 - [Where wr keeps things](#where-wr-keeps-things)
 
@@ -63,8 +68,10 @@ Press `q` to quit. `Ctrl+C` always quits too, no matter which panel is open.
 
 **The menu is the map.** Press `m` (or `?`) and you get everything the program
 can do, with the key beside each entry: open an address, go back and forward,
-history, bookmarks, the section index, reload, settings, the key bindings, open
-the page in your real browser, clear the cache, edit the config file, quit. If
+history, bookmarks, the section index, reload, settings, the key bindings,
+update wr and see what is new, open the page in your real browser, clear the
+cache, edit the config file, quit. The title of the menu carries the version
+you are running. If
 you forget a key, this list tells you.
 
 **The first five minutes.** With a page open, try these in order:
@@ -99,14 +106,18 @@ you forget a key, this list tells you.
   you scroll.
 - **The rule** over the page is a braille line: the reader's signature.
 - **The footer** has your most useful shortcuts on the left and your reading
-  progress on the right. It adapts to the window: a narrow window shows fewer
-  shortcuts, and a very short one drops the rule above it.
+  progress on the right, preceded by the version of wr (from 90 columns up). It
+  adapts to the window: a narrow window shows fewer shortcuts, and a very short
+  one drops the rule above it.
 - **Small notes** appear next to the progress when they matter:
 
 | Note | Meaning |
 |---|---|
+| `v0.7.0` | the version of wr you are running (`v0.7.1-dev` for a build between releases) |
 | `★` | this page is bookmarked |
-| `● new version (r)` | the site changed while you were reading; `r` reloads it |
+| `● new version (r)` | the *page* changed on the site while you were reading; `r` reloads it |
+| `↑ v0.7.1 (U)` | a newer *wr* exists; `U` shows what is new and updates |
+| `↻ updating` / `✓ v0.7.1 · restart` | wr is installing the update / it is installed, restart to use it |
 | `«word» 3/12` | a search is active: third match of twelve, `n`/`N` move |
 
 - **Notices** such as `✓ copied 57 characters` replace the shortcuts for about
@@ -138,11 +149,22 @@ fastest way around: documentation, long articles and API references all get
 read top-down with `]` and `[`, or selectively with `t`.
 
 **Code blocks** are highlighted by language and shown in a labeled frame with the
-language name on the border. The language comes from the page. When a site ships
-no language at all (build-time highlighters such as Shiki), `wr` infers it only
-if it is sure, and says so (`go (guessed)`); otherwise the block is drawn in
-plain color. *Guess code language* off keeps only what the page declares. *Code frames* off removes the label
-and frame if you want the page tighter.
+language name on the border. The language comes from the page (`language-xx`
+classes, `data-language`, and the conventions of Sphinx and MediaWiki). When a
+site ships no language at all — build-time highlighters such as Shiki leave only
+colored spans — `wr` infers it, but only when one language clearly wins over the
+others among Go, Python, JavaScript, TypeScript, JSON, Bash, SQL, Rust, Java and
+C#, and it says so on the frame (`go (guessed)`). A block it is not sure about
+stays in plain color, because a wrong color is worse than none. *Guess code
+language* off keeps only what the page declares, and *Code frames* off removes
+the label and frame if you want the page tighter.
+
+**What is left out.** Besides menus, footers and cookie walls, `wr` drops what
+the page itself hides (the `hidden` attribute, `display:none`), permalink anchors
+in headings (`¶`, `#`), "skip to content" links, the navigation strips that sit
+above a title (breadcrumbs, section labels, `Next:/Up:`), and empty links. A
+link that wraps a title and a description (a card) shows the title as the link
+and the description under it.
 
 **Width.** By default the text column is 100 columns wide and centered, which is
 comfortable to read on a wide terminal. *Reading width* in Settings offers the
@@ -333,7 +355,7 @@ Every change applies immediately and is saved to the config file.
 | **Footer and scrollbar** | Scrollbar, Footer, Footer rule, Shortcut hints, Reading progress, Footer notes |
 | **Mouse** | Mouse support, Copy on select, Wheel lines |
 | **Motion** | Animations (master switch), Smooth scrolling, Scroll speed, Page reveal, Panel animation, Loading wave, Typewriter notices |
-| **Browsing** | Search engine, Start page, Remember history, History size, Refresh in the background |
+| **Browsing** | Search engine, Start page, Render JavaScript pages, Check for updates, Show what's new, Remember history, History size, Refresh in the background |
 | **Cache** | Cache pages, Keep pages for |
 | **Other** | Keyboard shortcuts…, Reset all settings… |
 
@@ -367,6 +389,18 @@ wheel_lines = 5
 # Minimal disk footprint: cache off, history off
 cache = false
 history = false
+```
+
+```toml
+# Nothing but the pages you open: no update check, no scripts run on your behalf
+update_check = false
+render_js = false
+```
+
+```toml
+# Know what changed: the notes window opens by itself when wr has an update
+update_check = true
+whats_new = true
 ```
 
 The whole configuration lives in one file, `~/.config/wr/config.toml`. `wr --config`
@@ -422,6 +456,47 @@ Local files work the same way as remote ones: `wr notes.md`, `wr ~/docs/page.htm
 `wr ./README.md`, `wr file:///etc/hosts`. Links between local HTML files work,
 `f` labels them like any other link, and `r` reads the file again from disk.
 
+## Pages drawn by JavaScript
+
+Some sites send an almost empty page and draw everything with JavaScript — the
+single-page apps behind many documentation sites (Vite, React, Vue, Angular…).
+`wr` does not run JavaScript itself, so it deals with them in layers, and it
+only starts down this road for a page that came out nearly empty: a normal page
+never pays for any of it.
+
+**1. It recognises the page.** An empty (or "Loading…") mount point such as
+`#root`, `#app` or `<app-root>`, a `<noscript>` asking for JavaScript, a module
+script on a bare page, or a page with scripts and hardly any text.
+
+**2. It looks for a text version.** If the page advertises one
+(`<link rel="alternate" type="text/markdown">`), `wr` reads that.
+
+**3. It renders the page, if it can.** With a Chromium or Chrome installed
+(`chromium`, `chromium-browser`, `google-chrome`, `brave-browser`,
+`microsoft-edge`… on your `PATH`, or the one named in `WR_BROWSER`), `wr` loads
+the page in a headless instance and reads the result like any other page. The
+loading screen and the footer say *rendering with the browser…*; it takes a few
+seconds and is cut off after 30. The browser runs with its sandbox on and a
+throwaway profile that is deleted afterwards, and the rendered page is cached
+like any other.
+
+**4. Otherwise it tells you, and shows what it has.** The page's own summary
+(its `<noscript>` text, description and JSON-LD) appears under a notice that says
+what to do: install a browser, turn `render_js` back on, or open the page with
+`x`. This version is not cached, so the page renders properly once a browser
+exists.
+
+What this cannot do: pages behind a login, sites that turn away automated
+browsers (the "Just a moment…" walls), and content that only appears after you
+click something. `x` opens the page in your real browser, and `wr --md URL`
+shows the Markdown `wr` ended up with.
+
+**It is your call.** Rendering runs the site's own scripts, and whatever network
+requests they make, inside that headless browser. If you would rather not load a
+site's scripts at all, turn it off: *Render JavaScript pages* in Settings,
+`render_js = false`, or `WR_BROWSER=/nonexistent`. Pages drawn by JavaScript then
+show their summary and the notice.
+
 ## Using it with other tools
 
 - **Print instead of browse:** `wr URL | less -R` prints the formatted page and
@@ -442,7 +517,8 @@ Local files work the same way as remote ones: `wr notes.md`, `wr ~/docs/page.htm
 - **Inside tmux:** it works. For copying to reach your system clipboard through
   tmux, enable `set -g set-clipboard on`. The mouse works as long as your tmux
   passes it through (the default).
-- **Version:** `wr --version`. **Help:** `wr --help`.
+- **Version and updates:** `wr --version` prints the version, `wr --update`
+  looks for a newer release and installs it. **Help:** `wr --help`.
 
 The pipe modes (`| less -R` and `--md`) always download the page again, so what
 you print is what the site says now; they also refresh the cache for next time.
@@ -572,34 +648,6 @@ COLUMNS=60 wr https://example.com/changelog | less -R
 
 Use `--md` for the Markdown, the plain pipe for a formatted render, `-L` to drop
 link addresses, `--fresh` when you know the cached copy is stale.
-
-### When the page needs JavaScript
-
-Some sites draw their content with JavaScript, which `wr` does not run itself.
-When it recognises such a page (an empty `#root`/`#app` mount point, a
-`<noscript>` asking for JavaScript, a bare module script) it does, in order:
-
-1. Follows a text version the page advertises
-   (`<link rel="alternate" type="text/markdown">`).
-2. Renders the page in a **headless Chromium/Chrome** if one is installed
-   (`chromium`, `google-chrome`, `brave-browser`, `microsoft-edge`…, or the one
-   named in `WR_BROWSER`) and reads the resulting page. It takes a few seconds,
-   uses its own throwaway profile and is only tried for pages detected this way.
-   Turn it off with `render_js = false` or in the settings.
-3. Otherwise it shows what the page says without scripts (its `<noscript>`
-   text, description and JSON-LD) under a notice, and does not cache it.
-
-If you still get little, `x` opens the page in your real browser, or look for the
-site's printable, AMP or plain-text version. `wr --md URL` shows the Markdown
-`wr` ended up with.
-
-Note that a rendered page runs the site's own scripts inside the headless browser
-(sandboxed, with a throwaway profile): turn `render_js` off if you would rather
-not load a site's scripts at all.
-
-Without a browser installed this is the one kind of page the reader cannot help with: everything else —
-news, blogs, documentation, wikis, forums, mailing-list archives, man pages
-online — is ordinary HTML.
 
 ## Updating wr
 
@@ -738,7 +786,7 @@ this can be changed live from Settings.
 | `footer_rule` | `true` | bool | the thin rule above the footer |
 | `footer_hints` | `true` | bool | the shortcut hints on the left of the footer |
 | `footer_progress` | `"both"` | `both` `percent` `bar` `off` | what the footer shows on the right |
-| `footer_chips` | `true` | bool | the small notes (star, new version, search count) |
+| `footer_chips` | `true` | bool | the small notes: version, bookmark star, update available, search count |
 | `mouse` | `true` | bool | wheel scrolling, clicking links, drag to select |
 | `copy_on_select` | `true` | bool | copy as soon as the mouse is released |
 | `wheel_lines` | `3` | 1–20 | lines per wheel notch |
@@ -767,6 +815,17 @@ theme. The six presets (`orange`, `violet`, `teal`, `pink`, `lime`, `slate`)
 are fixed 256-colors that look the same everywhere — pick one when your theme
 lacks the color you want.
 
+## Environment variables
+
+| Variable | What it does |
+|---|---|
+| `NO_COLOR`, `TERM=dumb` | the printed render (`wr URL \| less`) has no colors; the interactive reader always uses them |
+| `COLUMNS` | width of the printed render (`COLUMNS=60 wr URL \| less -R`) |
+| `WR_BROWSER` | the Chromium or Chrome used to render pages drawn by JavaScript (a name or a path; `/nonexistent` means none) |
+| `WR_NO_UPDATE_CHECK` | any value turns off the background check for a newer wr |
+| `VISUAL`, `EDITOR` | the editor opened by *Edit the config file…* (default `vi`) |
+| `XDG_CONFIG_HOME`, `XDG_STATE_HOME`, `XDG_CACHE_HOME` | where wr keeps its config, its state (history, bookmarks, update memory) and its cache |
+
 ## Troubleshooting
 
 **Strange boxes instead of the little dots.** Your font has no braille glyphs.
@@ -784,8 +843,40 @@ because the terminal gives no confirmation of its own.
 selection, or turn *Mouse support* off.
 
 **The page is empty or says very little.** The site draws its content with
-JavaScript. `x` opens it in your browser; look for a printable or plain-text
-version otherwise. See [When the page needs JavaScript](#when-the-page-needs-javascript).
+JavaScript. If a Chromium or Chrome is installed `wr` renders it by itself; if
+not, install one, or press `x` to read the page in your browser. See
+[Pages drawn by JavaScript](#pages-drawn-by-javascript).
+
+**"HTTP 403 (“…”)" or "HTTP 401".** The text in quotes is the title of the page
+that answered, which tells you who said no: a site that turns away non-browser
+clients ("Just a moment…" is Cloudflare), or your own network (a company proxy
+answers with its own "access restricted" page). `x` opens the address in your
+browser, where a login or a human check can be passed.
+
+**"could not download: timed out" or "connection refused".** The site is slow or
+unreachable, or (for `localhost:3000`) the server is not running. A reset or a
+timeout is retried once before it is reported.
+
+**"Install Chromium or Chrome and wr renders such pages by itself".** That is
+the notice of a page drawn by JavaScript with no browser to render it. If you
+have one, check it is on your `PATH` (`WR_BROWSER` names it explicitly) and that
+`render_js` is on.
+
+**Code has no color.** Colors come from the language the page declares. A page
+that declares none gets a guess only when `wr` is sure of it (the frame then says
+`(guessed)`); anything else stays plain. Languages without a lexer (`mermaid`)
+are never colored.
+
+**The update did not install.** The message says why. "cannot write to …" means
+the folder holding `wr` is not yours (a system-wide install): run
+`sudo wr --update` or use `install.sh`. A checksum mismatch means the download
+was corrupt and nothing was changed; try again. `wr --update` prints every step.
+A build made with a plain `go build` between releases carries no version to
+compare, so it never looks for updates.
+
+**The update notice never appears.** The check runs at most every 12 hours, in
+the reader only, and is off with `update_check = false` or `WR_NO_UPDATE_CHECK`.
+`U` → `c` checks right now.
 
 **"cannot open this kind of link: …".** The link is not a page: `mailto:`,
 `javascript:`, `tel:` and friends are not followed on purpose. Copy the address
@@ -840,3 +931,10 @@ what you read, on your machine only. To stop it: turn off *Cache pages* and
 *Remember history* in Settings. To erase what is already there: menu → *Clear
 all cache*, the History panel (`Ctrl+X`), or delete the folders above.
 `wr --clear-cache` clears the cache from the command line.
+
+**What wr sends over the network:** the pages you open (and the web search you
+type, to the engine you chose), at most one request every 12 hours to
+`api.github.com` to look for a newer release (off with *Check for updates*), and,
+for a page drawn by JavaScript, whatever that page's own scripts request while a
+headless browser renders it (off with *Render JavaScript pages*). Nothing else,
+and nothing about you beyond the `User-Agent` and the language of your locale.

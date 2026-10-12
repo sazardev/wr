@@ -9,7 +9,9 @@ links, go back and forward, an address bar that also searches the web, history,
 bookmarks. Everything is customizable from inside the program. The colors come
 from your terminal's own 16-color ANSI palette — one accent plus its partner,
 and the shades picked for your background — so it follows your theme (gruvbox,
-nord, …) with zero configuration.
+nord, …) with zero configuration. Pages that only exist once their JavaScript
+runs are rendered for you when a Chromium or Chrome is installed, and `wr` tells
+you when a newer version is out and updates itself on request.
 
 ```
 wr https://example.com/some-article
@@ -38,7 +40,18 @@ wr                          # the start page: your bookmarks and recent pages
   code, nested lists, quotes, tables, strikethrough and task lists, with the
   Markdown syntax gone.
 - **Code with color.** Highlighted per language (chroma) inside a labeled frame.
-  The language is read from `data-language` or `language-xx` classes.
+  The language is read from `language-xx` classes, `data-language` and the
+  Sphinx and MediaWiki conventions. When a site ships none (Shiki and other
+  build-time highlighters), a small conservative detector colors the block only
+  if it is sure and labels the frame `(guessed)`; otherwise it stays plain.
+- **Clean extraction.** Menus, footers and cookie walls go, and so do the things a
+  browser would not show you either: hidden elements, heading permalinks (`¶`),
+  "skip to content" links, breadcrumbs above the title and empty links. Cards
+  (a link wrapping a title and a description) keep the title as the link.
+- **Pages drawn by JavaScript.** A single-page app that sends an empty shell is
+  recognised and rendered through an installed headless Chromium/Chrome, in a
+  few seconds; with no browser you get its own summary under a notice that says
+  what to do.
 - **Search as you type** (`/`), smart-case, highlighted matches, `n` / `N` to
   jump between them. **Section index** (`t`) and heading-to-heading jumps.
 - **Select and copy.** Drag to select; it is copied when you let go. Double click
@@ -58,7 +71,7 @@ wr                          # the start page: your bookmarks and recent pages
 - **An address bar** (`o`). Type an address, a local file, or plain words:
   words search the web (DuckDuckGo by default; Wikipedia, GitHub or your own
   engine are one setting away). It suggests your bookmarks and history as you
-  type.
+  type. `localhost:3000`, private addresses and `.local` names default to `http://`.
 - **History** (`v`) and **bookmarks** (`'`, toggle the current page with `*`).
   Filter by typing, open with `Enter`, remove with `Ctrl+D`. A star in the footer
   shows a bookmarked page.
@@ -70,24 +83,49 @@ wr                          # the start page: your bookmarks and recent pages
   and JSON appear in a code block, and local files work (`wr notes.md`). Things
   it cannot show (images, PDFs) say so, and `x` opens the page in your real
   browser.
-- **Failures are safe.** A page that fails to load never replaces the one you
-  are reading, and a slow load can be overtaken by a newer one.
+- **Failures are safe and explained.** A page that fails to load never replaces
+  the one you are reading, and a slow load can be overtaken by a newer one. The
+  error says what happened in plain words: who answered a 403 (`“Acceso web
+  restringido”` is your proxy, `“Just a moment…”` is Cloudflare), no such host,
+  connection refused; a reset or a timeout is retried once. Links are resolved
+  against where a redirect really landed.
 
 ### Make it yours
 
 Everything below is changed **from the menu**, live, and saved for you:
 
-- **Settings** (`,` or menu → Settings): about 30 options in groups — layout
-  (width, centering, spacing, heading rules, code frames, links mode, braille,
-  accent color), footer and scrollbar (each part separately, including turning
-  the footer off), mouse, every animation separately plus scroll speed, search
-  engine, homepage, history, cache. `←`/`→` change a value, `d` restores its
+- **Settings** (`,` or menu → Settings): over 30 options in groups — layout
+  (width, centering, spacing, heading rules, code frames, guessing code
+  languages, links mode, braille, accent color), footer and scrollbar (each part
+  separately, including turning the footer off), mouse, every animation
+  separately plus scroll speed, browsing (search engine, homepage, rendering
+  JavaScript pages, update checks and the what's-new window, history), cache. `←`/`→` change a value, `d` restores its
   default, and the selected option's help is shown underneath.
 - **Keyboard shortcuts** (menu → Keyboard shortcuts): rebind any key. Select an
   action, press `Enter`, press the new key. `a` adds another key to an action,
   `x` unbinds, `d` restores the defaults. The footer hints follow your bindings.
 - Prefer a file? It is `~/.config/wr/config.toml`, fully commented. Both ways
   edit the same file.
+
+### Stays current
+
+The version is always in sight (footer, menu title, start page). `wr` looks for
+a newer release by itself — in the reader only, a few seconds after it starts, at
+most once every 12 hours, one request to `api.github.com` — and tells you once,
+then keeps `↑ v0.7.1 (U)` in the footer.
+
+- **`U`** (or menu → *Update wr / what's new…*) opens a small window with the
+  release notes; `Enter` updates, `Esc` leaves it for later. You can keep reading
+  while it downloads, then restart `wr`.
+- **`wr --update`** does the same from the shell, printing the notes first.
+- **A "what's new" window of its own** is available but **off by default**
+  (`whats_new`): when on, it opens by itself once per version when an update is
+  found (never over a search or the address bar) and again on the first launch
+  after you update.
+- The download comes from the project's GitHub release, its SHA-256 is checked,
+  the new binary must run and report the right version, and only then does it
+  replace the installed one; a failure leaves your `wr` untouched.
+- Off with `update_check = false`, the Settings entry or `WR_NO_UPDATE_CHECK=1`.
 
 ### Motion
 
@@ -163,13 +201,7 @@ its lexers). Tested on Linux (WSL2, CachyOS) with Alacritty and Go 1.27; the
 macOS and arm64 builds are cross-compiled and have not been run by me. Windows:
 use WSL.
 
-**Updating:** wr looks for a newer release by itself (in the reader, at most once
-every 12 hours, one request to `api.github.com`) and tells you in the footer;
-press `U` to read what is new and update from there, or run `wr --update`. The
-download comes from the project's GitHub release, its SHA-256 is checked, the new
-binary must run and report the right version, and only then does it replace the
-old one. The "what's new" window is off by default (`whats_new`); the check is
-off with `update_check = false` or `WR_NO_UPDATE_CHECK=1`.
+**Updating:** `wr --update`, or `U` inside the reader (see [Stays current](#stays-current)).
 
 **New to wr? Read the [guide](docs/GUIDE.md)** (also on the
 [docs site](https://sazardev.github.io/wr/docs/guide/), one page per section,
@@ -199,7 +231,13 @@ wr --eval          # run the eval scenarios, print a JSON report
 ```
 
 When the output is not a terminal (`wr URL | less -R`) it prints the rendered
-document and exits, with no interface.
+document and exits, with no interface. `NO_COLOR` (or `TERM=dumb`) makes that
+print uncolored, and `COLUMNS` sets its width.
+
+Environment: `WR_BROWSER` (the Chromium/Chrome used for pages drawn by
+JavaScript), `WR_NO_UPDATE_CHECK`, `NO_COLOR`, `COLUMNS`, `VISUAL`/`EDITOR` (for
+*Edit the config file…*) and the `XDG_*_HOME` directories. The guide has the
+[full list](docs/GUIDE.md#environment-variables).
 
 ### Shortcuts
 
@@ -276,7 +314,7 @@ and the defaults are used).
 | `footer_rule` | `true` | the thin rule above the footer |
 | `footer_hints` | `true` | shortcut hints on the left |
 | `footer_progress` | `"both"` | `both`, `percent`, `bar` or `off` |
-| `footer_chips` | `true` | bookmark star, newer version, search count |
+| `footer_chips` | `true` | version, bookmark star, update available, search count |
 | `mouse` | `true` | wheel, clicks and drag-to-copy |
 | `copy_on_select` | `true` | copy when you release the mouse |
 | `wheel_lines` | `3` | lines per wheel notch |
@@ -300,6 +338,7 @@ and the defaults are used).
 | `~/.cache/wr/` | the page cache |
 | `~/.local/state/wr/history.jsonl` | your history (one JSON line per visit) |
 | `~/.local/state/wr/bookmarks.json` | your bookmarks |
+| `~/.local/state/wr/update.json` | the newest release seen and which version was announced |
 
 All directories are `0700` and files `0600` (the config is `0644`). **Privacy:**
 the cache and history store the addresses and content of what you read. Turn
@@ -344,33 +383,51 @@ which suits a dark one.
 
 ## How it works
 
-1. Downloads the page (system certificate store, TLS always verified), checks
-   its type and converts it to UTF-8.
+1. Downloads the page (system certificate store, TLS always verified, a reset or
+   a timeout retried once), checks its type and converts it to UTF-8. Relative
+   links are resolved against the address the page really came from after any
+   redirect.
 2. Takes `<article>` (or `<main>`, or `<body>`) and drops menus, footers, forms,
-   scripts and rows that are just links.
-3. Reads each block's language and converts to Markdown with
+   scripts, what the page hides, heading permalinks, empty and skip links,
+   navigation above the title, and rows that are just links.
+3. If the result is nearly empty and the page looks drawn by JavaScript, it looks
+   for a text version, renders the page in a headless Chromium/Chrome when one is
+   installed, or falls back to the page's own summary (`<noscript>`,
+   description, JSON-LD) with a notice.
+4. Reads each block's language (or guesses it, labelled, when it is sure) and
+   converts to Markdown with
    [html-to-markdown](https://github.com/JohannesKaufmann/html-to-markdown).
-4. Parses the Markdown with [goldmark](https://github.com/yuin/goldmark) and
+5. Parses the Markdown with [goldmark](https://github.com/yuin/goldmark) and
    draws it with a custom renderer into self-contained ANSI lines, recording
    where every link sits.
-5. [Bubble Tea](https://github.com/charmbracelet/bubbletea) handles keys, mouse,
+6. [Bubble Tea](https://github.com/charmbracelet/bubbletea) handles keys, mouse,
    resizing and the footer; [harmonica](https://github.com/charmbracelet/harmonica)
-   drives the springs.
+   drives the springs. In the background, and only here, it checks for a newer
+   release.
 
 ## Limits
 
 - **Heuristic extraction.** It takes `<article>`/`<main>`; on unusual pages it
   may keep noise or cut content.
-- **No JavaScript of its own, and no forms.** A page that draws its content with
-  JS is rendered through an installed Chromium/Chrome (headless) when there is
-  one; without it you get a notice plus the summary the page ships without
-  scripts, and `x` opens it in your browser. Search engines that need JS will not work as
+- **JavaScript pages need a browser.** `wr` has no JavaScript engine of its own:
+  pages drawn by scripts are rendered through an installed Chromium/Chrome (a few
+  seconds, a headless instance with its sandbox on). Without one you get the
+  page's summary and a notice. Logins, forms, sites that turn away automated
+  browsers and content that appears after a click are out of reach; `x` opens
+  the page in your real browser. Search engines that need JS will not work as
   the engine setting; the presets do.
 - **In-page `#links` match headings only**, by their text (the way most sites
   generate ids), not arbitrary element ids.
-- **The language depends on the HTML.** If the page does not declare it, the
-  block is shown without color (it is not guessed). `mermaid` and other
-  languages without a chroma lexer are not colored either.
+- **The language comes from the HTML, or from a careful guess.** A block the page
+  does not label is colored only when the detector (Go, Python, JavaScript,
+  TypeScript, JSON, Bash, SQL, Rust, Java, C#) is sure, and marked `(guessed)`;
+  a short or ambiguous snippet stays plain. `mermaid` and other languages
+  without a chroma lexer are never colored.
+- **Networks that intercept.** A company proxy can answer for a site; the error
+  shows the title of whoever replied.
+- **Self-update is for release installs.** A build without a release version
+  (`go build` between tags) never checks; a system-wide install needs `sudo`;
+  there are no Windows release builds (use WSL).
 - **Search works per line**: a phrase split across two lines of the rendered text
   is not found.
 - **Selection copies what is drawn** (a heading keeps its mark, a table its
@@ -388,10 +445,19 @@ go test -race ./...
 
 The test suite covers the renderer (including link positions), search,
 selection and copy, cache, config and settings, key bindings, the persistent
-store, URL handling, and the whole browsing model — clicking, back and forward,
-failures, overtaken loads, the address bar, history and bookmarks — driven with
-local pages and synthetic input. It is deterministic: no timing, no network, no
-terminal emulator.
+store, URL handling, the whole browsing model — clicking, back and forward,
+failures, overtaken loads, the address bar, history and bookmarks — and the newer
+parts: pages drawn by JavaScript (a fake browser stands in for Chromium, including
+the timeout that must kill its children), the language guesser, and the update
+path end to end (a stub GitHub, a signed-by-checksum archive, a binary that is
+refused when it is corrupt or reports the wrong version). It is deterministic: no
+timing, no real network, no terminal emulator.
+
+Extraction quality is audited against real pages: `scripts/qa/audit.py` runs a
+list of 70+ developer-documentation URLs through a `wr` binary and flags
+backslash line breaks, empty links, repeated lines, template leaks, thin results
+and the opening lines of every page (round 3 in
+[`docs/QA-FINDINGS.md`](docs/QA-FINDINGS.md) came from it).
 
 Performance lives in the benchmarks (`docs/BENCHMARKS.md`): extraction, render,
 cache vs no cache, and the per-key cost of the model, all local and

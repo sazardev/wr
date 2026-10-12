@@ -85,6 +85,23 @@ And the deterministic contract, offline:
 go run . --eval    # 9 scenarios, JSON report, exit 1 on failure
 ```
 
+**6. Extraction audit.** A list of 70+ developer-documentation URLs (languages,
+frameworks, wikis, registries, blogs) through `wr --md`, with the anomalies that
+read badly flagged and the first lines of each page on request. It found most of
+round 3 in [`docs/QA-FINDINGS.md`](../../docs/QA-FINDINGS.md) (cards with
+backslash breaks, empty links, double-spaced code, hidden notices, breadcrumbs).
+
+```sh
+WR=./wr python3 scripts/qa/audit.py --tops              # the default list
+WR=./wr python3 scripts/qa/audit.py --urls mine.txt --out /tmp/a --jobs 4
+```
+
+It redirects HOME and the XDG directories to a temp dir and turns the update
+check off, so it never touches your real wr state. Run it twice (two builds, two
+`--out` directories) and `diff -r` the `.md` files to see what a change did to
+real pages. Pages that fail on purpose from some networks are listed at the top
+of `audit_urls.txt`.
+
 ## Go probes
 
 | Probe | What it does |

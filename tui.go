@@ -587,7 +587,7 @@ func (m *model) keyRead(k string) (tea.Model, tea.Cmd) {
 		m.mode, m.sel = modeMenu, 0
 	case actSettings:
 		m.mode, m.sel = modeSettings, 0
-	case actUpdateKey:
+	case actUpdate:
 		return m, m.openUpdate()
 	case actYank:
 		return m, m.copySelection()

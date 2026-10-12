@@ -52,7 +52,7 @@ func main() {
 		}
 		fmt.Println(path)
 		return
-	case actUpdate:
+	case actSelfUpdate:
 		if err := runUpdateCLI(os.Stdout); err != nil {
 			fatal(err)
 		}

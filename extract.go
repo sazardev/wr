@@ -610,9 +610,10 @@ func tidyAnchors(root *goquery.Selection) {
 	})
 }
 
-// dedupeLinkLines drops a link-bearing line that repeats the previous
+// dedupeLinkLines drops a link-bearing or image line that repeats the previous
 // non-blank one (an avatar link followed by the same name link, an image link
-// followed by its caption link), outside code fences.
+// followed by its caption link, the light and dark variants of one diagram),
+// outside code fences.
 func dedupeLinkLines(text string) string {
 	var b strings.Builder
 	b.Grow(len(text))
@@ -632,7 +633,7 @@ func dedupeLinkLines(text string) string {
 			continue
 		}
 		if t := strings.TrimSpace(body); t != "" {
-			if t == prev && strings.Contains(t, "](") {
+			if t == prev && (strings.Contains(t, "](") || strings.HasPrefix(t, `\[image:`)) {
 				continue
 			}
 			prev = t

@@ -299,7 +299,7 @@ page. All findings below are fixed and covered by a scenario.
 | QA-F-025 | Resuelto | Alta | Extraction | Script-drawn pages could not be read at all: they are now rendered by an installed headless Chromium/Chrome (`render_js`), with the process group killed on timeout, output capped, and nothing cached when it fails |
 | QA-F-026 | Resuelto | Media | Fetch | Relative links were resolved against the requested address, not the one after redirects |
 | QA-F-027 | Resuelto | Media | Extraction | Heading permalinks (`[¶](#…)`, a heading that is one big link) and `class="footer"` blocks stayed in the text |
-| QA-F-028 | Resuelto | Media | Extraction | Cards (a link wrapping title + text) came out as links with `\` hard breaks; empty links `[](url)` (GitHub anchors: 21 on one README, 479 on the Bash manual), "skip to content" links and repeated link lines |
+| QA-F-028 | Resuelto | Media | Extraction | Cards (a link wrapping title + text) came out as links with `\` hard breaks; empty links `[](url)` (GitHub anchors: 21 on one README, 479 on the Bash manual), "skip to content" links, repeated link lines and the light/dark variants of one image. Found with `scripts/qa/audit.py` |
 | QA-F-029 | Resuelto | Media | Code | Code whose lines are block elements (Expressive Code, Torchlight) was double spaced and carried the hidden frame label ("Terminal window") |
 | QA-F-030 | Resuelto | Media | Extraction | Elements the page hides (`hidden`, `display:none`: Vue and Next ship an "Are you an LLM?" notice) were shown |
 | QA-F-031 | Resuelto | Baja | Extraction | Navigation before the title stayed: `<ol>` breadcrumbs, a section label link, GNU `Next:/Up:` strips |

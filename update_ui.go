@@ -106,7 +106,7 @@ func (m *model) onUpdateChecked(msg updateCheckedMsg) (tea.Model, tea.Cmd) {
 			m.mode, m.upd.scroll = modeUpdate, 0
 			return m, nil
 		}
-		return m, m.setToast("● wr "+res.Latest.Tag+" is available: press "+keyHint(&m.cfg, actUpdateKey)+" to update", false)
+		return m, m.setToast("● wr "+res.Latest.Tag+" is available: press "+keyHint(&m.cfg, actUpdate)+" to update", false)
 	}
 	return m, nil
 }
@@ -273,7 +273,7 @@ func (m *model) updateChip() string {
 	case m.upd.phase == updDone:
 		return good("✓ "+m.upd.updated+" · restart") + "  "
 	case m.upd.newer && m.upd.rel != nil:
-		return caution("↑ "+m.upd.rel.Tag+" ("+keyHint(&m.cfg, actUpdateKey)+")") + "  "
+		return caution("↑ "+m.upd.rel.Tag+" ("+keyHint(&m.cfg, actUpdate)+")") + "  "
 	}
 	return ""
 }

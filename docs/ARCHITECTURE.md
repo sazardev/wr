@@ -11,44 +11,73 @@ before you change something big.
 ```
 target ─► normalizeInput ─► load ─► toMarkdown ─► renderDoc ─► model ─► screen
 (url |      (nav.go)       (fetch)  (convert+       (render.go) (tui.go)  (View/render)
- file |                       │       extract)
- words)                      │
+ file |                       │       extract)         ▲
+ words)                      │           │            └─ guessLang (guess.go)
+                             │           └─ a page drawn by scripts? ─► alternate text
+                             │              version ─► headless render (headless.go)
                              └─ cache (~/.cache/wr)      store (~/.local/state/wr)
+
+              model ◄── update check (update.go): GitHub releases, interactive reader only
 ```
 
-1. **Resolve.** `normalizeInput(in, engine)` (nav.go:72) decides what an entry
+1. **Resolve.** `normalizeInput(in, engine)` (`nav.go`) decides what an entry
    is: an `http(s)://`/`file://` URL, a local path (always `file://`), a
    `looksLikeHost` shorthand, or search words through the configured engine
    (`engineTemplate`, duckduckgo/wikipedia/github or a custom `%s` URL).
-2. **Load.** `load(src)` → `loadWith(src, fetch)` (fetch.go:28/32): fetch
-   (20 s timeout, 8 MB cap, UA fixed, TLS verified, charset → UTF-8), then
-   `convert` (convert.go:76) dispatches by media type: HTML → `toMarkdown`,
-   Markdown passes through `sanitize`, JSON/XML/plain is fenced. On success it
-   writes the cache when it is an http page. `loadWith` takes the transport as
-   a `fetcher`, which is why extraction is testable without a network.
-3. **Extract.** `toMarkdown` (convert.go:143): `pickRoot` scores
-   `<article>`/`<main>`/`<body>` by text weight, `dropTags` removes `<form>`
-   and friends, `dropHeaders`/`dropChrome` strip the page chrome (with a 50%
-   size guard so a chrome-shaped document is not emptied), code blocks keep
-   their language (`language-*`, `data-language`, Sphinx `highlight-*`,
-   MediaWiki `mw-highlight-lang-*`), tables are flattened, links are
-   absolutized, then html-to-markdown v2 plus fence-aware cleanups
-   (`tidyProse`, `mapOutsideFences`) and `sanitize` (control characters,
+2. **Load.** `load(src)` → `loadFrom(src, fetchURL)` (`fetch.go`; `loadWith` is
+   the same with a plain `fetcher` injected, which is why extraction is
+   testable without a network): fetch (20 s timeout, one retry on a reset or a
+   timeout, 8 MB cap, UA fixed, `Accept-Language` from the locale, TLS
+   verified, charset → UTF-8) and report the **final address after redirects**,
+   which is what relative links are resolved against. An HTTP error names who
+   answered (the `<title>` of the error page) and what to do. Then `convert`
+   dispatches by media type: HTML → `toMarkdown`, Markdown passes through
+   `sanitize`, JSON/XML/plain is fenced. A page that came out as a *JS shell*
+   (see `shell.go`) is retried in order: its advertised text version
+   (`alternateLink`), then `renderedMarkdown` (`headless.go`: an installed
+   Chromium/Chrome run headless, its own profile, the whole process group
+   killed on timeout, output capped, skipped when `render_js` is off), else the
+   page's own summary under a notice. On success it writes the cache when it is
+   an http page, except for a bare shell.
+3. **Extract.** `toMarkdown` (`convert.go`): `collectHints` first saves what a
+   shell page says outside its body (`<noscript>`, description, JSON-LD); then
+   `pickRoot` scores `<article>`/`<main>`/`<body>` by text weight, `dropTags`
+   removes `<form>` and friends, `dropHidden` what the page hides,
+   `dropHeaders`/`dropChrome` strip the page chrome (with a 50% size guard so a
+   chrome-shaped document is not emptied), `flattenCodeLines` turns block-line
+   code (Expressive Code) into text, code blocks keep their language
+   (`language-*`, `data-language`, Sphinx `highlight-*`, MediaWiki
+   `mw-highlight-lang-*`), tables are flattened, headings lose their permalink
+   anchors (`cleanHeadings`), anchors are tidied (`tidyAnchors`: empty and skip
+   links go, cards keep the title as the link) and absolutized, then
+   html-to-markdown v2 plus fence-aware cleanups (`tidyMarkdown`,
+   `dedupeLinkLines`, `dropLeadingCrumbs`) and `sanitize` (control characters,
    including ESC, are removed — page content is untrusted).
-4. **Render.** `renderDoc(md, width, cfg)` (render.go:133) parses the Markdown
+4. **Render.** `renderDoc(md, width, cfg)` (`render.go`) parses the Markdown
    with goldmark, highlights code with chroma (memoized per block, one
-   goroutine per block), and emits self-contained ANSI lines in a `Doc`:
+   goroutine per block; a block with no language gets `guessLang`'s answer when
+   it is sure, marked `?` internally and labelled "(guessed)"), and emits self-contained ANSI lines in a `Doc`:
    `Lines`, `Plain`, `Heads`, `Links` (as `LinkSpan` + `URLs`), per-line
    `Meta` for selection. Invisible APC markers placed during rendering are
    scanned into link spans afterwards, so links keep their screen positions.
 5. **Interact.** The Bubble Tea v2 model (tui.go): keys, mouse, resize, spring
-   scrolling (harmonica), search, selection, toasts, panels. Navigation
+   scrolling (harmonica), search, selection, toasts, panels (the update window
+   is one more: `update_ui.go`). Navigation
    (`browse.go`) keeps `back`/`fwd` stacks of `navEntry` and runs every load
    through `startNav`/`loadCmd`; an overtaken load is dropped by id, and a
    failed load never replaces the page on screen. `newModel` + `Update` +
    `render()` work with no terminal at all — that single property is what makes
    the deterministic UI tests and the agent sessions in `mcp_session.go`
    possible.
+6. **Update.** `startUpdateCheck` runs once at launch in the interactive reader
+   only (`updateEnabled` is switched on by `runTUI`, so tests, pipes, MCP and
+   eval never reach the network for it). `checkForUpdate` trusts the last
+   answer for 12 hours, remembers it in `update.json`, and reports a newer
+   release, whether it was already announced, and, on the first launch after
+   an update, that release's notes. `applyUpdate` downloads the archive from
+   the project's release URL only, verifies its SHA-256 against
+   `checksums.txt`, runs the new binary (`--version` must match the tag) and
+   renames it over the running one.
 
 ## Where things live
 
@@ -60,12 +89,16 @@ maintain.
 
 | Path | What |
 |---|---|
-| `main.go` | CLI entry: flags → config → `runTUI`, `--md`/pipe output, `--mcp`, `--eval` |
+| `main.go` | CLI entry: flags → config → `runTUI`, `--md`/pipe output (`NO_COLOR` aware), `--update`, `--mcp`, `--eval` |
 | `cli.go` | the flag table (`parseArgs` is driven by `flagDefs`) |
 | `config.go` | `Config`, defaults, commented TOML load/save, `normalize` |
-| `fetch.go` | `fetch`, `load`, `loadWith`, charset → UTF-8 |
+| `fetch.go` | `fetchURL` (final URL, retry, readable errors), `load`, `loadFrom`, `loadWith`, charset → UTF-8 |
 | `convert.go` | media-type dispatch, HTML → Markdown, `sanitize`, `stripLinks` |
-| `extract.go` | root picking, chrome dropping, table flattening, ESC escaping |
+| `extract.go` | root picking, chrome and hidden dropping, headings, anchors/cards, code lines, table flattening, crumbs, dedupe |
+| `shell.go` | JS-shell detection, the page's own summary (`collectHints`), the notice, advertised text versions |
+| `headless.go`, `headless_unix.go`, `headless_windows.go` | rendering a shell page with an installed Chromium/Chrome (process group, cap, counter for the UI) |
+| `guess.go` | the conservative, labelled code-language guesser |
+| `update.go`, `update_ui.go` | the update check, the verified self-update, the release notes; the update window, footer chip and menu entry |
 | `render.go` | Markdown → ANSI, `Doc`, `LinkSpan`, link positions |
 | `nav.go` | input resolution, link resolution, the start page |
 | `browse.go` | navigation, links/focus/hints, address bar, history and bookmark panels |
@@ -88,6 +121,7 @@ maintain.
 | cache | `~/.cache/wr/` (`os.UserCacheDir`) | one file per page: `wr-cache 2 <unix> <src>` + Markdown, 0600 |
 | history | `~/.local/state/wr/history.jsonl` (`XDG_STATE_HOME`) | one JSON object per visit (`{"u","t","a"}`), 0600 |
 | bookmarks | `~/.local/state/wr/bookmarks.json` | JSON array, 0600 |
+| update memory | `~/.local/state/wr/update.json` | `{checked, failed, latest, notified, seen}`, 0600 |
 
 State is hand-rolled XDG (`XDG_STATE_HOME`), config and cache use Go's
 `os.User*Dir` (which honor `XDG_CONFIG_HOME`/`XDG_CACHE_HOME` on Linux).
@@ -99,16 +133,19 @@ and benchmarks redirect all three with environment variables and nothing else
 
 | Surface | Covers | Run |
 |---|---|---|
-| Unit tests (`*_test.go`) | renderer + link positions, search, selection/copy, cache, config, keys, store, navigation (click, back/forward, failures, overtaken loads), extraction scenarios | `go test -race ./...` |
+| Unit tests (`*_test.go`) | renderer + link positions, search, selection/copy, cache, config, keys, store, navigation (click, back/forward, failures, overtaken loads), extraction scenarios, JS shells and the headless render (a fake browser script, including a timeout that must kill its children), the language guesser, the whole update path (a stub release API, a checksummed archive, refusal of corrupt, mismatched or foreign downloads) and the update window | `go test -race ./...` |
+| Extraction audit (`scripts/qa/audit.py`) | 70+ real developer-docs URLs through a binary: backslash breaks, empty links, repeated lines, thin pages, shells, and the opening lines of each page (QA round 3) | `WR=./wr python3 scripts/qa/audit.py --tops` |
 | QA corpora (`scripts/qa/`) | 460+ real URLs in 10 categories, chroma lexers, synthetic cases, PTY copy — output in `qa-out/` | `CORPUS=corpus python3 scripts/qa/harness.py` etc. |
 | QA scenario tests (`qa_scenarios_test.go`) | every finding in `docs/QA-FINDINGS.md` has a test; a meta-test keeps the three in sync | `go test -race ./...` (`WR_QA_STRICT=1` asserts open findings) |
 | `--eval` | 9 deterministic offline scenarios (input, extraction, render, links, session navigation, search, store, cache, config) as JSON, exit 1 on failure | `go run . --eval` |
 | MCP smoke (`scripts/qa/mcp_smoke.py`) | the agent protocol end to end against any binary: handshake, tools/list, reading tools, a full session, config | `WR=./wr python3 scripts/qa/mcp_smoke.py` |
 | Benchmarks (`bench_test.go`) | extraction, render, load path (cache vs no cache), interaction, store, search — local, deterministic, with allocations | `go test -run '^$' -bench . -benchmem` |
 
-Two properties hold across all of them: **no network** (loopback `httptest`
-stands in for one) and **no wall-clock dependence** (animations off, synthetic
-pages). CI runs gofmt, `go mod tidy -diff`, `go vet`, `go test -race ./...`
+Two properties hold across the automated ones: **no network** (loopback
+`httptest` stands in for the web, for the release API and for the release
+assets; a shell script stands in for Chromium) and **no wall-clock dependence**
+(animations off, synthetic pages). The audit and the QA corpora are the
+exceptions on purpose: they exist to meet the real web. CI runs gofmt, `go mod tidy -diff`, `go vet`, `go test -race ./...`
 and `go build ./...`; the git hooks repeat the fast ones on commit and push.
 
 ## The performance scenario

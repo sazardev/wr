@@ -393,3 +393,11 @@ func TestHiddenElementsAreDropped(t *testing.T) {
 		t.Errorf("the article hidden until JS must stay: %v\n%s", err, md)
 	}
 }
+
+func TestLightAndDarkImageVariantsCollapse(t *testing.T) {
+	in := "\\[image: A diagram\\]\n\n\\[image: A diagram\\]\n\ntext\n\n\\[image: Other\\]\n"
+	got := dedupeLinkLines(in)
+	if strings.Count(got, "A diagram") != 1 || !strings.Contains(got, "Other") {
+		t.Errorf("repeated image placeholders must collapse:\n%s", got)
+	}
+}
