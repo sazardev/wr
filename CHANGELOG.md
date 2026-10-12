@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/sazardev/wr/compare/v0.7.0...v0.8.0) (2026-10-12)
+
+
+### Features
+
+* find options with / in the menu, Settings, shortcuts and the index; drop the footer version ([eff7897](https://github.com/sazardev/wr/commit/eff78978b402c4be9d99408c2fc02e890874c7a0))
+
 ## [0.7.0](https://github.com/sazardev/wr/compare/v0.6.0...v0.7.0) (2026-10-12)
 
 
