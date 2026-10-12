@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/sazardev/wr/compare/v0.6.0...v0.7.0) (2026-10-12)
+
+
+### Features
+
+* check for new versions, update from inside wr and show what's new ([9b41589](https://github.com/sazardev/wr/commit/9b41589e430bf4ee87a2b2b0135c21f78a178b9c))
+
 ## [0.6.0](https://github.com/sazardev/wr/compare/v0.5.1...v0.6.0) (2026-10-12)
 
 
