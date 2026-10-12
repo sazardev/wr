@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/sazardev/wr/compare/v0.5.0...v0.5.1) (2026-10-12)
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/yuin/goldmark ([#3](https://github.com/sazardev/wr/issues/3)) ([1cc95bb](https://github.com/sazardev/wr/commit/1cc95bbae1747ed870be305e2542b5677a7f97d5))
+
 ## [0.5.0](https://github.com/sazardev/wr/compare/v0.4.0...v0.5.0) (2026-10-11)
 
 
