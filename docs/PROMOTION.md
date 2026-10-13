@@ -5,6 +5,37 @@ repositorio. Todo lo de esta lista es gratuito. Las tareas marcadas **manual**
 necesitan tu cuenta (no se pueden hacer desde aquí); el resto ya está hecho o
 es un comando que puedes lanzar tal cual.
 
+## Hecho el 13 de octubre de 2026
+
+- **Google Search Console**: propiedad `https://sazardev.github.io/wr/` verificada
+  (archivo `google6e32854daef2e851.html`), sitemap-index y sitemap-0 enviados,
+  home y `/docs/guide/start/` en cola de indexación.
+- **Bing Webmaster Tools**: cuenta conectada con Google, sitio importado desde
+  GSC y `sitemap-index.xml` con estado **Success**.
+- **IndexNow**: 50 URLs enviadas en cada deploy (Bing, Yandex, Seznam, Naver, Yep).
+- **Terminal Trove**: formulario enviado (categorías tui, cli, web, markdown,
+  charm, linux, macos; captura real en `/assets/wr-preview.png`).
+- **Console.dev**: email de propuesta enviado a hello@console.dev desde
+  cerberusprogrammer@gmail.com.
+- **Awesome lists**: PR a [awesome-tuis #941](https://github.com/rothgar/awesome-tuis/pull/941),
+  [Awesome-Linux-Software #7](https://github.com/DimitrisPa/Awesome-Linux-Software/pull/7)
+  (fork activo; el original está archivado) y
+  [terminals-are-sexy #418](https://github.com/k4m4/terminals-are-sexy/pull/418).
+- **Homebrew**: tap propio listo → `brew install sazardev/tap/wr`.
+- **pkg.go.dev / libraries.io / deps.dev**: indexados.
+
+Pendiente y bloqueado por sesión (hazlo tú en 2 minutos):
+
+- **Show HN**: la sesión de `737max` caducó; entra en
+  https://news.ycombinator.com/submit, pega el título y la URL del apartado 2 y
+  publica el primer comentario. Mejor martes–jueves 14:00–16:00 UTC.
+- **Reddit**: pide "prove your humanity"; resuelve el captcha e inicia sesión.
+- **GitHub social preview**: repo → Settings → Social preview → sube
+  `web/public/assets/og.png` (no hay API para esto).
+- **dev.to, Product Hunt, AlternativeTo, LibHunt**: sin sesión en el navegador.
+- **Golang Weekly**: el formulario de Cooperpress está caído (Airtable borrado);
+  menciónalos en X/Mastodon o responde a su newsletter.
+
 ## Lo que ya está hecho
 
 | Cosa | Dónde |
@@ -15,6 +46,7 @@ es un comando que puedes lanzar tal cual.
 | Documentación completa en un archivo | https://sazardev.github.io/wr/llms-full.txt |
 | JSON-LD (SoftwareApplication, WebSite, TechArticle, BreadcrumbList) | todas las páginas |
 | Tarjeta social PNG 1200×630 | web/public/assets/og.png |
+| Captura real del lector | web/public/assets/wr-preview.png |
 | IndexNow automático en cada deploy | `.github/workflows/docs.yml` |
 | Topics del repo | browser, bubbletea, cli, golang, tui, … |
 | pkg.go.dev | https://pkg.go.dev/github.com/sazardev/wr |
