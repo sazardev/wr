@@ -61,7 +61,7 @@ const quick = [
         {quick.map((card, i) => (
           <a href={card.href} class="rv" style={`--d:${i}`}>
             <span class="no">{card.no}</span>
-            <h3>{card.title}</h3>
+            <h2>{card.title}</h2>
             <p>{card.text}</p>
             <span class="go">{card.go} <span class="arr">→</span></span>
           </a>
@@ -76,7 +76,7 @@ const quick = [
       <div class="hub-cols">
         {lists.map(({ meta, pages }, i) => (
           <div class="hub-col rv" style={`--d:${i}`}>
-            <h3><a href={docPath(meta.id)}>{meta.label}</a><small>{pages.length} pages</small></h3>
+            <h2><a href={docPath(meta.id)}>{meta.label}</a><small>{pages.length} pages</small></h2>
             <p>{meta.blurb}</p>
             <ol>
               {pages.slice(0, 8).map((entry) => (
@@ -99,17 +99,17 @@ const quick = [
       <Label no="03" title="Where it comes from" note="nothing is typed twice" />
       <div class="hub-quick">
         <a href={repo.file('docs/GUIDE.md')} class="rv">
-          <span class="no">docs/GUIDE.md</span><h3>The guide</h3>
+          <span class="no">docs/GUIDE.md</span><h2>The guide</h2>
           <p>Ships inside every release tarball and is the source of every guide page here.</p>
           <span class="go">view on GitHub <span class="arr">↗</span></span>
         </a>
         <a href={repo.file('keys.go')} class="rv" style="--d:1">
-          <span class="no">keys.go</span><h3>The shortcuts</h3>
+          <span class="no">keys.go</span><h2>The shortcuts</h2>
           <p>The file the program binds keys from: the reference page is parsed out of it at build time.</p>
           <span class="go">view on GitHub <span class="arr">↗</span></span>
         </a>
         <a href={repo.file('web')} class="rv" style="--d:2">
-          <span class="no">web/</span><h3>This site</h3>
+          <span class="no">web/</span><h2>This site</h2>
           <p>An Astro app: a content loader, one page per section, deployed to GitHub Pages.</p>
           <span class="go">view on GitHub <span class="arr">↗</span></span>
         </a>

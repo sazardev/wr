@@ -39,9 +39,39 @@ const crumbs: Crumb[] = [
 const minutes = Math.max(1, Math.round(entry.data.text.split(/\s+/).filter(Boolean).length / 200));
 const position = isIndex ? 'overview' : `${String(entry.data.order).padStart(2, '0')} / ${String(entries.filter((e) => e.data.section !== 'index').length).padStart(2, '0')}`;
 const heading = isIndex ? entry.data.title || meta.label : entry.data.title;
+
+// Structured data for a section page: the article itself and the trail that
+// leads to it (docs → document → section), mirroring the visible crumbs.
+const pageUrl = new URL(Astro.url.pathname, Astro.site).toString();
+const rootId = `${new URL(withBase('/'), Astro.site)}#website`;
+const jsonLd = isIndex
+  ? undefined
+  : [
+      {
+        '@type': 'TechArticle',
+        '@id': `${pageUrl}#article`,
+        headline: entry.data.title,
+        description,
+        url: pageUrl,
+        mainEntityOfPage: pageUrl,
+        inLanguage: 'en',
+        isPartOf: { '@id': rootId },
+        author: { '@type': 'Person', name: 'sazardev', url: 'https://github.com/sazardev' },
+        license: 'https://opensource.org/license/mit',
+        ...(entry.data.date ? { datePublished: entry.data.date } : {}),
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'docs', item: new URL(withBase('/docs/'), Astro.site).toString() },
+          { '@type': 'ListItem', position: 2, name: meta.label, item: new URL(docPath(doc), Astro.site).toString() },
+          { '@type': 'ListItem', position: 3, name: entry.data.title, item: pageUrl },
+        ],
+      },
+    ];
 ---
 
-<Base title={title} description={description} current={doc}>
+<Base title={title} description={description} current={doc} jsonLd={jsonLd}>
   <div class="docbar">
     <b>{meta.id} / {isIndex ? 'overview' : entry.data.title}</b>
     <button type="button" data-aside-toggle aria-expanded="false" aria-controls="docs-aside">contents ▾</button>

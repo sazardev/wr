@@ -92,6 +92,17 @@ export async function startSearch(): Promise<void> {
 
   const entries = await loadIndex();
 
+  const emptyState = (lead: string, hint: string): HTMLDivElement => {
+    const box = document.createElement('div');
+    box.className = 'empty';
+    const title = document.createElement('b');
+    title.textContent = lead;
+    const note = document.createElement('span');
+    note.textContent = hint;
+    box.append(title, note);
+    return box;
+  };
+
   const render = (): void => {
     const terms = tokenize(query);
     const hits = searchEntries(entries, query, { scope });
@@ -99,19 +110,13 @@ export async function startSearch(): Promise<void> {
 
     if (!query.trim()) {
       search.status.textContent = `${entries.length} pages indexed`;
+      search.results.append(emptyState('Search the docs', 'Type a word: links, keys, cache, install…'));
       return;
     }
     search.status.textContent = hits.length === 1 ? '1 result' : `${hits.length} results`;
 
     if (hits.length === 0) {
-      const empty = document.createElement('div');
-      empty.className = 'empty';
-      const lead = document.createElement('b');
-      lead.textContent = `Nothing matches “${query}”.`;
-      const hint = document.createElement('span');
-      hint.textContent = 'Try a single word: links, keys, cache, install…';
-      empty.append(lead, hint);
-      search.results.append(empty);
+      search.results.append(emptyState(`Nothing matches “${query}”.`, 'Try a single word: links, keys, cache, install…'));
       selected = -1;
       return;
     }
@@ -186,7 +191,7 @@ function hitElement(hit: { entry: SearchEntry; snippet: string }, terms: string[
   doc.textContent = hit.entry.doc;
   where.append(doc);
 
-  const heading = document.createElement('h3');
+  const heading = document.createElement('h2');
   heading.textContent = hit.entry.title;
 
   const body = document.createElement('p');

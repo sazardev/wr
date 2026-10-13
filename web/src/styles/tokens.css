@@ -22,6 +22,9 @@
   --hatch: #0b1527;
   --line: #131f36;
   --line-2: #22365b;
+  /* Decoration that carries text (the footer's giant watermark) must still
+     clear 3:1 against the background. */
+  --deco: #4f6288;
   --dim: #6f86ab;
   --fg-2: #a3b5d3;
   --fg: #e8f0fd;
@@ -44,18 +47,22 @@
 
 html[data-theme="graphite"] {
   --bg: #0a0a0a; --panel: #111111; --hatch: #0e0e0e; --line: #1c1c1c; --line-2: #343434;
+  --deco: #606060;
   --dim: #8a8a8a; --fg-2: #b8b8b8; --fg: #ededed; --accent: #ffffff; --ink: #0a0a0a;
 }
 html[data-theme="phosphor"] {
   --bg: #040a06; --panel: #08140c; --hatch: #07110a; --line: #0f2216; --line-2: #1d4a2c;
+  --deco: #2e6e42;
   --dim: #5a9a6d; --fg-2: #9fd8b1; --fg: #d8f7e2; --accent: #3dff85; --ink: #04100a;
 }
 html[data-theme="amber"] {
   --bg: #0b0802; --panel: #140f04; --hatch: #100b03; --line: #231a08; --line-2: #46340f;
+  --deco: #7a5c24;
   --dim: #9a7e45; --fg-2: #cdb27a; --fg: #f9e9c8; --accent: #ffb224; --ink: #0b0802;
 }
 html[data-theme="paper"] {
   --bg: #f4f7fc; --panel: #e8eef8; --hatch: #e8eef8; --line: #d5deee; --line-2: #aebcd8;
+  --deco: #7f8da8;
   --dim: #566a8f; --fg-2: #2c4270; --fg: #0b1f44; --accent: #1550c8; --ink: #f4f7fc;
   color-scheme: light;
 }

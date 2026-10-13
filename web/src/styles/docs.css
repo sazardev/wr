@@ -17,7 +17,7 @@
   position: relative; display: flex; gap: 10px; align-items: baseline; padding: 6px 10px 6px 14px; margin-left: -1px; border-left: 2px solid transparent;
   color: var(--dim); font-size: 13px; line-height: 1.4; transition: color var(--fast) ease, border-color var(--fast) ease, background-color var(--fast) ease;
 }
-.snav a .n { flex: none; width: 2ch; color: var(--line-2); font-size: 11px; transition: color var(--fast) ease; }
+.snav a .n { flex: none; width: 2ch; color: var(--dim); font-size: 11px; transition: color var(--fast) ease; }
 .snav a:hover { color: var(--fg); border-left-color: var(--line-2); }
 .snav a[aria-current] { color: var(--fg); border-left-color: var(--accent); background: var(--panel); }
 .snav a[aria-current] .n, .snav a:hover .n { color: var(--accent); }
@@ -67,7 +67,7 @@
 .srow { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 14px; align-items: baseline; padding: 18px 8px; border-bottom: 1px solid var(--line); transition: background-color 0.2s ease, padding 0.3s var(--ease); }
 .srow:hover { background: var(--panel); padding-inline: 18px; }
 .srow .no { color: var(--dim); font-size: 12px; }
-.srow h3 { font-size: 17px; letter-spacing: -0.03em; }
+.srow h2 { font-size: 17px; letter-spacing: -0.03em; }
 .srow p { margin: 4px 0 0; color: var(--dim); font: 400 14px/1.55 var(--sans); max-width: 60ch; }
 .srow .go { color: var(--dim); transition: transform 0.25s var(--ease), color var(--fast) ease; }
 .srow:hover .go { transform: translateX(5px); color: var(--accent); }
@@ -86,9 +86,9 @@
 .hub-search span { flex: 1; }
 .hub-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); margin-top: 36px; }
 .hub-col { background: var(--bg); padding: 24px; min-width: 0; }
-.hub-col h3 { display: flex; align-items: baseline; justify-content: space-between; font-size: 20px; letter-spacing: -0.04em; margin-bottom: 8px; }
-.hub-col h3 a:hover { color: var(--accent); }
-.hub-col h3 small { color: var(--dim); font: 400 11.5px var(--mono); letter-spacing: 0; }
+.hub-col h2 { display: flex; align-items: baseline; justify-content: space-between; font-size: 20px; letter-spacing: -0.04em; margin-bottom: 8px; }
+.hub-col h2 a:hover { color: var(--accent); }
+.hub-col h2 small { color: var(--dim); font: 400 11.5px var(--mono); letter-spacing: 0; }
 .hub-col > p { margin: 0 0 18px; color: var(--dim); font: 400 14px/1.55 var(--sans); }
 .hub-col ol { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
 .hub-col li a { display: flex; gap: 12px; padding: 8px 0; border-bottom: 1px dashed var(--line); color: var(--fg-2); font-size: 13px; transition: color var(--fast) ease, padding 0.25s var(--ease); }
@@ -101,7 +101,7 @@
 .hub-quick a { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 24px; background: var(--bg); min-height: 180px; transition: background-color 0.2s ease; }
 .hub-quick a:hover { background: var(--panel); }
 .hub-quick .no { color: var(--accent); font-size: 12px; letter-spacing: 0.1em; }
-.hub-quick h3 { font-size: 19px; letter-spacing: -0.03em; }
+.hub-quick h2 { font-size: 19px; letter-spacing: -0.03em; }
 .hub-quick p { margin: 0; color: var(--dim); font: 400 14px/1.55 var(--sans); flex: 1; }
 .hub-quick .go { color: var(--dim); font-size: 12px; transition: color var(--fast) ease; }
 .hub-quick a:hover .go { color: var(--accent); }

@@ -27,7 +27,7 @@ const pages = [
     {pages.map((page, i) => (
       <a class="ref-card rv" style={`--d:${i}`} href={page.href}>
         <span class="no">{page.no}<small>{page.source}</small></span>
-        <h3>{page.title}</h3>
+        <h2>{page.title}</h2>
         <p>{page.text}</p>
         <span class="go">open <span class="arr">→</span></span>
       </a>
@@ -38,19 +38,19 @@ const pages = [
   <div class="ref-cards">
     <a class="ref-card rv" href={withBase('/docs/guide/rebinding-keys/')}>
       <span class="no">guide<small>docs/GUIDE.md</small></span>
-      <h3>Rebinding keys</h3>
+      <h2>Rebinding keys</h2>
       <p>Change any binding from inside the program, or in config.toml under [keys].</p>
       <span class="go">read <span class="arr">→</span></span>
     </a>
     <a class="ref-card rv" style="--d:1" href={withBase('/docs/guide/make-it-yours/')}>
       <span class="no">guide<small>docs/GUIDE.md</small></span>
-      <h3>Make it yours</h3>
+      <h2>Make it yours</h2>
       <p>The settings panel: about thirty options applied live and saved for you.</p>
       <span class="go">read <span class="arr">→</span></span>
     </a>
     <a class="ref-card rv" style="--d:2" href={withBase('/docs/guide/troubleshooting/')}>
       <span class="no">guide<small>docs/GUIDE.md</small></span>
-      <h3>Troubleshooting</h3>
+      <h2>Troubleshooting</h2>
       <p>When something does not look right: the usual causes and their fixes.</p>
       <span class="go">read <span class="arr">→</span></span>
     </a>

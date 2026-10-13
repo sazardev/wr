@@ -34,7 +34,7 @@ const all = total + (mouse?.rows.length ?? 0);
   <div class="ref-grid">
     {groups.map((group) => (
       <div class="ref-group" data-filter-group>
-        <h3><span>{group.group}</span><span class="count">{group.items.length}</span></h3>
+        <h2><span>{group.group}</span><span class="count">{group.items.length}</span></h2>
         {group.items.map((item) => (
           <div class="ref-row" data-filter-row>
             <div class="keys">
@@ -49,7 +49,7 @@ const all = total + (mouse?.rows.length ?? 0);
 
     {mouse && (
       <div class="ref-group" data-filter-group>
-        <h3><span>Mouse</span><span class="count">{mouse.rows.length}</span></h3>
+        <h2><span>Mouse</span><span class="count">{mouse.rows.length}</span></h2>
         {mouse.rows.map((row) => (
           <div class="ref-row" data-filter-row>
             <div class="keys">{(row[0] ?? '').split(/\s*\/\s*/).map((key) => <kbd>{cellText(key)}</kbd>)}</div>

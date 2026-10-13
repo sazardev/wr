@@ -13,7 +13,7 @@ import StatusLine from '../components/StatusLine.astro';
 import ThemeDialog from '../components/ThemeDialog.astro';
 import { siteVersion } from '../lib/version';
 import { DEFAULT_THEME, LIGHT_THEME, STORAGE_KEY, THEMES } from '../data/themes';
-import { assetUrl } from '../lib/urls';
+import { assetUrl, repo, withBase } from '../lib/urls';
 import '../styles/site.css';
 
 interface Props {
@@ -25,13 +25,65 @@ interface Props {
   current?: string;
   /** Hide the footer's closing mark on pages that bring their own ending. */
   footer?: boolean;
+  /** Extra schema.org nodes appended to the site-wide JSON-LD graph. */
+  jsonLd?: Record<string, unknown> | readonly Record<string, unknown>[];
+  /** Robots directive; the default keeps every real page indexable. */
+  robots?: string;
 }
 
-const { title, description, path, current = '', footer = true } = Astro.props;
+const { title, description, path, current = '', footer = true, jsonLd, robots = 'index, follow' } = Astro.props;
 const version = siteVersion();
 const canonical = new URL(path ?? Astro.url.pathname, Astro.site).toString();
-const shareImage = new URL(assetUrl('/assets/scenes/ui.svg'), Astro.site).toString();
+const root = new URL(withBase('/'), Astro.site).toString();
+const shareImage = new URL(assetUrl('/assets/og.png'), Astro.site).toString();
+const guideUrl = new URL(withBase('/docs/guide/start/'), Astro.site).toString();
+const rssUrl = new URL(withBase('/rss.xml'), Astro.site).toString();
+const sitemapUrl = new URL(withBase('/sitemap-index.xml'), Astro.site).toString();
+const llmsUrl = new URL(withBase('/llms.txt'), Astro.site).toString();
 const icon = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23050912'/%3E%3Ctext x='50' y='72' font-size='62' font-weight='700' text-anchor='middle' fill='%236cb4ff' font-family='monospace'%3Ew%3C/text%3E%3C/svg%3E`;
+
+// Structured data: the site is the product page of one open-source program, so
+// every page carries WebSite + SoftwareApplication and pages can append their
+// own nodes (articles, breadcrumbs) through the jsonLd prop.
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'WebSite',
+      '@id': `${root}#website`,
+      url: root,
+      name: 'wr — the web, without the noise',
+      description:
+        'The docs and downloads of wr: a reader and browser for the terminal that fetches any page, extracts the article and renders it as formatted Markdown with per-language code highlighting.',
+      inLanguage: 'en',
+      license: 'https://opensource.org/license/mit',
+      publisher: { '@type': 'Person', name: 'sazardev', url: 'https://github.com/sazardev' },
+    },
+    {
+      '@type': 'SoftwareApplication',
+      '@id': `${root}#app`,
+      name: 'wr',
+      description:
+        'A reader and browser for the terminal: it fetches a page, extracts the article and renders it as formatted Markdown with per-language code highlighting, links, history, bookmarks and search.',
+      url: root,
+      applicationCategory: 'DeveloperApplication',
+      applicationSubCategory: 'Terminal reader and browser',
+      operatingSystem: 'Linux, macOS',
+      softwareVersion: version,
+      softwareHelp: guideUrl,
+      license: 'https://opensource.org/license/mit',
+      codeRepository: repo.url,
+      downloadUrl: repo.latest,
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+      author: { '@type': 'Person', name: 'sazardev', url: 'https://github.com/sazardev' },
+      programmingLanguage: 'Go',
+      inLanguage: 'en',
+      keywords:
+        'terminal, reader mode, markdown, syntax highlighting, CLI, TUI, terminal browser, bubbletea, open source',
+    },
+    ...(Array.isArray(jsonLd) ? jsonLd : jsonLd ? [jsonLd] : []),
+  ],
+};
 ---
 
 <!doctype html>
@@ -42,13 +94,31 @@ const icon = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewB
 <meta name="color-scheme" content="dark light">
 <title>{title}</title>
 <meta name="description" content={description}>
+<meta name="robots" content={robots}>
+<meta name="author" content="sazardev">
 <link rel="canonical" href={canonical}>
 <meta property="og:title" content={title}>
 <meta property="og:description" content={description}>
 <meta property="og:type" content="website">
+<meta property="og:site_name" content="wr">
+<meta property="og:locale" content="en_US">
 <meta property="og:url" content={canonical}>
 <meta property="og:image" content={shareImage}>
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="wr — the web, without the noise">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content={title}>
+<meta name="twitter:description" content={description}>
+<meta name="twitter:image" content={shareImage}>
+<meta name="twitter:image:alt" content="wr — the web, without the noise">
+<meta name="theme-color" content="#050912" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f7fc" media="(prefers-color-scheme: light)">
+<link rel="alternate" type="application/rss+xml" title="wr releases" href={rssUrl}>
+<link rel="sitemap" type="application/xml" title="Sitemap" href={sitemapUrl}>
+<link rel="alternate" type="text/plain" title="llms.txt" href={llmsUrl}>
+<script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
 <link rel="icon" href={icon}>
 <link rel="preload" as="font" type="font/woff2" href={monoLatin} crossorigin>
 <link rel="preload" as="font" type="font/woff2" href={sansLatin} crossorigin>
