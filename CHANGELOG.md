@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.2](https://github.com/sazardev/wr/compare/v0.9.1...v0.9.2) (2026-10-29)
+
+
+### Bug Fixes
+
+* **web:** upgrade Astro to 7 and clear every open Dependabot alert ([1311032](https://github.com/sazardev/wr/commit/13110322a12fdf1b12580f398f1bc91ad7c40fed))
+
 ## [0.9.1](https://github.com/sazardev/wr/compare/v0.9.0...v0.9.1) (2026-10-29)
 
 
