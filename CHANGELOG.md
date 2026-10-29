@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.1](https://github.com/sazardev/wr/compare/v0.9.0...v0.9.1) (2026-10-29)
+
+
+### Bug Fixes
+
+* show a pre-rendered <noscript> article with its structure and ignore llms.txt as an alternate ([c31567b](https://github.com/sazardev/wr/commit/c31567ba707c9c5660a876d56f4e5fe748819c12))
+
 ## [0.9.0](https://github.com/sazardev/wr/compare/v0.8.0...v0.9.0) (2026-10-12)
 
 
