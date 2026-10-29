@@ -10,6 +10,7 @@ package main
 import (
 	"encoding/json"
 	"net/url"
+	"path"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -32,6 +33,24 @@ func shellNotice() string {
 		return shellHead + ", and rendering is off, so only its summary is shown. Turn on `render_js` in the settings, or press `x` to open it in your browser."
 	}
 	return shellHead + " and rendering it failed, so only its summary is shown. Press `x` to open it in your browser."
+}
+
+// noscriptArticle returns the markup of a <noscript> fallback that is a whole
+// article (a pre-rendered page: headings, code, tables), or "" when there is
+// none. Showing it through the normal extraction keeps its structure; the flat
+// paragraphs of the hints would lose it.
+func noscriptArticle(doc *goquery.Document) string {
+	best := ""
+	doc.Find("body noscript").Each(func(_ int, ns *goquery.Selection) {
+		inner, err := goquery.NewDocumentFromReader(strings.NewReader(ns.Text()))
+		if err != nil || len(strings.Fields(inner.Text())) < 4*thinWords {
+			return
+		}
+		if len(ns.Text()) > len(best) {
+			best = ns.Text()
+		}
+	})
+	return best
 }
 
 // pageHints is what a page says about itself outside of its body.
@@ -190,6 +209,9 @@ func alternateLink(page []byte, src string) string {
 	doc.Find(`link[rel~="alternate"][href]`).EachWithBreak(func(_ int, l *goquery.Selection) bool {
 		switch mediaType(l.AttrOr("type", "")) {
 		case "text/markdown", "text/x-markdown", "text/plain":
+			if strings.HasPrefix(path.Base(l.AttrOr("href", "")), "llms") {
+				return true // llms.txt indexes the whole site; it is not this page
+			}
 			if ref, err := url.Parse(l.AttrOr("href", "")); err == nil {
 				found = base.ResolveReference(ref).String()
 				return false

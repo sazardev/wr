@@ -155,6 +155,12 @@ func toMarkdown(page []byte, src string) (string, error) {
 	}
 	title := strings.TrimSpace(doc.Find("title").First().Text())
 	hints := collectHints(doc) // before dropTags takes <noscript> and <script> away
+	if hints.shell {
+		// a pre-rendered fallback is the article itself: convert it like any page
+		if frag := noscriptArticle(doc); frag != "" {
+			return toMarkdown([]byte("<html><head><title>"+nethtml.EscapeString(title)+"</title></head><body>"+frag+"</body></html>"), src)
+		}
+	}
 
 	root, isArticle := pickRoot(doc)
 	if root.Length() == 0 {

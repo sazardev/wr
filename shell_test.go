@@ -401,3 +401,18 @@ func TestLightAndDarkImageVariantsCollapse(t *testing.T) {
 		t.Errorf("repeated image placeholders must collapse:\n%s", got)
 	}
 }
+
+func TestPrerenderedNoscriptKeepsItsStructure(t *testing.T) {
+	prose := strings.Repeat("An article sentence with several words in it. ", 30)
+	page := `<html><head><title>T</title><link rel="alternate" type="text/plain" href="/llms.txt"><script type="module" src="/a.js"></script></head><body><div id="root"></div><noscript><h1>T</h1><h2 id="s">Section</h2><p>` + prose + `</p><pre><code class="language-go">x := 1</code></pre></noscript></body></html>`
+	md, err := toMarkdown([]byte(page), "https://t.test/a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if isShellPage(md) || !strings.Contains(md, "## Section") || !strings.Contains(md, "```go") {
+		t.Errorf("the pre-rendered article lost its structure:\n%s", md)
+	}
+	if alt := alternateLink([]byte(page), "https://t.test/a"); alt != "" {
+		t.Errorf("llms.txt is a site index, not an alternate of the page: %s", alt)
+	}
+}
