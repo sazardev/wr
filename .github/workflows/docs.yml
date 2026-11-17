@@ -1,12 +1,17 @@
 name: Docs
 
-# The documentation site (web/, an Astro app) is built and published to GitHub
-# Pages from this workflow. On a pull request it only verifies: astro check, the
-# unit tests and a production build. On main it also deploys.
+# The documentation site (web/, an Astro app) is built here and published to
+# Cloudflare Pages at https://wr.sazardev.stream. On a pull request it only
+# verifies: astro check, the unit tests and a production build. On main it also
+# deploys: `wrangler pages deploy` uploads web/dist directly.
 #
 # The version stamped into the site comes from .release-please-manifest.json —
 # the same file release-please bumps on every release — so the docs publish the
 # version they were built from without anyone touching a number.
+#
+# Required repository secret:
+#   CLOUDFLARE_API_TOKEN — an API token with "Cloudflare Pages: Edit" on the
+#   account. The account id is public and set below.
 
 on:
   push:
@@ -36,6 +41,9 @@ jobs:
   verify:
     name: verify
     runs-on: ubuntu-latest
+    env:
+      SITE_URL: https://wr.sazardev.stream
+      SITE_BASE: /
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -59,16 +67,17 @@ jobs:
         working-directory: web
 
   deploy:
-    name: deploy
+    name: deploy to Cloudflare Pages
     needs: verify
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      contents: read
+    env:
+      SITE_URL: https://wr.sazardev.stream
+      SITE_BASE: /
+      CLOUDFLARE_ACCOUNT_ID: 92b877a97b5acbd48f6d7dcf60129130
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -84,13 +93,14 @@ jobs:
       - name: Build
         run: npm run build
         working-directory: web
-      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
-      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
-        with:
-          path: web/dist
-      - id: deployment
-        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+      - name: Publish to Cloudflare Pages
+        if: ${{ env.CLOUDFLARE_API_TOKEN != '' }}
+        run: npx --yes wrangler@4.163.0 pages deploy dist --project-name wr --branch main
+        working-directory: web
+      - name: Cloudflare token not configured
+        if: ${{ env.CLOUDFLARE_API_TOKEN == '' }}
+        run: echo "::warning::Set the CLOUDFLARE_API_TOKEN repository secret (Cloudflare Pages Edit permission) so pushes publish automatically. The site was not uploaded."
       - name: Tell search engines about the new pages (IndexNow)
-        run: node scripts/indexnow.mjs "${{ steps.deployment.outputs.page_url }}"
+        run: node scripts/indexnow.mjs "https://wr.sazardev.stream"
         working-directory: web
         continue-on-error: true

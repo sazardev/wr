@@ -8,7 +8,7 @@ import { withBase } from '../lib/urls';
 // collection as the site, so it cannot drift from the real pages.
 
 export const GET: APIRoute = async ({ site }) => {
-  const origin = site ?? new URL('https://sazardev.github.io');
+  const origin = site ?? new URL('https://wr.sazardev.stream');
   const url = (path: string) => new URL(withBase(path), origin).toString();
 
   const docs = [...DOCS].sort((a, b) => a.order - b.order);

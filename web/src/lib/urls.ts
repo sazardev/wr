@@ -1,5 +1,6 @@
-// Base-aware URL helpers. The site is published under a base path (GitHub
-// Pages project site), so every link in the app goes through withBase().
+// Base-aware URL helpers. The site is published at the root of
+// wr.sazardev.stream, but every link goes through withBase() so a preview or a
+// fork can build under another path.
 
 const raw = import.meta.env.BASE_URL ?? '/';
 const base = raw.endsWith('/') ? raw.slice(0, -1) : raw;

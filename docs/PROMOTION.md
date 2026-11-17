@@ -7,7 +7,7 @@ es un comando que puedes lanzar tal cual.
 
 ## Hecho el 13 de octubre de 2026
 
-- **Google Search Console**: propiedad `https://sazardev.github.io/wr/` verificada
+- **Google Search Console**: propiedad `https://wr.sazardev.stream/` verificada
   (archivo `google6e32854daef2e851.html`), sitemap-index y sitemap-0 enviados,
   home y `/docs/guide/start/` en cola de indexación.
 - **Bing Webmaster Tools**: cuenta conectada con Google, sitio importado desde
@@ -40,10 +40,10 @@ Pendiente y bloqueado por sesión (hazlo tú en 2 minutos):
 
 | Cosa | Dónde |
 |---|---|
-| Sitemap + robots.txt | https://sazardev.github.io/wr/sitemap-index.xml · /robots.txt |
-| RSS de releases | https://sazardev.github.io/wr/rss.xml |
-| `llms.txt` para asistentes | https://sazardev.github.io/wr/llms.txt |
-| Documentación completa en un archivo | https://sazardev.github.io/wr/llms-full.txt |
+| Sitemap + robots.txt | https://wr.sazardev.stream/sitemap-index.xml · /robots.txt |
+| RSS de releases | https://wr.sazardev.stream/rss.xml |
+| `llms.txt` para asistentes | https://wr.sazardev.stream/llms.txt |
+| Documentación completa en un archivo | https://wr.sazardev.stream/llms-full.txt |
 | JSON-LD (SoftwareApplication, WebSite, TechArticle, BreadcrumbList) | todas las páginas |
 | Tarjeta social PNG 1200×630 | web/public/assets/og.png |
 | Captura real del lector | web/public/assets/wr-preview.png |
@@ -59,16 +59,16 @@ IndexNow avisa a Bing, Yandex, Seznam, Naver y Yep de cada deploy. Manualmente:
 Google no usa IndexNow: necesita Search Console.
 
 1. **Google Search Console** — https://search.google.com/search-console
-   - Añade la propiedad con *Prefijo de URL*: `https://sazardev.github.io/wr/`
+   - Añade la propiedad con *Prefijo de URL*: `https://wr.sazardev.stream/`
    - Verifica con la etiqueta HTML: pega el `<meta name="google-site-verification" …>`
      en `web/src/layouts/Base.astro` (dentro de `<head>`) y haz push. También
      vale subir el archivo `googleXXXX.html` a `web/public/`.
-   - Envía `https://sazardev.github.io/wr/sitemap-index.xml` y pide indexación
+   - Envía `https://wr.sazardev.stream/sitemap-index.xml` y pide indexación
      de la home y de `/docs/guide/start/`.
 2. **Bing Webmaster Tools** — https://www.bing.com/webmasters
    - «Importar desde Google Search Console» (dos clics) o verificación propia.
 3. **Yandex Webmaster** (opcional) — https://webmaster.yandex.com
-4. Comprobar en unas semanas: `site:sazardev.github.io/wr` en Google y Bing.
+4. Comprobar en unas semanas: `site:wr.sazardev.stream` en Google y Bing.
    Para consultas concretas usa Search Console → Rendimiento.
 
 Extra: en GitHub → Settings → Social preview, sube `web/public/assets/og.png`
@@ -84,7 +84,7 @@ Europa). Publica primero en Hacker News; si funciona, ese mismo día en Reddit.
 
 - URL: https://news.ycombinator.com/submit
 - Título: `Show HN: wr – Reader mode and browser for the terminal`
-- URL a enviar: `https://sazardev.github.io/wr/`
+- URL a enviar: `https://wr.sazardev.stream/`
 - Primer comentario (publícalo tú al momento, con contexto y honestidad):
 
 ```
@@ -105,7 +105,7 @@ Single static Go binary (~14 MB), MIT.
 Pages that need JS are rendered through an installed headless Chromium when
 one is there; otherwise it says so instead of showing an empty shell.
 
-Docs (with a recorded demo): https://sazardev.github.io/wr/
+Docs (with a recorded demo): https://wr.sazardev.stream/
 Source: https://github.com/sazardev/wr
 
 Happy to answer anything about the extraction, the TUI or the design system
@@ -145,7 +145,7 @@ it follows gruvbox/nord/whatever you run. Pages drawn by JavaScript are
 rendered with an installed headless Chromium.
 
 One static Go binary (~14 MB), MIT: https://github.com/sazardev/wr
-Docs + demo: https://sazardev.github.io/wr/
+Docs + demo: https://wr.sazardev.stream/
 Install: curl -fsSL https://raw.githubusercontent.com/sazardev/wr/main/install.sh | sh
 ```
 
