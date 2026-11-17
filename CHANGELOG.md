@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/sazardev/wr/compare/v0.10.0...v0.11.0) (2026-11-17)
+
+
+### Features
+
+* keyboard copy, grouped menu and in-memory page/render caches ([#45](https://github.com/sazardev/wr/issues/45)) ([17fc2e3](https://github.com/sazardev/wr/commit/17fc2e3d2a9339947b4c622c49f6d66d8a4f43e9))
+
 ## [0.10.0](https://github.com/sazardev/wr/compare/v0.9.1...v0.10.0) (2026-11-17)
 
 
