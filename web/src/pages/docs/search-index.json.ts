@@ -44,7 +44,7 @@ export const GET: APIRoute = async () => {
       doc: entry.data.doc,
       section: entry.data.section,
       title: entry.data.title,
-      url: docPath(entry.data.doc, entry.data.section),
+      url: entry.data.section === 'index' ? docPath(entry.data.doc) : docPath(entry.data.doc, entry.data.section),
       text: entry.data.text,
     }));
   index.push(...referenceEntries());

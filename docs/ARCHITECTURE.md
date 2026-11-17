@@ -119,7 +119,7 @@ maintain.
 | `page_memory.go`, `render_cache.go` | the session page LRU and the rendered-document LRU |
 | `mcp*.go`, `eval.go` | the agent harness: MCP server, headless sessions, eval scenarios |
 | `web/` | the docs site (Astro, separate build) |
-| `docs/` | guide, design system, QA reports, benchmarks, this file |
+| `docs/` | guide, the web edition, QA reports, benchmarks, this file |
 | `scripts/` | QA corpora and probes, `bench.sh` + `bench_compare.py`, release, hooks |
 
 ### State on disk

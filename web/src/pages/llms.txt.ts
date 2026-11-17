@@ -41,7 +41,7 @@ export const GET: APIRoute = async ({ site }) => {
     '',
     `- [Changelog](${url('/docs/changelog/')}): every release, written from the repository history`,
     '- [Source on GitHub](https://github.com/sazardev/wr): code, issues, releases — MIT licensed',
-    `- [Full documentation in one file](${url('/llms-full.txt')}): README, guide, design language and changelog concatenated`,
+    `- [Full documentation in one file](${url('/llms-full.txt')}): README, guide, the web edition and changelog concatenated`,
     '',
   ].join('\n');
 

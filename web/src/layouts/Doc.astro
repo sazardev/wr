@@ -1,10 +1,6 @@
 ---
 import { render } from 'astro:content';
 import Base from './Base.astro';
-import Crumbs, { type Crumb } from '../components/Crumbs.astro';
-import DocAside from '../components/DocAside.astro';
-import DocToc from '../components/DocToc.astro';
-import Pager from '../components/Pager.astro';
 import { docEntry, docEntries, neighboursOf } from '../lib/doc-nav';
 import { docMeta } from '../lib/registry';
 import { docPath, repo, withBase } from '../lib/urls';
@@ -28,20 +24,19 @@ const { previous, next } = neighboursOf(entries, section);
 const version = siteVersion();
 const isIndex = entry.data.section === 'index';
 
-const title = isIndex ? `${entry.data.title || meta.label} — wr docs` : `${entry.data.title} — ${meta.label} — wr docs`;
-const description = entry.data.summary || meta.blurb;
-const crumbs: Crumb[] = [
-  { label: 'docs', href: withBase('/docs/') },
-  { label: meta.label.toLowerCase(), href: isIndex ? undefined : docPath(doc) },
-  ...(isIndex ? [] : [{ label: entry.data.title }]),
-];
-// 200 words a minute is the usual figure for reading technical prose.
-const minutes = Math.max(1, Math.round(entry.data.text.split(/\s+/).filter(Boolean).length / 200));
-const position = isIndex ? 'overview' : `${String(entry.data.order).padStart(2, '0')} / ${String(entries.filter((e) => e.data.section !== 'index').length).padStart(2, '0')}`;
 const heading = isIndex ? entry.data.title || meta.label : entry.data.title;
+const description = entry.data.summary || meta.blurb;
+const bar = `${doc} / ${isIndex ? 'overview' : entry.data.section}`;
+const title = isIndex ? `${meta.label} — wr docs` : `${entry.data.title} — ${meta.label} — wr docs`;
+const minutes = Math.max(1, Math.round(entry.data.text.split(/\s+/).filter(Boolean).length / 200));
+const position = isIndex
+  ? 'overview'
+  : `${String(entry.data.order).padStart(2, '0')} / ${String(entries.filter((e) => e.data.section !== 'index').length).padStart(2, '0')}`;
+const source = { label: meta.file, href: repo.file(meta.file, entry.data.editAnchor) };
+const hrefFor = (item: (typeof entries)[number]): string =>
+  item.data.section === 'index' ? docPath(doc) : docPath(doc, item.data.section);
+const markdownJson = JSON.stringify(entry.body ?? '').replace(/</g, '\\u003c');
 
-// Structured data for a section page: the article itself and the trail that
-// leads to it (docs → document → section), mirroring the visible crumbs.
 const pageUrl = new URL(Astro.url.pathname, Astro.site).toString();
 const rootId = `${new URL(withBase('/'), Astro.site)}#website`;
 const jsonLd = isIndex
@@ -71,35 +66,55 @@ const jsonLd = isIndex
     ];
 ---
 
-<Base title={title} description={description} current={doc} jsonLd={jsonLd}>
-  <div class="docbar">
-    <b>{meta.id} / {isIndex ? 'overview' : entry.data.title}</b>
-    <button type="button" data-aside-toggle aria-expanded="false" aria-controls="docs-aside">contents ▾</button>
-  </div>
-  <div class="docs">
-    <DocAside doc={doc} section={section} entries={entries} headings={entry.data.headings} />
-    <div class="doc-main">
-      <Crumbs items={crumbs} />
-      <header class="doc-head">
-        <h1>{heading}</h1>
-        {description && !isIndex && <p class="doc-sum">{description}</p>}
-        <div class="doc-meta">
-          <span class="tag solid"><span class="dot"></span>v{version}</span>
-          <span class="tag">{position}</span>
-          {!isIndex && <span class="tag">{minutes} min read</span>}
-          <span class="tag">{meta.file}</span>
+<Base title={title} description={description} path={Astro.url.pathname} bar={bar} source={source} jsonLd={jsonLd}>
+  <div class="wr-doc" data-doc={doc}>
+    <header class="wr-doc-head">
+      <p class="wr-kicker">{meta.label.toLowerCase()} / {isIndex ? 'overview' : entry.data.section}</p>
+      <h1>{heading}</h1>
+      <p class="wr-meta">
+        v{version} · {position} · {isIndex ? `${entries.filter((e) => e.data.section !== 'index').length} sections` : `${minutes} min read`} · {meta.file}
+      </p>
+      {!isIndex && description && <p class="wr-summary">{description}</p>}
+    </header>
+
+    <article class="prose">
+      <Content />
+    </article>
+
+    {isIndex && (
+      <section aria-label="Contents">
+        <h2>Contents</h2>
+        <div class="wr-list">
+          {entries.filter((e) => e.data.section !== 'index').map((item) => (
+            <a class="wr-row" href={hrefFor(item)}>
+              <span class="n">{String(item.data.order).padStart(2, '0')}</span>
+              <span class="label">{item.data.title}</span>
+              <span class="key">{item.data.date ?? ''}</span>
+            </a>
+          ))}
         </div>
-      </header>
-      <article class="prose">
-        <Content />
-      </article>
-      {isIndex && <slot name="after" />}
-      <Pager doc={doc} previous={previous} next={next} />
-      <div class="doc-foot">
-        <a href={repo.file(meta.file, entry.data.editAnchor)}>Edit this page on GitHub ↗</a>
-        <a href={repo.issues}>Report a problem ↗</a>
-      </div>
-    </div>
-    <DocToc headings={entry.data.headings} edit={repo.file(meta.file, entry.data.editAnchor)} />
+      </section>
+    )}
+
+    <nav class="wr-pager" aria-label="Document pages">
+      {previous ? (
+        <a data-prev href={hrefFor(previous)}><span aria-hidden="true">[</span> {previous.data.title}</a>
+      ) : (
+        <span></span>
+      )}
+      {next ? (
+        <a data-next href={hrefFor(next)}>{next.data.title} <span aria-hidden="true">]</span></a>
+      ) : (
+        <span></span>
+      )}
+    </nav>
+
+    <p class="wr-source">
+      <a href={repo.file(meta.file, entry.data.editAnchor)}>edit this page on GitHub ↗</a>
+      <span aria-hidden="true"> · </span>
+      <a href={repo.issues}>report a problem ↗</a>
+    </p>
+
+    <script type="application/json" data-wr-markdown set:html={markdownJson} />
   </div>
 </Base>

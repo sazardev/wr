@@ -36,7 +36,7 @@ export const DOCS: readonly DocMeta[] = [
     id: 'design',
     label: 'Design',
     glyph: '⡇',
-    blurb: 'The design language of this site: a monochrome blueprint — tokens, themes, type, layout, motion and keys.',
+    blurb: 'The web edition: how the site copies the reader’s frame, palette, glyphs, panels and keys.',
     file: 'docs/DESIGN.md',
     firstSection: 'rules',
     order: 2,

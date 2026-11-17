@@ -9,7 +9,7 @@ export function withBase(path: string): string {
   return `${base}/${path.replace(/^\/+/, '')}`;
 }
 
-/** URL of a file in public/ (leading slash expected, e.g. /assets/scenes/ui.svg). */
+/** URL of a file in public/ (leading slash expected, e.g. /assets/og.png). */
 export function assetUrl(path: string): string {
   return withBase(path);
 }

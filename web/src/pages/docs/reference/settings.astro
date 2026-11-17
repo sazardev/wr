@@ -1,14 +1,11 @@
 ---
 import Page from '../../../layouts/Page.astro';
-import Icon from '../../../components/Icon.astro';
 import { pathRows, settingRows } from '../../../lib/reference';
 import { inlineHtml } from '../../../lib/inline';
 import { repo, withBase } from '../../../lib/urls';
 
 // /docs/reference/settings/ — the Configuration and "Where things live"
-// tables of the README, rendered as documentation. The README stays the single
-// source of truth; this page only changes its clothes.
-
+// tables of the README, rendered as the reader would print them.
 const settings = settingRows();
 const paths = pathRows();
 ---
@@ -20,52 +17,42 @@ const paths = pathRows();
   summary="Settings change from inside the program (press ,) and are saved for you; the file is the same thing, fully commented. A broken file never stops you from reading."
   source={{ label: 'README.md', href: repo.file('README.md', 'configuration') }}
 >
-  <div class="tools-row">
-    <label class="filter">
-      <Icon name="search" />
-      <input type="search" data-filter-input placeholder="Filter: cache, theme, search…" aria-label="Filter the settings" autocomplete="off" spellcheck="false" />
-      <span class="count" data-filter-count aria-live="polite">{settings.length}</span>
-    </label>
-    <span class="dim" style="font-size:12px">config.toml · {settings.length} keys</span>
-  </div>
+  <p class="wr-note">config.toml · {settings.length} keys · press <kbd>/</kbd> to search this page.</p>
 
-  <div class="set-wrap">
-    <table class="set-table">
-      <thead><tr><th>Key</th><th>Default</th><th>What it does</th></tr></thead>
-      <tbody>
-        {settings.map((row) => (
-          <tr data-filter-row>
-            <td class="key">{row.key}</td>
-            <td class="def">{row.default}</td>
-            <td set:html={inlineHtml(row.description)} />
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-  <div class="ref-empty" data-filter-empty hidden>No setting matches that. Try a shorter word.</div>
-  <p class="note-line">
-    Create the file with <code>wr --config</code>; it comes with everything commented.
-    Key bindings live in the <code>[keys]</code> table — see <a href={withBase('/docs/reference/shortcuts/')}>Shortcuts</a>.
-  </p>
+  <table class="wr-table">
+    <thead><tr><th>Key</th><th>Default</th><th>What it does</th></tr></thead>
+    <tbody>
+      {settings.map((row) => (
+        <tr>
+          <td class="key">{row.key}</td>
+          <td class="def">{row.default}</td>
+          <td set:html={inlineHtml(row.description)} />
+        </tr>
+      ))}
+    </tbody>
+  </table>
 
-  <div class="sub-h" id="where-things-live"><h2>Where things live</h2><span>README.md</span></div>
-  <div class="set-wrap">
-    <table class="set-table">
-      <thead><tr><th>Path</th><th>What</th></tr></thead>
-      <tbody>
-        {paths.map((row) => (
-          <tr>
-            <td class="key">{row.path}</td>
-            <td set:html={inlineHtml(row.what)} />
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-  <p class="note-line">
+  <h2 id="where-things-live">Where things live</h2>
+  <table class="wr-table">
+    <thead><tr><th>Path</th><th>What</th></tr></thead>
+    <tbody>
+      {paths.map((row) => (
+        <tr>
+          <td class="key">{row.path}</td>
+          <td set:html={inlineHtml(row.what)} />
+        </tr>
+      ))}
+    </tbody>
+  </table>
+
+  <p class="wr-note">
     All directories are <code>0700</code> and files <code>0600</code>. The cache and the history
     store the addresses and the content of what you read: turn them off in Settings, or clear
     them from the History panel and the menu.
+  </p>
+  <p class="wr-note">
+    Create the file with <code>wr --config</code>; it comes with everything commented.
+    Key bindings live in the <code>[keys]</code> table — see
+    <a href={withBase('/docs/reference/shortcuts/')}>Shortcuts</a>.
   </p>
 </Page>

@@ -1,185 +1,158 @@
-# wr design system
+# The web edition: wr's TUI in a browser
 
-The design language of the documentation site (the Astro app in `web/`) and of the
-recordings in `media/`: a **blueprint** drawn in the terminal's own vocabulary —
-monochrome, ruled, sharp, keyboard-first. Version: **DS-2.0** (2026-10-11).
+This site is not a marketing page with a documentation section. It is the
+reader itself: one fixed terminal frame, the same glyphs, the same 16 ANSI
+colors and the same keys. The content changes; the frame does not.
+
+The previous blueprint design is gone. There are no cards, no hero, no
+gradients, no shadows, no rounded corners, no sans-serif prose and no separate
+site header. What you see is what `wr` draws.
 
 - [Rules](#rules)
-- [Tokens: the ten colors](#tokens-the-ten-colors)
-- [Themes](#themes)
-- [Type](#type)
-- [Layout](#layout)
-- [Components](#components)
-- [Motion](#motion)
+- [The frame](#the-frame)
+- [The palette](#the-palette)
+- [Type and glyphs](#type-and-glyphs)
+- [Content](#content)
+- [Panels](#panels)
 - [Keyboard](#keyboard)
-- [The recordings](#the-recordings)
+- [Responsive and print](#responsive-and-print)
 
 ## Rules
 
-1. **Monochrome.** Each palette is one hue: a ramp of it for the background, the
-   panels and the lines, and the same hue at full strength as the accent. There
-   is no second color, no status red or green; state is shown with position,
-   weight and the accent.
-2. **Flat and sharp.** No `border-radius`, no `box-shadow`, no `text-shadow`, no
-   gradient (`linear-gradient` appears in no file), no blur. One translucency is
-   allowed on purpose: the scrim behind a dialog, whose job is to dim the page.
-3. **Lines are the structure.** Blocks are separated by a `1px` rule. The page is
-   a *frame* between two vertical rails; every band of it (a *sheet*) starts with
-   a crosshair `+` on each rail, like the registration marks of a drawing; the
-   margins outside the frame are hatched; the hero and the closing band sit on a
-   blueprint grid (minor line every 32px, major every 160px).
-4. **Two typefaces, one job each.** Geist Mono is the interface: headings, labels,
-   keys, code, the status line. Geist is for reading: the lead paragraphs and
-   the prose of the guide. Both are self-hosted variable fonts; the Latin subsets
-   are preloaded.
-5. **The program is the reference.** The status line, the key caps, the
-   `[ 01 ]` section labels, the labeled code frames and the `⣿` mark are the
-   shapes `wr` draws, so the docs read like a page opened in the reader.
-6. **The keyboard first.** Everything has a key (see [Keyboard](#keyboard)); the
-   mouse is never required and the keys are discoverable from the page itself.
-7. **Adaptive, not decorative.** The page follows `prefers-color-scheme` when no
-   theme is chosen; a chosen theme is remembered in `localStorage` and can be
-   linked (`?theme=phosphor`). Motion is **always on** (DS-1.1 removed the
-   reduced-motion gate by product decision), but it is small: one transition per
-   state change, no parallax, nothing that loops except the cursor and the
-   product window, which pauses under the pointer and off screen.
+1. **One frame.** The page is a terminal: a title bar with `⣿` and `⡇`, a
+   braille rule, a scrollable body with a braille scrollbar, another rule and a
+   footer with the keys and the reading position. The frame never scrolls away.
+2. **The program is the reference.** Glyphs, headings, rules, code frames,
+   bullets, quotes and the progress bar are the shapes `wr` itself draws. If a
+   shape does not exist in the reader, it does not exist here.
+3. **Monospace only.** Everything, prose included, uses the same monospace
+   stack. There is no second typeface and no reading font.
+4. **The terminal's colors.** The palette is the 16 ANSI colors. The accent
+   setting changes headings, links, the scrollbar, selections and the progress
+   bar; the rest stays the terminal's.
+5. **No motion.** The TUI redraws; it does not fade, rise or slide. The only
+   animation is the caret the browser draws in an input.
+6. **The keyboard first.** Every destination and every panel has a key. The
+   mouse works, but nothing requires it.
+7. **The content is the same content.** Pages are still built from
+   `docs/GUIDE.md`, `docs/DESIGN.md`, `docs/BENCHMARKS.md`,
+   `docs/ARCHITECTURE.md`, `CHANGELOG.md` and the generated reference. The
+   shell changed; the files did not.
 
-## Tokens: the ten colors
+## The frame
 
-| Token | Used for | Example (`blueprint`) |
+`web/src/layouts/Base.astro` renders the shell and `web/src/styles/tui.css`
+draws it:
+
+| Part | What it is |
+|---|---|
+| `.wr-head` | `⣿` · the page (`guide / start`) · `⡇` |
+| `.wr-rule` | three spans of `⣀` in the accent's dim, normal and partner colors |
+| `.wr-stage` | the body and the one-column braille scrollbar |
+| `.wr-body` | the only scroll container; native scrollbars are hidden |
+| `.wr-scroll` | `⡇` track and a smooth braille thumb, redrawn on scroll |
+| `.wr-foot` | the keys on the left, the search count and progress on the right |
+
+The body is 100 `dvh` tall and the grid does the rest. The reading column is
+`100ch` by default; the Settings panel changes it to 72, 100, 120 or full.
+`Center text` centers or left-aligns that column.
+
+## The palette
+
+The base is Tomorrow Night, written as the first 16 ANSI colors in
+`web/src/styles/tui.css`. The accent is one of the same names the program's
+Settings panel cycles: `blue`, `cyan`, `green`, `magenta`, `yellow`, `red`,
+`gray`, `white`, `orange`, `violet`, `teal`, `pink`, `lime`, `slate`.
+
+Shiki runs in `css-variables` mode, so code uses the same terminal colors:
+keywords are magenta, strings green, comments dim, functions blue, constants
+and links cyan. There is no second theme and no per-language override.
+
+## Type and glyphs
+
+The monospace stack is Geist Mono, then the system's terminal monospace. The
+reading size is 14px (`13px` under 720px) with a 1.55 line height.
+
+| Element | Glyph |
+|---|---|
+| title, h1 | `⣿` and a `⣀` rule |
+| h2 | `⣶` and a `⠤` rule |
+| h3–h6 | `⠶`, `⠤`, `⠒`, `⠂` |
+| bullets | `•`, `◦`, `▪` |
+| quote | `▎` |
+| code frame | `╭─ lang`, `│`, `╰─` |
+| scrollbar | `⡇` track, braille dots for the thumb |
+| progress | `⣀`→`⣿` fill, `⣀` empty |
+| error | `✗` |
+
+With braille off in Settings the headings switch to `█ ◢ ▎ ▏ ·`, the rules to
+`━`/`─`, and the scrollbar and progress bar to block characters.
+
+## Content
+
+The rendered Markdown is the reader's Markdown: h2/h3 with their glyph and
+rule, paragraphs at the same rhythm, lists with the console bullets, tables
+with terminal borders, `kbd` as key caps and code in a labelled frame. Links
+are underlined with dots and invert to the accent on hover, like a focused
+link. Search highlights every match in the accent and the current match in the
+partner color.
+
+The start page (`/`) is the reader's start page: `wr`, the install line, the
+documents as bookmarks and the release you are reading as recent. There is no
+hero and no product window.
+
+## Panels
+
+Every panel is a box drawn over the frame, with a title cut into the top
+border, a scrollable body and a help line at the bottom:
+
+| Key | Panel | What it does |
 |---|---|---|
-| `--bg` | page background | `#050912` |
-| `--panel` | code frames, inputs, hover fills, key caps | `#0a1222` |
-| `--hatch` | the hatched margin, the footer mark | `#0b1527` |
-| `--line` | block separation, grids | `#131f36` |
-| `--line-2` | frames, inputs, crosshairs, key-cap borders | `#22365b` |
-| `--dim` | captions, hints, secondary text | `#6f86ab` |
-| `--fg-2` | body text, prose | `#a3b5d3` |
-| `--fg` | headings and emphasis | `#e8f0fd` |
-| `--accent` | marks, the active state, primary buttons, keywords in code | `#6cb4ff` |
-| `--ink` | text on an accent fill | `#050912` |
+| `m` | Menu | Navigate, this page, wr, tools. `j`/`k` choose, `/` filters. |
+| `t` | Section index | Every heading of the page; `enter` jumps. |
+| `?` | Keyboard shortcuts | The web key map, grouped like the program's panel. |
+| `,` | Settings | Accent, width, spacing, heading rules, code frames, braille, centering. |
+| `o` | Open address or search | The same page index as search, with the menu's commands. |
+| `/` | Search | A footer prompt, not a panel: matches are highlighted in place. |
 
-Code is highlighted by Shiki in its `css-variables` mode: the highlighter names the
-kind of each token and `tokens.css` paints them with the active palette
-(keywords and constants in the accent, strings and functions in the foreground,
-comments dim), so a code block is monochrome in every theme with no overrides.
-
-## Themes
-
-| id | keys | accent | source of the palette |
-|---|---|---|---|
-| `blueprint` | dark | `#6cb4ff` | the default: blue ink on drafting paper |
-| `graphite` | dark | `#ffffff` | black and white, a printed page |
-| `phosphor` | dark | `#3dff85` | a green-screen terminal |
-| `amber` | dark | `#ffb224` | an amber-screen terminal |
-| `paper` | light | `#1550c8` | navy ink on a light sheet |
-
-A theme is one block in `web/src/styles/tokens.css` (`html[data-theme="…"]`), one
-entry in `THEMES` in `web/src/data/themes.ts` (for the chips and the scripts),
-and nothing else — there is no theme-specific markup.
-
-## Type
-
-| Role | Face | Size | Notes |
-|---|---|---|---|
-| hero | Geist Mono 600 | `clamp(42px, 8.4vw, 108px)` | tracking `-0.065em`, line height `0.95` |
-| section heading | Geist Mono 600 | `clamp(26px, 3.6vw, 40px)` | tracking `-0.04em` |
-| interface | Geist Mono 400–500 | `11–14px` | labels are uppercase with `0.08–0.14em` tracking |
-| lead | Geist 400 | `16–18px` | `65ch` at most, balanced wrapping |
-| prose | Geist 400 | `16.5px` / `1.78` | `700px` column, `text-wrap: pretty` |
-| code | Geist Mono 400 | `13px` / `1.7` | tab size 4 |
-
-## Layout
-
-- **`.frame`** — the page: `1240px` wide, centered, between two `1px` rails, over
-  the hatched `.gutter` (a fixed SVG pattern drawn with a token).
-- **`.sheet`** — a band of the frame. Its top rule carries the crosshairs; its
-  `.sheet-in` pads it. Landing sections are sheets, numbered `[01]`…`[06]` with
-  the `.sec-label`.
-- **`.bp`** — the blueprint grid (`components/Blueprint.astro`), an inline SVG
-  pattern in `--line` and `--line-2`, behind the hero, the closing band, the
-  docs hub and the 404.
-- **`.docs`** — the documentation shell, three columns: the document's pages on
-  the left (`.aside`), the text in the middle, *on this page* on the right
-  (`.toc`). Below `1140px` the right column goes away; below `820px` the left one
-  becomes a drawer under a sticky *contents* bar.
-
-## Components
-
-- **`.head`** — the header: the `wr` mark with a block cursor, the version, the
-  five destinations (the current one has an accent underline that slides in),
-  the search trigger with its key caps (`⌘K` on a Mac), the theme dot and
-  GitHub. A progress line in the accent sits on its bottom edge. On a narrow
-  screen the destinations move into `.mnav`.
-- **`.status`** — a status line fixed to the bottom, like a terminal multiplexer:
-  a mode block (`WR`, `GUIDE`, `REF`, …), the path (`~/docs/guide/start`), then
-  `/ search`, `? keys`, the reading position and the version.
-- **`.pal`** — the dialog shape shared by the command palette (`data-palette`),
-  the theme dialog (`data-theme-modal`) and the keyboard map (`data-help`). The
-  selected row is inverted with the accent, the way the program highlights a
-  line. The palette searches the *text* of every page (the same index as the
-  search page) and also lists the pages, the guide's sections, the themes and a
-  few actions; items with a destination are real links without JavaScript.
-- **`.install`** — the install box: tabs (`script`, `go install`, `source`), one
-  command, a copy button and a one-line note.
-- **`.win`** — a terminal window; `#reel` is the product window, whose tabs are
-  the recorded scenes and whose command line types the key that produced each
-  frame.
-- **`.vs`** — the noise-versus-signal demo: the clutter of a page is struck out
-  and removed piece by piece the first time it is seen.
-- **`.cells`, `.steps`, `.keys-grid`, `.tiles`, `.doors`** — `1px`-gap grids on a
-  line-colored background, so the separation is the line of the grid itself.
-- **`.prose`** — rendered Markdown: `§` before each `##` with a short accent bar
-  on its rule, `–` and `01` list markers, key caps for `<kbd>`, tables in a
-  scrolling wrapper, blockquotes as a ruled panel with an accent edge, headings
-  that reveal a `#` link, and code frames with a language label and a copy
-  button.
-- **`.pager`** — previous and next page of a document, with the `[` and `]` keys.
-
-## Motion
-
-| Where | What | Notes |
-|---|---|---|
-| `.rise` | the hero copy entering, staggered | `0.7s`, `--d` steps of `70ms` |
-| `.rv` | scroll reveals for the rest of the page | once, `12px` up, marked only when JavaScript runs |
-| `[data-count]` | the four numbers counting up | `900ms`, ease-out |
-| `.cur` | the terminal cursor block | `steps(1)`, `1.06s` |
-| `#reel` | the product window: scenes crossfading with a progress line | one scene every `5.2s`; pauses on hover, focus and off screen |
-| `.win-cmd` | the command typed under the window | `32ms` per character |
-| `.nz` | the page clutter struck out and collapsed | `300ms` between pieces |
-| `.head-nav a::after` | the active underline sliding in | `0.28s` |
-| `.progress` | reading position on the header edge | transform only, no layout |
-| `.pal-box` | dialogs entering | `0.18s` |
-| view transition | page change | `90ms` out, `200ms` in |
-
-Every transition animates `opacity`, `transform` or a color; nothing animates
-layout except the collapse of the clutter in `.vs`.
+The menu is server-rendered and works with JavaScript off as a list of links.
+The rest of the interaction is progressive: without JavaScript the pages and
+links still work.
 
 ## Keyboard
 
 | Key | Does |
 |---|---|
-| `/` or `Ctrl`+`K` | search the docs / open the command palette |
-| `[` `]` | previous / next page of the document |
-| `t` | change the theme (arrows preview it live, `Enter` keeps it) |
-| `g` `h` · `g` `d` | go home · go to the documentation |
-| `?` | the keyboard map |
-| `Esc` | close a dialog, leave a field |
+| `j` `k` / `↓` `↑` | line down / up |
+| `d` `u` | half page down / up |
+| `space` `b` | page down / up |
+| `g` `G` | top / bottom |
+| `/` | search this page |
+| `n` `N` | next / previous match |
+| `t` | section index |
+| `f` | label every link; type the label |
+| `o` | open address or search |
+| `H` `L` | back / forward |
+| `r` | reload |
+| `q` | start page |
+| `[` `]` | previous / next page of a document |
+| `y` | copy the selection, or the address |
+| `Y` | copy the code block on screen |
+| `Ctrl+Y` | copy the page as Markdown |
+| `U` | releases |
+| `m` `?` `,` | menu, help, settings |
+| `esc` | close a panel or clear a search |
 
-On the search page `↑` `↓` choose a result and `Enter` opens it. None of the keys
-fires while you type in a field.
+The keys never fire while a field has focus. The full, generated list is at
+[Shortcuts](/docs/reference/shortcuts/).
 
-## The recordings
+## Responsive and print
 
-`media/` holds the sources that produce the frames used above:
+Under 720px the body uses one column of margin, the hints drop their less
+important entries and the panels take 96vw. Under 520px the progress bar hides
+and the title shrinks. The shell still fills the viewport; the content remains
+the same.
 
-- `media/*.tape` — VHS tapes (ui, links, sections, shortcuts, search);
-- `media/demo.toml` — the pinned `wr` config used for every recording;
-- `media/scenes.json` — the same scenes as a PNG/SVG capture list, so the
-  assets can be regenerated without VHS;
-- `scripts/record.sh` — runs the tapes with VHS → `media/out/*.gif`;
-- `scripts/capture.sh` — runs the scenes through the real program in a PTY and
-  converts each frame to SVG → `web/public/assets/scenes/*.svg`.
-
-New assets carry the `wr` version in `media/ASSETS.md` (generated by the
-scripts), so a recording is always traceable to the commit that made it.
+Printing drops the shell entirely: white paper, black text, the article only,
+with code frames as thin rules. The screen is the TUI; the printed page is the
+article.
