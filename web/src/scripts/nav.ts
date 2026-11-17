@@ -31,7 +31,8 @@ export function startNav(): void {
   document.addEventListener('click', (event) => {
     const target = event.target as HTMLElement;
     if (target.closest('[data-nav-toggle]')) {
-      setMenu(document.querySelector<HTMLElement>('[data-mobile-nav]')?.hidden ?? false);
+      const menu = document.querySelector<HTMLElement>('[data-mobile-nav]');
+      setMenu(menu?.hidden !== false);
       return;
     }
     if (target.closest('[data-aside-toggle]')) {
