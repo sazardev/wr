@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -85,6 +86,8 @@ func TestResolveLink(t *testing.T) {
 		{"https://a.test/p", "mailto:me@x.test", "", false},
 		{"https://a.test/p", "javascript:void(0)", "", false},
 		{"https://a.test/p", "tel:123", "", false},
+		{"https://a.test/p", "file:///etc/passwd", "", false}, // a web page cannot read local files
+		{"file:///tmp/page.html", "file:///etc/passwd", "file:///etc/passwd", true},
 		{"https://a.test/p", "", "", false},
 		{"", "https://start.test", "https://start.test", true},
 		{"", "relative", "", false}, // the start page has no base to resolve against
@@ -100,6 +103,27 @@ func TestResolveLink(t *testing.T) {
 	got, ok := resolveLink(filepath.Join(dir, "a.html"), "b.html")
 	if !ok || got != "file://"+filepath.ToSlash(filepath.Join(dir, "b.html")) {
 		t.Errorf("local relative link: %q %v", got, ok)
+	}
+}
+
+func TestIsLocalURL(t *testing.T) {
+	for in, want := range map[string]bool{
+		"http://localhost:3000/x": true,
+		"http://127.0.0.1/x":      true,
+		"http://[::1]/x":          true,
+		"http://192.168.1.2/x":    true,
+		"http://10.0.0.1/x":       true,
+		"http://169.254.1.1/x":    true,
+		"https://example.com/x":   false,
+		"https://8.8.8.8/x":       false,
+	} {
+		u, err := url.Parse(in)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := isLocalURL(u); got != want {
+			t.Errorf("isLocalURL(%q)=%v want %v", in, got, want)
+		}
 	}
 }
 

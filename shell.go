@@ -213,7 +213,17 @@ func alternateLink(page []byte, src string) string {
 				return true // llms.txt indexes the whole site; it is not this page
 			}
 			if ref, err := url.Parse(l.AttrOr("href", "")); err == nil {
-				found = base.ResolveReference(ref).String()
+				abs := base.ResolveReference(ref)
+				// A web page may advertise its own text version, but not a
+				// local file or a service on the reader's machine: following
+				// that automatically would read data the page should not see.
+				if abs.Scheme != "http" && abs.Scheme != "https" {
+					return true
+				}
+				if isLocalURL(abs) && !isLocalURL(base) {
+					return true
+				}
+				found = abs.String()
 				return false
 			}
 		}

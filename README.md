@@ -472,7 +472,7 @@ sh scripts/bench.sh baseline   # capture the before
 sh scripts/bench.sh compare    # after: exits 1 on a regression over 25%
 ```
 
-`wr --eval` runs 9 offline scenarios (107 checks) as a JSON report, exit 1 on
+`wr --eval` runs 9 offline scenarios (108 checks) as a JSON report, exit 1 on
 failure — the same contract `scripts/qa/mcp_smoke.py` checks over the MCP
 server. The map of the whole codebase, the pipeline and every verification
 surface is in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
@@ -483,7 +483,9 @@ Page content is untrusted. Before display, control characters (including `ESC`)
 are stripped, so a page cannot inject escape sequences into your terminal. This
 also applies to what is read back from the cache, and an entry whose header does
 not match the requested URL is discarded. Only `http`, `https` and `file` links
-are followed; `mailto:`, `javascript:` and similar are refused with a notice.
+are followed; `file:` links from a page fetched over the web are refused, so a
+remote page cannot read local files, and `mailto:`, `javascript:` and similar
+are refused with a notice.
 
 The self-update downloads only from `github.com/sazardev/wr/releases/download/`
 (any other address is refused), checks the archive against the release's

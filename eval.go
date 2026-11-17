@@ -122,8 +122,8 @@ func evalResolveInput(r *evalRun) {
 	}{
 		{"https://a.test/x", "https://a.test/x", false},
 		{"http://a.test", "http://a.test", false},
-		{"a.test", "https://a.test", false},
-		{"localhost:8080/x", "https://localhost:8080/x", false},
+		{"a.test", "http://a.test", false},
+		{"localhost:8080/x", "http://localhost:8080/x", false},
 		{"go concurrency book", "", true},
 		{"", "", false},
 	} {
@@ -192,6 +192,8 @@ func evalRenderLinks(r *evalRun) {
 	r.check("mailto refused", !ok, "mailto should not resolve")
 	_, ok = resolveLink("https://a.test/x", "javascript:void(0)")
 	r.check("javascript refused", !ok, "javascript: should not resolve")
+	_, ok = resolveLink("https://a.test/x", "file:///etc/passwd")
+	r.check("remote file refused", !ok, "a web page must not read local files")
 	abs, ok = resolveLink("https://a.test/x", "#section")
 	r.check("anchor kept", ok && abs == "#section", "got %q ok=%v", abs, ok)
 }

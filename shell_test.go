@@ -71,6 +71,36 @@ func TestJSONLDArticleBodyIsUsed(t *testing.T) {
 	}
 }
 
+func TestShellRefusesLocalAlternates(t *testing.T) {
+	for _, href := range []string{
+		"file:///etc/passwd",
+		"http://127.0.0.1:9/secret",
+		"http://localhost/secret",
+		"http://[::1]/secret",
+		"http://192.168.1.2/secret",
+	} {
+		page := `<html><head><title>T</title><link rel="alternate" type="text/markdown" href="` + href + `"></head><body><div id="root"></div></body></html>`
+		if alt := alternateLink([]byte(page), "https://site.example/page"); alt != "" {
+			t.Errorf("a remote page must not follow %q automatically, got %q", href, alt)
+		}
+	}
+	// A page served from this machine may advertise another local URL, and a
+	// public remote alternate is still followed.
+	local := `<html><head><link rel="alternate" type="text/markdown" href="/page.md"></head><body></body></html>`
+	if alt := alternateLink([]byte(local), "http://localhost:3000/page"); alt != "http://localhost:3000/page.md" {
+		t.Errorf("local alternate: %q", alt)
+	}
+	remote := `<html><head><link rel="alternate" type="text/markdown" href="https://cdn.example/page.md"></head><body></body></html>`
+	if alt := alternateLink([]byte(remote), "https://site.example/page"); alt != "https://cdn.example/page.md" {
+		t.Errorf("public alternate: %q", alt)
+	}
+	// An automatically fetched alternate is never a file, even from a local page.
+	filePage := `<html><head><link rel="alternate" type="text/markdown" href="file:///tmp/page.md"></head><body></body></html>`
+	if alt := alternateLink([]byte(filePage), "file:///tmp/page.html"); alt != "" {
+		t.Errorf("file alternate: %q", alt)
+	}
+}
+
 func TestShellFollowsAdvertisedMarkdown(t *testing.T) {
 	long := strings.Repeat("real content ", 40)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
