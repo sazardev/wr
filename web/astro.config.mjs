@@ -3,11 +3,11 @@ import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
 import rehypeSlug from 'rehype-slug';
 
-// The site is published by GitHub Pages as a project site (…/wr/). Both the
-// origin and the base path are environment-driven so the same build can be
-// served from a custom domain, a preview or a fork.
-const site = process.env.SITE_URL ?? 'https://sazardev.github.io';
-const base = process.env.SITE_BASE ?? '/wr/';
+// The site is published on Cloudflare at the root of wr.sazardev.stream.
+// Both the origin and the base path are environment-driven so a preview or a
+// fork can build the same pages under another host or path.
+const site = process.env.SITE_URL ?? 'https://wr.sazardev.stream';
+const base = process.env.SITE_BASE ?? '/';
 
 export default defineConfig({
   site,

@@ -1,0 +1,5 @@
+# Cloudflare Pages project for the documentation site.
+# Deploy with: npx wrangler pages deploy dist
+name = "wr"
+pages_build_output_dir = "./dist"
+compatibility_date = "2026-11-16"

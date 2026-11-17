@@ -3,7 +3,7 @@
 // public/ and is served from the site itself.
 //
 // Usage: node scripts/indexnow.mjs [site-url]
-//   site-url defaults to SITE_DEPLOY_URL, then to the GitHub Pages project URL.
+//   site-url defaults to SITE_DEPLOY_URL, then to the production domain.
 
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.resolve(here, '../public');
 
-const raw = process.argv[2] ?? process.env.SITE_DEPLOY_URL ?? 'https://sazardev.github.io/wr/';
+const raw = process.argv[2] ?? process.env.SITE_DEPLOY_URL ?? 'https://wr.sazardev.stream/';
 const site = new URL(raw.endsWith('/') ? raw : `${raw}/`);
 const basePath = site.pathname.replace(/\/$/, '');
 

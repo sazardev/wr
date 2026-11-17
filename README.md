@@ -154,7 +154,7 @@ instant.
 
 The reader on video: `media/*.tape` are [VHS](https://github.com/charmbracelet/vhs)
 tapes and `scripts/capture.sh` regenerates the recorded frames on the
-[docs site](https://sazardev.github.io/wr/) — see
+[docs site](https://wr.sazardev.stream/) — see
 [media/README.md](media/README.md).
 
 ## Why it exists
@@ -213,8 +213,8 @@ use WSL.
 **Updating:** `wr --update`, or `U` inside the reader (see [Stays current](#stays-current)).
 
 **New to wr? Read the [guide](docs/GUIDE.md)** (also on the
-[docs site](https://sazardev.github.io/wr/docs/guide/), one page per section,
-with six palettes — [the design system](docs/DESIGN.md) describes them): how to
+[docs site](https://wr.sazardev.stream/docs/guide/), one page per section,
+with the reader's TUI design — [the design notes](docs/DESIGN.md) describe it): how to
 follow links, go back and forward, search the web, use history and bookmarks,
 select and copy, and make it yours.
 

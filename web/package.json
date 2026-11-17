@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "version": "0.4.0",
-  "description": "The wr documentation site, built with Astro and deployed to GitHub Pages.",
+  "description": "The wr documentation site, built with Astro and published on Cloudflare Pages.",
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
@@ -13,7 +13,8 @@
     "check": "astro check",
     "test": "vitest run",
     "test:watch": "vitest",
-    "verify": "astro check && vitest run && astro build"
+    "verify": "astro check && vitest run && astro build",
+    "deploy": "npm run build && npx --yes wrangler@4.163.0 pages deploy dist --project-name wr --branch main"
   },
   "engines": {
     "node": ">=20.3.0"

@@ -1,65 +1,81 @@
 # web/ — the wr documentation site
 
-An [Astro](https://astro.build/) app that publishes this repository's
-documentation to GitHub Pages (<https://sazardev.github.io/wr/>). Deployed by
-`.github/workflows/docs.yml`.
+The reader's TUI, drawn as a static [Astro](https://astro.build/) site. It is
+published on **Cloudflare Pages** at <https://wr.sazardev.stream>.
 
 ```sh
-npm ci          # once; the lockfile is committed
-npm run dev     # the site at /wr/ (the Pages base path) with a live reload
-npm run verify  # astro check + the unit tests + a production build
-npm run build && npm run preview
+npm ci             # once; the lockfile is committed
+npm run verify     # astro check + vitest + production build
+npm run dev        # local preview at /
+npm run deploy     # build + wrangler pages deploy
 ```
+
+## Production
+
+- **Cloudflare Pages** project: `wr`
+- **Production URL**: <https://wr.sazardev.stream>
+- **Pages URL**: <https://wr-9es.pages.dev>
+- **Build**: `npm run build` → `dist/` (`wrangler.toml` points Pages at it)
+- **Headers**: `public/_headers` (security headers and immutable `/_astro/*`)
+
+The custom domain needs this record in the `sazardev.stream` zone:
+
+| Type | Name | Content | Proxy |
+|---|---|---|---|
+| CNAME | `wr` | `wr-9es.pages.dev` | Proxied |
+
+Cloudflare Pages verifies the CNAME and issues the certificate automatically.
+
+## GitHub Actions
+
+`.github/workflows/docs.yml` verifies every PR. On `main` it publishes with
+`wrangler pages deploy` when the repository secret `CLOUDFLARE_API_TOKEN`
+(Pages: Edit) exists; without it the deploy step is skipped with a warning. The
+account id is public and lives in the workflow.
 
 ## How it is put together
 
-The Markdown never moves: `docs/GUIDE.md`, `docs/DESIGN.md` and `CHANGELOG.md`
-stay in the repository (the guide also ships inside the release tarballs).
-The site is *generated* from them.
+The Markdown never moves: `docs/GUIDE.md`, `docs/DESIGN.md`,
+`docs/BENCHMARKS.md`, `docs/ARCHITECTURE.md` and `CHANGELOG.md` stay in the
+repository (the guide also ships inside the release tarballs). The site is
+*generated* from them.
 
 ```
-docs/GUIDE.md ─┐
-docs/DESIGN.md ─┼─▶ src/loaders/wr-docs.ts ─▶ content collection "docs"
-CHANGELOG.md ───┘        (one entry per ## section)      │
-                                                          ├─▶ /docs/guide/<section>/
-keys.go ────────┐                                         ├─▶ /docs/design/<section>/
-README.md ──────┼─▶ src/lib/reference.ts ─▶ /docs/reference/…  └─▶ /docs/changelog/vX.Y.Z/
-                │
-                └─▶ src/pages/docs/search-index.json.ts ─▶ the search index
+docs/*.md ─┐
+CHANGELOG.md ─┼─▶ src/loaders/wr-docs.ts ─▶ content collection "docs"
+              │        (one entry per ## section)      │
+              │                                        ├─▶ /docs/guide/<section>/
+keys.go ──────┐                                        ├─▶ /docs/design/<section>/
+README.md ────┼─▶ src/lib/reference.ts ─▶ /docs/reference/…  └─▶ /docs/changelog/vX.Y.Z/
+              │
+              └─▶ src/pages/docs/search-index.json.ts ─▶ the search index
 ```
 
-- **`src/loaders/wr-docs.ts`** — a custom content-layer loader. It reads the
+- **`src/loaders/wr-docs.ts`** — a content-layer loader. It reads the
   registered documents (`src/lib/registry.ts`), splits them at their `##`
   headings (`src/lib/split.ts`) and stores one entry per section, rendered with
   Astro's own Markdown pipeline (GFM, smart quotes, Shiki, heading ids).
-  Every `##` heading of the guide is therefore a page of its own, with its own
-  title, summary and search text.
 - **`src/pages/docs/[doc]/[section].astro`** — the deep route. `getStaticPaths`
   walks the collection, so adding a section to `docs/GUIDE.md` adds a page.
 - **`src/lib/reference.ts`** — generates the reference pages from the program's
-  own sources: the shortcuts are parsed out of `keys.go`, the settings and the
-  paths out of the README tables.
-- **`src/lib/search.ts`** — a small, tested scorer. The search page is static;
-  its state is the query string (`/docs/search/?q=links&scope=guide`), and the
-  index is a JSON file built at build time.
-- **`src/scripts/`** — the client side, one module per job (themes, command
-  palette with full-text search, hotkeys, status line, scroll reveals, the
-  product window, the noise demo, install tabs, copy buttons, table of contents
-  scroll-spy, filters, search), composed by `enhance.ts` on load and after
-  view-transition navigations.
-- **`src/styles/`** — the design system (DS-2.0, documented in
-  `docs/DESIGN.md`), split by job and imported by `site.css`: `tokens` (the five
-  monochrome palettes), `base`, `ui`, `chrome` (header, footer, status line,
-  dialogs), `landing`, `docs`, `prose` and `pages`.
-- **`src/components/`** — small Astro components: the chrome (`SiteHeader`,
-  `SiteFooter`, `StatusLine`, `CommandPalette`…), the landing blocks
-  (`Install`, `ProductWindow`, `ThemeTiles`, `Blueprint`) and the docs shell
-  (`DocAside`, `DocToc`, `Pager`, `SectionCards`).
+  own sources: shortcuts from `keys.go`, settings and paths from the README.
+- **`src/lib/search.ts`** — a small, tested scorer used by the address bar and
+  the search page. The index is a JSON file built at build time.
+- **`src/layouts/Base.astro`** — the terminal frame: header, braille rules,
+  scrollable body, scrollbar and footer. The menu, help and settings panels are
+  server-rendered; the content is the slot.
+- **`src/styles/tui.css`** — the whole visual language: the 16 ANSI colors, the
+  14 accents, the reader's glyphs, the prose, the code frames and the panels.
+- **`src/scripts/tui.ts`** — the interaction: scroll, progress, search, panels,
+  link labels, address bar, history, settings and the reading position.
+- **`src/lib/tui.ts`** — the pure braille math (progress bar, scrollbar) with
+  its unit test.
+- **`docs/DESIGN.md`** — *The web edition: wr's TUI in a browser*.
 
 ## Conventions
 
 - Every module in `src/lib/` is pure and has a unit test (`npm test`); Astro
-  lives in the pages, the layouts and the components.
+  lives in the pages, the layouts and the content loader.
 - Links always go through `src/lib/urls.ts` (`withBase`, `docPath`), so the
   site works under any base path (`SITE_BASE`) and origin (`SITE_URL`).
 - The version shown everywhere is the repository's:
