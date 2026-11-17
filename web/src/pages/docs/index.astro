@@ -1,22 +1,11 @@
 ---
 import Base from '../../layouts/Base.astro';
-import Blueprint from '../../components/Blueprint.astro';
-import Icon from '../../components/Icon.astro';
-import Label from '../../components/Label.astro';
 import { DOCS } from '../../lib/registry';
 import { docEntries } from '../../lib/doc-nav';
-import { settingRows, shortcutGroups } from '../../lib/reference';
 import { docPath, repo, withBase } from '../../lib/urls';
 import { siteVersion } from '../../lib/version';
 
-// /docs/ — the documentation hub: search first, three doors in, then every
-// document with its pages listed. Nothing here is typed twice: the counts and
-// the lists come from the same files the pages do.
-
 const version = siteVersion();
-const shortcuts = shortcutGroups().reduce((sum, group) => sum + group.items.length, 0);
-const settings = settingRows().length;
-
 const lists = await Promise.all(
   DOCS.map(async (meta) => ({
     meta,
@@ -25,95 +14,82 @@ const lists = await Promise.all(
 );
 
 const quick = [
-  { no: '01', title: 'Start here', text: 'Install wr and read your first page: the screen, the keys, the first link you follow.', href: withBase('/docs/guide/start/'), go: 'guide / start' },
-  { no: '02', title: 'Every shortcut', text: `All ${shortcuts} default bindings, grouped like the program’s own panel and parsed from keys.go.`, href: withBase('/docs/reference/shortcuts/'), go: 'reference / shortcuts' },
-  { no: '03', title: 'Every setting', text: `The whole config.toml: ${settings} options with their defaults and what each one does.`, href: withBase('/docs/reference/settings/'), go: 'reference / settings' },
+  { label: 'Start here', href: withBase('/docs/guide/start/'), desc: 'Install wr and read your first page.' },
+  { label: 'Every shortcut', href: withBase('/docs/reference/shortcuts/'), desc: 'The keys, grouped like the program’s own panel.' },
+  { label: 'Every setting', href: withBase('/docs/reference/settings/'), desc: 'The whole config.toml, with defaults.' },
+  { label: 'Performance', href: docPath('performance'), desc: 'The benchmark suite and where the milliseconds go.' },
 ];
 ---
 
 <Base
   title="Documentation — wr"
-  description="The wr documentation: the guide, the design language, the changelog and the generated reference. Every page is one section of a file in the repository."
+  description="The wr documentation: the guide, the design of the site, performance, architecture, the changelog and the generated reference."
+  path={Astro.url.pathname}
+  bar="docs"
   current="docs"
 >
-  <section class="hub-head">
-    <Blueprint id="hub" />
-    <div class="hub-in">
-      <div class="hero-tags rise" style="display:flex;gap:8px;margin-bottom:24px">
-        <span class="tag solid"><span class="dot"></span>v{version}</span>
-        <span class="tag">built from the repository</span>
-      </div>
-      <h1 class="rise" style="--d:1">Documentation</h1>
-      <p class="lead rise" style="--d:2">
-        Everything wr can do, one page at a time. The guide and the changelog are the very files
-        that ship with the program; the reference is generated from its source.
+  <div class="wr-doc">
+    <header class="wr-doc-head">
+      <p class="wr-kicker">docs / index</p>
+      <h1>Documentation</h1>
+      <p class="wr-meta">v{version} · {DOCS.length} documents · every page is a section of a file in the repository</p>
+      <p class="wr-summary">
+        Everything wr can do, one page at a time. The guide and the changelog are the files that
+        ship with the program; the reference is generated from its source.
       </p>
-      <button type="button" class="hub-search rise" style="--d:3" data-palette-open>
-        <Icon name="search" /><span>Search every page…</span><kbd data-mod>Ctrl</kbd><kbd>K</kbd>
-      </button>
-    </div>
-  </section>
+    </header>
 
-  <section class="sheet">
-    <div class="sheet-in">
-      <Label no="01" title="Start" note="three doors in" />
-      <div class="hub-quick">
-        {quick.map((card, i) => (
-          <a href={card.href} class="rv" style={`--d:${i}`}>
-            <span class="no">{card.no}</span>
-            <h2>{card.title}</h2>
-            <p>{card.text}</p>
-            <span class="go">{card.go} <span class="arr">→</span></span>
+    <article class="prose">
+      <h2>Start here</h2>
+      <div class="wr-linklist">
+        {quick.map((item) => (
+          <a href={item.href}>
+            <span class="glyph" aria-hidden="true">⣿</span>
+            <span class="label">{item.label}</span>
+            <span class="desc">{item.desc}</span>
           </a>
         ))}
       </div>
-    </div>
-  </section>
 
-  <section class="sheet">
-    <div class="sheet-in">
-      <Label no="02" title="Every document" note={`${DOCS.length} documents`} />
-      <div class="hub-cols">
-        {lists.map(({ meta, pages }, i) => (
-          <div class="hub-col rv" style={`--d:${i}`}>
-            <h2><a href={docPath(meta.id)}>{meta.label}</a><small>{pages.length} pages</small></h2>
-            <p>{meta.blurb}</p>
-            <ol>
-              {pages.slice(0, 8).map((entry) => (
-                <li>
-                  <a href={docPath(meta.id, entry.data.section)}>
-                    <span class="n">{entry.data.date ? '·' : String(entry.data.order).padStart(2, '0')}</span>{entry.data.title}
-                  </a>
-                </li>
-              ))}
-            </ol>
-            {pages.length > 8 && <a class="more" href={docPath(meta.id)}>+ {pages.length - 8} more →</a>}
-          </div>
+      <h2>Documents</h2>
+      <div class="wr-linklist">
+        {lists.map(({ meta, pages }) => (
+          <a href={docPath(meta.id)}>
+            <span class="glyph" aria-hidden="true">{meta.glyph}</span>
+            <span class="label">{meta.label}</span>
+            <span class="desc">{meta.blurb} · {pages.length} pages</span>
+          </a>
         ))}
       </div>
-    </div>
-  </section>
 
-  <section class="sheet">
-    <div class="sheet-in">
-      <Label no="03" title="Where it comes from" note="nothing is typed twice" />
-      <div class="hub-quick">
-        <a href={repo.file('docs/GUIDE.md')} class="rv">
-          <span class="no">docs/GUIDE.md</span><h2>The guide</h2>
-          <p>Ships inside every release tarball and is the source of every guide page here.</p>
-          <span class="go">view on GitHub <span class="arr">↗</span></span>
+      <h2>Where it comes from</h2>
+      <p>
+        The guide and the design notes are Markdown files in the repository; the changelog is
+        written by release-please; the reference is parsed from <code>keys.go</code> and the
+        README. Nothing on this site is typed twice.
+      </p>
+      <div class="wr-linklist">
+        <a href={repo.file('docs/GUIDE.md')}>
+          <span class="glyph" aria-hidden="true">↗</span>
+          <span class="label">docs/GUIDE.md</span>
+          <span class="desc">The guide, also inside every release tarball.</span>
         </a>
-        <a href={repo.file('keys.go')} class="rv" style="--d:1">
-          <span class="no">keys.go</span><h2>The shortcuts</h2>
-          <p>The file the program binds keys from: the reference page is parsed out of it at build time.</p>
-          <span class="go">view on GitHub <span class="arr">↗</span></span>
+        <a href={repo.file('keys.go')}>
+          <span class="glyph" aria-hidden="true">↗</span>
+          <span class="label">keys.go</span>
+          <span class="desc">The file the program binds keys from.</span>
         </a>
-        <a href={repo.file('web')} class="rv" style="--d:2">
-          <span class="no">web/</span><h2>This site</h2>
-          <p>An Astro app: a content loader, one page per section, deployed to GitHub Pages.</p>
-          <span class="go">view on GitHub <span class="arr">↗</span></span>
+        <a href={repo.file('web')}>
+          <span class="glyph" aria-hidden="true">↗</span>
+          <span class="label">web/</span>
+          <span class="desc">This site: an Astro app that draws the reader’s TUI in a browser.</span>
         </a>
       </div>
-    </div>
-  </section>
+
+      <p class="wr-dim">
+        Press <kbd>o</kbd> to open a page by name, <kbd>/</kbd> to search this page,
+        <kbd>t</kbd> for its headings, <kbd>m</kbd> for the menu.
+      </p>
+    </article>
+  </div>
 </Base>

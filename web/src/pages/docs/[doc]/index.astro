@@ -1,31 +1,13 @@
 ---
 import Doc from '../../../layouts/Doc.astro';
-import SectionCards from '../../../components/SectionCards.astro';
-import SceneGallery from '../../../components/SceneGallery.astro';
-import { docEntries } from '../../../lib/doc-nav';
-import { DOCS, docMeta } from '../../../lib/registry';
+import { DOCS } from '../../../lib/registry';
 
-// /docs/<doc>/ — the overview of a document: its intro, then one row per
-// section, each linking to that section's own page.
-
+// /docs/<doc>/ — the overview of a document: its intro, then its sections.
 export async function getStaticPaths() {
   return DOCS.map((meta) => ({ params: { doc: meta.id } }));
 }
 
 const { doc } = Astro.params;
-const meta = docMeta(doc);
-if (!meta) return Astro.redirect('/404/');
-const entries = await docEntries(doc);
 ---
 
-<Doc doc={doc} section="index">
-  <Fragment slot="after">
-    <SectionCards doc={doc} entries={entries} />
-    {doc !== 'changelog' && doc !== 'performance' && doc !== 'architecture' && (
-      <>
-        <div class="slist-h" style="margin-top:72px"><span>The UI, recorded</span><span>scripts/capture.sh</span></div>
-        <SceneGallery />
-      </>
-    )}
-  </Fragment>
-</Doc>
+<Doc doc={doc} section="index" />

@@ -1,50 +1,55 @@
 ---
 import { ClientRouter } from 'astro:transitions';
-import '@fontsource-variable/geist';
 import '@fontsource-variable/geist-mono';
-import sansLatin from '@fontsource-variable/geist/files/geist-latin-wght-normal.woff2?url';
 import monoLatin from '@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2?url';
-import CommandPalette from '../components/CommandPalette.astro';
-import Gutter from '../components/Gutter.astro';
-import HelpDialog from '../components/HelpDialog.astro';
-import SiteHeader from '../components/SiteHeader.astro';
-import SiteFooter from '../components/SiteFooter.astro';
-import StatusLine from '../components/StatusLine.astro';
-import ThemeDialog from '../components/ThemeDialog.astro';
+import { docPath, repo, withBase } from '../lib/urls';
 import { siteVersion } from '../lib/version';
-import { DEFAULT_THEME, LIGHT_THEME, STORAGE_KEY, THEMES } from '../data/themes';
-import { assetUrl, repo, withBase } from '../lib/urls';
-import '../styles/site.css';
+import '../styles/tui.css';
+
+interface MenuItem {
+  label: string;
+  key?: string;
+  href?: string;
+  action?: string;
+  desc: string;
+  external?: boolean;
+}
+
+interface MenuGroup {
+  label: string;
+  items: MenuItem[];
+}
 
 interface Props {
   title: string;
   description: string;
   /** Path of the page, for the canonical link. Defaults to the current one. */
   path?: string;
-  /** Which header entry is current: home, docs, guide, performance, design, changelog, reference, search. */
-  current?: string;
-  /** Hide the footer's closing mark on pages that bring their own ending. */
-  footer?: boolean;
+  /** Short title drawn in the terminal's header bar. */
+  bar?: string;
+  /** Source file shown in the menu and at the foot of a document. */
+  source?: { label: string; href: string };
   /** Extra schema.org nodes appended to the site-wide JSON-LD graph. */
   jsonLd?: Record<string, unknown> | readonly Record<string, unknown>[];
   /** Robots directive; the default keeps every real page indexable. */
   robots?: string;
+  /** Kept for page compatibility; the shell no longer has a separate footer. */
+  current?: string;
+  footer?: boolean;
 }
 
-const { title, description, path, current = '', footer = true, jsonLd, robots = 'index, follow' } = Astro.props;
+const { title, description, path, bar, source, jsonLd, robots = 'index, follow' } = Astro.props;
 const version = siteVersion();
 const canonical = new URL(path ?? Astro.url.pathname, Astro.site).toString();
 const root = new URL(withBase('/'), Astro.site).toString();
-const shareImage = new URL(assetUrl('/assets/og.png'), Astro.site).toString();
+const shareImage = new URL(withBase('/assets/og.png'), Astro.site).toString();
 const guideUrl = new URL(withBase('/docs/guide/start/'), Astro.site).toString();
 const rssUrl = new URL(withBase('/rss.xml'), Astro.site).toString();
 const sitemapUrl = new URL(withBase('/sitemap-index.xml'), Astro.site).toString();
 const llmsUrl = new URL(withBase('/llms.txt'), Astro.site).toString();
-const icon = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23050912'/%3E%3Ctext x='50' y='72' font-size='62' font-weight='700' text-anchor='middle' fill='%236cb4ff' font-family='monospace'%3Ew%3C/text%3E%3C/svg%3E`;
+const icon = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23111315'/%3E%3Ctext x='50' y='72' font-size='62' font-weight='700' text-anchor='middle' fill='%237aa6da' font-family='monospace'%3Ew%3C/text%3E%3C/svg%3E`;
+const barTitle = bar ?? (title.replace(/\s+—\s+wr docs$/, '').replace(/\s+—\s+wr$/, '') || 'wr');
 
-// Structured data: the site is the product page of one open-source program, so
-// every page carries WebSite + SoftwareApplication and pages can append their
-// own nodes (articles, breadcrumbs) through the jsonLd prop.
 const structuredData = {
   '@context': 'https://schema.org',
   '@graph': [
@@ -52,9 +57,9 @@ const structuredData = {
       '@type': 'WebSite',
       '@id': `${root}#website`,
       url: root,
-      name: 'wr — the web, without the noise',
+      name: 'wr — a reader for the terminal',
       description:
-        'The docs and downloads of wr: a reader and browser for the terminal that fetches any page, extracts the article and renders it as formatted Markdown with per-language code highlighting.',
+        'The docs and downloads of wr: a reader and browser for the terminal that extracts the article and renders formatted Markdown with syntax highlighting.',
       inLanguage: 'en',
       license: 'https://opensource.org/license/mit',
       publisher: { '@type': 'Person', name: 'sazardev', url: 'https://github.com/sazardev' },
@@ -64,7 +69,7 @@ const structuredData = {
       '@id': `${root}#app`,
       name: 'wr',
       description:
-        'A reader and browser for the terminal: it fetches a page, extracts the article and renders it as formatted Markdown with per-language code highlighting, links, history, bookmarks and search.',
+        'A reader and browser for the terminal: it fetches a page, extracts the article and renders it as formatted Markdown with code highlighting, links, history, bookmarks and search.',
       url: root,
       applicationCategory: 'DeveloperApplication',
       applicationSubCategory: 'Terminal reader and browser',
@@ -76,8 +81,7 @@ const structuredData = {
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
       author: { '@type': 'Person', name: 'sazardev', url: 'https://github.com/sazardev' },
       inLanguage: 'en',
-      keywords:
-        'terminal, reader mode, markdown, syntax highlighting, CLI, TUI, terminal browser, bubbletea, open source',
+      keywords: 'terminal, reader mode, markdown, syntax highlighting, CLI, TUI, terminal browser, bubbletea',
     },
     {
       '@type': 'SoftwareSourceCode',
@@ -94,14 +98,66 @@ const structuredData = {
     ...(Array.isArray(jsonLd) ? jsonLd : jsonLd ? [jsonLd] : []),
   ],
 };
+
+const menu: MenuGroup[] = [
+  {
+    label: 'Navigate',
+    items: [
+      { label: 'Start page', key: 'q', action: 'home', desc: 'The start page: bookmarks, recent reads and the way in.' },
+      { label: 'Documentation', href: withBase('/docs/'), desc: 'Every document, one page per section.' },
+      { label: 'The guide', href: docPath('guide'), desc: 'Read and browse the web from your terminal, screen by screen.' },
+      { label: 'Reference', href: withBase('/docs/reference/'), desc: 'Every key and every setting, generated from the source.' },
+      { label: 'Performance', href: docPath('performance'), desc: 'The benchmark suite and where the milliseconds go.' },
+      { label: 'Architecture', href: docPath('architecture'), desc: 'The pipeline, every file and how each claim is checked.' },
+      { label: 'Changelog', href: docPath('changelog'), desc: 'Every release, written from the repository history.' },
+    ],
+  },
+  {
+    label: 'This page',
+    items: [
+      { label: 'Top', key: 'g', action: 'top', desc: 'Go to the beginning of the page.' },
+      { label: 'Bottom', key: 'G', action: 'bottom', desc: 'Go to the end of the page.' },
+      { label: 'Section index', key: 't', action: 'toc', desc: 'Jump by heading, without scrolling.' },
+      { label: 'Search this page', key: '/', action: 'find', desc: 'Highlight every match and move with n and N.' },
+      { label: 'Follow links', key: 'f', action: 'hints', desc: 'Label every link on screen; type a label to follow it.' },
+      { label: 'Copy code block', key: 'Y', action: 'copy-code', desc: 'Copy the code block in front of you, without its frame.' },
+      { label: 'Copy page as Markdown', key: 'Ctrl+Y', action: 'copy-page', desc: 'Copy the extracted article as Markdown.' },
+      { label: 'Copy this address', key: 'y', action: 'copy-url', desc: 'Copy the page address (or the current selection).' },
+      ...(source ? [{ label: `Source: ${source.label}`, href: source.href, desc: 'Open the file this page was generated from.', external: true }] : []),
+    ],
+  },
+  {
+    label: 'wr',
+    items: [
+      { label: 'Install', action: 'copy-install', desc: 'Copy the one-line installer to the clipboard.' },
+      { label: 'Releases', key: 'U', href: repo.releases, desc: 'Download a binary and read what changed.', external: true },
+      { label: 'Source on GitHub', href: repo.url, desc: 'The Go source, the issues and the pull requests.', external: true },
+      { label: 'Report a problem', href: repo.issues, desc: 'Open an issue on the repository.', external: true },
+      { label: `Version ${version}`, href: repo.releases, desc: 'The version this site was built from.', external: true },
+    ],
+  },
+  {
+    label: 'Tools',
+    items: [
+      { label: 'Open address or search', key: 'o', action: 'omni', desc: 'Type a page, a section or words; the index suggests the rest.' },
+      { label: 'Keyboard shortcuts', key: '?', action: 'help', desc: 'Every key the web edition understands.' },
+      { label: 'Settings', key: ',', action: 'settings', desc: 'Accent, width, spacing, rules, frames and braille.' },
+      { label: 'Back', key: 'H', action: 'back', desc: 'Return to the previous page at the same spot.' },
+      { label: 'Forward', key: 'L', action: 'forward', desc: 'Go forward in the history.' },
+      { label: 'Reload', key: 'r', action: 'reload', desc: 'Fetch this page again.' },
+    ],
+  },
+];
+
+const rule = '⣀'.repeat(420);
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" data-accent="blue" data-width="normal" data-spacing="1" data-heading-rules="on" data-code-frames="on" data-braille="on" data-center="on">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="dark light">
+<meta name="color-scheme" content="dark">
 <title>{title}</title>
 <meta name="description" content={description}>
 <meta name="robots" content={robots}>
@@ -117,55 +173,171 @@ const structuredData = {
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="wr — the web, without the noise">
+<meta property="og:image:alt" content="wr — a reader for the terminal">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content={title}>
 <meta name="twitter:description" content={description}>
 <meta name="twitter:image" content={shareImage}>
-<meta name="twitter:image:alt" content="wr — the web, without the noise">
-<meta name="theme-color" content="#050912" media="(prefers-color-scheme: dark)">
-<meta name="theme-color" content="#f4f7fc" media="(prefers-color-scheme: light)">
+<meta name="twitter:image:alt" content="wr — a reader for the terminal">
+<meta name="theme-color" content="#111315">
 <link rel="alternate" type="application/rss+xml" title="wr releases" href={rssUrl}>
 <link rel="sitemap" type="application/xml" title="Sitemap" href={sitemapUrl}>
 <link rel="alternate" type="text/plain" title="llms.txt" href={llmsUrl}>
 <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
 <link rel="icon" href={icon}>
 <link rel="preload" as="font" type="font/woff2" href={monoLatin} crossorigin>
-<link rel="preload" as="font" type="font/woff2" href={sansLatin} crossorigin>
 <script is:inline set:html={`
   (function () {
     var root = document.documentElement;
-    root.classList.add('js');
-    var ids = ${JSON.stringify(THEMES.map((t) => t.id))};
-    var pick = null;
-    try { pick = new URLSearchParams(location.search).get('theme'); } catch (e) {}
-    if (!pick || ids.indexOf(pick) === -1) {
-      try { pick = localStorage.getItem('${STORAGE_KEY}'); } catch (e) {}
-    }
-    if (!pick || ids.indexOf(pick) === -1) {
-      pick = matchMedia('(prefers-color-scheme: light)').matches ? '${LIGHT_THEME}' : '${DEFAULT_THEME}';
-    }
-    root.dataset.theme = pick;
+    try {
+      var s = JSON.parse(localStorage.getItem('wr-web-settings') || '{}');
+      if (s.accent) root.dataset.accent = s.accent;
+      if (s.width) root.dataset.width = s.width;
+      if (s.spacing) root.dataset.spacing = s.spacing;
+      if (typeof s.headingRules === 'boolean') root.dataset.headingRules = s.headingRules ? 'on' : 'off';
+      if (typeof s.codeFrames === 'boolean') root.dataset.codeFrames = s.codeFrames ? 'on' : 'off';
+      if (typeof s.braille === 'boolean') root.dataset.braille = s.braille ? 'on' : 'off';
+      if (typeof s.center === 'boolean') root.dataset.center = s.center ? 'on' : 'off';
+    } catch (e) {}
   })();
 `} />
 <ClientRouter />
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
-<Gutter />
-<SiteHeader version={version} current={current} />
-<div class="frame">
-  <main id="main">
-    <slot />
-  </main>
-  {footer && <SiteFooter version={version} />}
+
+<div class="wr" data-wr>
+  <header class="wr-head">
+    <span class="wr-mark" aria-hidden="true">⣿</span>
+    <span class="wr-title" title={barTitle}>{barTitle}</span>
+    <span class="wr-mark wr-right" aria-hidden="true">⡇</span>
+  </header>
+
+  <div class="wr-rule" aria-hidden="true"><span>{rule}</span><span>{rule}</span><span>{rule}</span></div>
+
+  <div class="wr-stage">
+    <main id="main" class="wr-body" data-wr-body tabindex="-1">
+      <slot />
+    </main>
+    <div class="wr-scroll" data-wr-scroll aria-hidden="true"></div>
+  </div>
+
+  <div class="wr-rule" aria-hidden="true"><span>{rule}</span><span>{rule}</span><span>{rule}</span></div>
+
+  <footer class="wr-foot">
+    <div class="wr-hints" data-wr-hints>
+      <span><b>o</b> open</span> <span><b>/</b> search</span> <span><b>H</b> back</span> <span><b>L</b> fwd</span>
+      <span class="wide"><b>f</b> links</span> <span class="medium"><b>t</b> index</span> <span class="medium"><b>r</b> reload</span>
+      <span><b>m</b> menu</span> <span class="wide"><b>q</b> start</span>
+    </div>
+    <div class="wr-find" data-wr-find hidden>
+      <span class="wr-prompt" aria-hidden="true">/</span>
+      <input class="wr-input" data-wr-find-input type="text" placeholder="search this page" aria-label="Search this page" autocomplete="off" spellcheck="false">
+      <span class="wr-find-count" data-wr-find-count aria-live="polite"></span>
+    </div>
+    <div class="wr-progress" aria-label="Reading progress">
+      <span class="wr-chip" data-wr-chip hidden></span>
+      <span class="wr-pct" data-wr-pct>all visible</span>
+      <span class="wr-bar" data-wr-bar aria-hidden="true"></span>
+    </div>
+  </footer>
 </div>
-<StatusLine version={version} />
-<ThemeDialog />
-<CommandPalette />
-<HelpDialog />
+
+<div class="wr-layer" data-wr-layer hidden>
+  <section class="wr-panel" data-panel="menu" role="dialog" aria-modal="true" aria-label="Menu" hidden>
+    <h2 class="wr-panel-title">wr {version} · {barTitle}</h2>
+    <div class="wr-panel-body">
+      <div class="wr-omni" data-panel-filter-wrap hidden><span class="wr-prompt">/</span><input class="wr-input" data-panel-filter placeholder="filter the menu…" aria-label="Filter the menu" autocomplete="off" spellcheck="false"></div>
+      {menu.map((group) => (
+        <>
+          <div class="wr-group">{group.label}</div>
+          {group.items.map((item) => (
+            item.href ? (
+              <a class="wr-row" href={item.href} data-desc={item.desc} target={item.external ? '_blank' : undefined} rel={item.external ? 'noopener' : undefined}>
+                <span class="wr-row-label">{item.label}</span>
+                {item.key && <span class="wr-row-key">{item.key}</span>}
+              </a>
+            ) : (
+              <button class="wr-row" type="button" data-action={item.action} data-desc={item.desc}>
+                <span class="wr-row-label">{item.label}</span>
+                {item.key && <span class="wr-row-key">{item.key}</span>}
+              </button>
+            )
+          ))}
+        </>
+      ))}
+    </div>
+    <p class="wr-panel-help" data-menu-help>Choose an entry; the selected one explains itself here.</p>
+    <p class="wr-panel-keys">↑↓ choose · enter accept · / filter · esc cancel</p>
+  </section>
+
+  <section class="wr-panel" data-panel="toc" role="dialog" aria-modal="true" aria-label="Section index" hidden>
+    <h2 class="wr-panel-title">Section index · {barTitle}</h2>
+    <div class="wr-panel-body">
+      <div class="wr-omni" data-panel-filter-wrap hidden><span class="wr-prompt">/</span><input class="wr-input" data-panel-filter placeholder="filter the sections…" aria-label="Filter the sections" autocomplete="off" spellcheck="false"></div>
+      <div data-toc-body></div>
+    </div>
+    <p class="wr-panel-help">Jump to a heading of this page.</p>
+    <p class="wr-panel-keys">↑↓ choose · enter jump · / filter · esc cancel</p>
+  </section>
+
+  <section class="wr-panel" data-panel="help" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" hidden>
+    <h2 class="wr-panel-title">Keyboard shortcuts</h2>
+    <div class="wr-panel-body">
+      <div class="wr-group">Browsing</div>
+      <div class="wr-keyrow"><span class="keys">o</span><span class="label">Open an address or search</span></div>
+      <div class="wr-keyrow"><span class="keys">H · L</span><span class="label">Back · forward</span></div>
+      <div class="wr-keyrow"><span class="keys">r</span><span class="label">Reload</span></div>
+      <div class="wr-keyrow"><span class="keys">[ · ]</span><span class="label">Previous · next page of a document</span></div>
+      <div class="wr-keyrow"><span class="keys">U</span><span class="label">Releases</span></div>
+      <div class="wr-keyrow"><span class="keys">q</span><span class="label">Start page</span></div>
+
+      <div class="wr-group">Reading</div>
+      <div class="wr-keyrow"><span class="keys">j · k</span><span class="label">Line down · up</span></div>
+      <div class="wr-keyrow"><span class="keys">d · u</span><span class="label">Half page down · up</span></div>
+      <div class="wr-keyrow"><span class="keys">space · b</span><span class="label">Page down · up</span></div>
+      <div class="wr-keyrow"><span class="keys">g · G</span><span class="label">Top · bottom</span></div>
+      <div class="wr-keyrow"><span class="keys">/</span><span class="label">Search this page</span></div>
+      <div class="wr-keyrow"><span class="keys">n · N</span><span class="label">Next · previous match</span></div>
+      <div class="wr-keyrow"><span class="keys">t</span><span class="label">Section index</span></div>
+      <div class="wr-keyrow"><span class="keys">f</span><span class="label">Label every link, then type the label</span></div>
+      <div class="wr-keyrow"><span class="keys">y</span><span class="label">Copy the selection, or the address</span></div>
+      <div class="wr-keyrow"><span class="keys">Y</span><span class="label">Copy the code block on screen</span></div>
+      <div class="wr-keyrow"><span class="keys">Ctrl+Y</span><span class="label">Copy the page as Markdown</span></div>
+
+      <div class="wr-group">Interface</div>
+      <div class="wr-keyrow"><span class="keys">m · ?</span><span class="label">Menu · this help</span></div>
+      <div class="wr-keyrow"><span class="keys">,</span><span class="label">Settings</span></div>
+      <div class="wr-keyrow"><span class="keys">esc</span><span class="label">Close a panel, clear a search</span></div>
+      <div class="wr-keyrow"><span class="keys">mouse</span><span class="label">Click links, wheel to scroll, drag to select</span></div>
+    </div>
+    <p class="wr-panel-help">The full list, generated from <code>keys.go</code>, is in the reference.</p>
+    <p class="wr-panel-keys">↑↓ scroll · esc close · <a href={withBase('/docs/reference/shortcuts/')}>reference ↗</a></p>
+  </section>
+
+  <section class="wr-panel" data-panel="settings" role="dialog" aria-modal="true" aria-label="Settings" hidden>
+    <h2 class="wr-panel-title">Settings · {barTitle}</h2>
+    <div class="wr-panel-body">
+      <div class="wr-omni" data-panel-filter-wrap hidden><span class="wr-prompt">/</span><input class="wr-input" data-panel-filter placeholder="filter the settings…" aria-label="Filter the settings" autocomplete="off" spellcheck="false"></div>
+      <div data-settings-body></div>
+    </div>
+    <p class="wr-panel-help" data-settings-help>Enter changes the selected option.</p>
+    <p class="wr-panel-keys">↑↓ choose · enter change · ←→ change · / filter · esc cancel</p>
+  </section>
+
+  <section class="wr-panel" data-panel="omni" role="dialog" aria-modal="true" aria-label="Open address or search" hidden>
+    <h2 class="wr-panel-title">Open address or search</h2>
+    <div class="wr-panel-body">
+      <div class="wr-omni"><span class="wr-prompt" aria-hidden="true">&gt;</span><input class="wr-input" data-omni-input type="text" placeholder="a page, a section, or words…" aria-label="Open address or search" autocomplete="off" spellcheck="false"></div>
+      <div class="wr-omni-results" data-omni-results></div>
+    </div>
+    <p class="wr-panel-help">Type a page, a section or a command; enter opens it.</p>
+    <p class="wr-panel-keys">↑↓ choose · enter go · esc cancel</p>
+  </section>
+</div>
+
 <script>
-  import '../scripts/enhance';
+  import '../scripts/tui';
 </script>
 </body>
 </html>

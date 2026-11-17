@@ -9,7 +9,7 @@ export const GET: APIRoute = () => {
   const body = [
     '# wr — full documentation',
     '',
-    '> The complete documentation of wr in one file: README, guide, design language and changelog, as written in the repository. Relative links and image paths resolve against https://github.com/sazardev/wr/blob/main/',
+    '> The complete documentation of wr in one file: README, guide, the web edition and changelog, as written in the repository. Relative links and image paths resolve against https://github.com/sazardev/wr/blob/main/',
     '',
     readReadme(),
     readGuide(),

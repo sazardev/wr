@@ -1,51 +1,66 @@
 ---
 import Base from '../layouts/Base.astro';
-import Blueprint from '../components/Blueprint.astro';
 import { withBase } from '../lib/urls';
 
-// The 404 page. It doubles as the compatibility shim for the addresses of the
-// old static site (guide.html, design.html), which now have deep routes: the
-// script below runs on every 404 and moves the visitor to the new address.
-
+// The 404 page, as the reader draws an error: a failed load and the ways out.
+// The inline script keeps the old static-site addresses working.
 const base = withBase('/');
 ---
 
-<Base title="Not found — wr docs" description="That page does not exist. The documentation starts at /docs." robots="noindex, follow">
-  <section class="nf">
-    <Blueprint id="nf" />
-    <div class="nf-in">
-      <p class="code rise">404<span class="cur"></span></p>
-      <h1 class="rise" style="--d:1">That page is not here.</h1>
-      <p class="lead rise" style="--d:2">
-        The documentation was rebuilt with one page per section. Whatever you were looking for is
-        one of these — or press <kbd>/</kbd> and search for it.
-      </p>
-      <div class="btn-row rise" style="--d:3">
-        <a class="btn primary" href={withBase('/docs/')}>Documentation <span class="arr">→</span></a>
-        <a class="btn" href={withBase('/docs/guide/start/')}>Start reading</a>
-        <a class="btn" href={withBase('/docs/search/')}>Search</a>
-        <a class="btn ghost" href={withBase('/')}>Home</a>
-      </div>
-    </div>
-  </section>
+<Base title="Not found — wr docs" description="That page does not exist. The documentation starts at /docs." robots="noindex, follow" bar="404">
+  <div class="wr-doc">
+    <header class="wr-doc-head">
+      <p class="wr-kicker">error / 404</p>
+      <h1>✗ that page is not here</h1>
+      <p class="wr-meta">the address did not resolve to a page of this site</p>
+    </header>
 
-  <script is:inline define:vars={{ base, docsBase: withBase('/docs/') }}>
-    // Addresses of the previous static site, and where they live now.
-    var moved = {
-      '/guide.html': 'guide/',
-      '/design.html': 'design/',
-      '/index.html': '/',
-      '/docs/guide.html': 'guide/',
-      '/docs/design.html': 'design/',
-      '/docs/GUIDE.md': 'guide/',
-      '/docs/DESIGN.md': 'design/'
-    };
-    var path = location.pathname.replace(/\/$/, '') || '/';
-    if (moved[path]) location.replace(base + moved[path]);
-    if (path.indexOf('/docs/') === 0) {
-      // /docs/guide/anything-that-moved -> the document's first section
-      var doc = path.replace(/^\/docs\//, '').split('/')[0];
-      location.replace(docsBase + doc + '/');
-    }
-  </script>
+    <article class="prose">
+      <p>
+        The documentation was rebuilt with one page per section. Whatever you were looking for is
+        one of these, or you can search it.
+      </p>
+      <div class="wr-linklist">
+        <a href={withBase('/docs/')}>
+          <span class="glyph" aria-hidden="true">⣿</span>
+          <span class="label">Documentation</span>
+          <span class="desc">Every document, one page per section.</span>
+        </a>
+        <a href={withBase('/docs/guide/start/')}>
+          <span class="glyph" aria-hidden="true">⣶</span>
+          <span class="label">Start reading</span>
+          <span class="desc">Install wr and read your first page.</span>
+        </a>
+        <a href={withBase('/docs/search/')}>
+          <span class="glyph" aria-hidden="true">/</span>
+          <span class="label">Search</span>
+          <span class="desc">Full-text search over every page.</span>
+        </a>
+        <a href={withBase('/')}>
+          <span class="glyph" aria-hidden="true">⡇</span>
+          <span class="label">Start page</span>
+          <span class="desc">The reader’s own home.</span>
+        </a>
+      </div>
+      <p class="wr-dim">Press <kbd>o</kbd> to open an address, <kbd>m</kbd> for the menu, <kbd>?</kbd> for every key.</p>
+    </article>
+  </div>
 </Base>
+
+<script is:inline define:vars={{ base, docsBase: withBase('/docs/') }}>
+  var moved = {
+    '/guide.html': 'guide/',
+    '/design.html': 'design/',
+    '/index.html': '/',
+    '/docs/guide.html': 'guide/',
+    '/docs/design.html': 'design/',
+    '/docs/GUIDE.md': 'guide/',
+    '/docs/DESIGN.md': 'design/'
+  };
+  var path = location.pathname.replace(/\/$/, '') || '/';
+  if (moved[path]) location.replace(base + moved[path]);
+  if (path.indexOf('/docs/') === 0) {
+    var doc = path.replace(/^\/docs\//, '').split('/')[0];
+    location.replace(docsBase + doc + '/');
+  }
+</script>

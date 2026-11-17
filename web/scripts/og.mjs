@@ -1,8 +1,6 @@
 // The social card: public/assets/og.png, 1200x630, rasterised from an SVG with
-// sharp so the palette is exactly the site's blueprint. Social networks do not
-// render SVG og:images, so this PNG is what every share shows.
-//
-// Regenerate with `npm run og` when the version or the copy changes.
+// sharp. It is the same frame the site draws: terminal black, 16-color accents,
+// a reading column and the reader's footer. Regenerate with `npm run og`.
 
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -22,67 +20,72 @@ const version = (() => {
   }
 })();
 
-const ink = {
-  bg: '#050912',
-  panel: '#0a1222',
-  line: '#131f36',
-  line2: '#22365b',
-  dim: '#6f86ab',
-  fg2: '#a3b5d3',
-  fg: '#e8f0fd',
-  accent: '#6cb4ff',
+const c = {
+  bg: '#111315',
+  panel: '#181b1e',
+  line: '#24282c',
+  line2: '#343b41',
+  dim: '#747b76',
+  fg2: '#a8adaa',
+  fg: '#c5c8c6',
+  accent: '#7aa6da',
+  alt: '#70c0b1',
+  green: '#b9ca4a',
+  yellow: '#e7c547',
+  magenta: '#c397d8',
+  red: '#d54e53',
 };
 
 const mono = "ui-monospace, 'DejaVu Sans Mono', 'Liberation Mono', Menlo, monospace";
-const sans = "'DejaVu Sans', 'Liberation Sans', Inter, system-ui, sans-serif";
-
-const tick = (x, y) =>
-  `<path d="M ${x - 7} ${y} H ${x + 7} M ${x} ${y - 7} V ${y + 7}" stroke="${ink.line2}" stroke-width="1"/>`;
-
-const line = (x, y, text, size, fill, family, weight = 400, extra = '') =>
-  `<text x="${x}" y="${y}" font-family="${family}" font-size="${size}" font-weight="${weight}" fill="${fill}" ${extra}>${text}</text>`;
+const text = (x, y, value, size, fill, weight = 400, extra = '') =>
+  `<text x="${x}" y="${y}" font-family="${mono}" font-size="${size}" font-weight="${weight}" fill="${fill}" ${extra}>${value}</text>`;
+const rule = (x, y, width, glyph, fill) =>
+  text(x, y, glyph.repeat(Math.ceil(width / 10)), 18, fill, 400, `letter-spacing="0"`);
 
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-  <rect width="1200" height="630" fill="${ink.bg}"/>
-  <rect x="28.5" y="28.5" width="1143" height="573" fill="none" stroke="${ink.line2}" stroke-width="1"/>
-  ${tick(28, 28)}${tick(1172, 28)}${tick(28, 602)}${tick(1172, 602)}
+  <rect width="1200" height="630" fill="${c.bg}"/>
 
-  ${line(64, 86, 'wr<span fill="' + ink.accent + '">▍</span>', 34, ink.fg, mono, 700)}
-  ${line(1136, 84, `v${version} · MIT`, 20, ink.dim, mono, 400, 'text-anchor="end"')}
+  ${text(40, 44, '⣿', 22, c.accent, 700)}
+  ${text(72, 44, 'wr', 22, c.fg, 700)}
+  ${text(1128, 44, '⡇', 22, c.line2, 400)}
 
-  ${line(64, 242, 'The web,', 72, ink.fg, sans, 700, 'letter-spacing="-2"')}
-  ${line(64, 318, 'without the noise', 72, ink.fg, sans, 700, 'letter-spacing="-2"')}
+  ${rule(40, 66, 300, '⣀', c.line2)}
+  ${rule(356, 66, 300, '⣀', c.accent)}
+  ${rule(672, 66, 488, '⣀', c.alt)}
 
-  ${line(64, 386, 'Reader mode for your terminal:', 23, ink.fg2, sans)}
-  ${line(64, 418, 'formatted Markdown, real code highlighting,', 23, ink.fg2, sans)}
-  ${line(64, 450, 'links, history, bookmarks and search.', 23, ink.fg2, sans)}
+  ${text(64, 122, 'guide / start', 17, c.dim)}
+  ${text(64, 164, '⣿ Building a Realtime Forum in Go', 29, c.accent, 700)}
+  ${rule(64, 180, 980, '⣀', c.line2)}
 
-  ${line(64, 560, 'github.com/sazardev/wr', 21, ink.dim, mono)}
-  ${line(1136, 560, 'Linux · macOS · Go', 21, ink.dim, mono, 400, 'text-anchor="end"')}
+  ${text(64, 222, 'Build a 100% CLI realtime forum in Go: TCP, TLS,', 19, c.fg2)}
+  ${text(64, 250, 'deduplicated broadcast and resilient reconnects,', 19, c.fg2)}
+  ${text(64, 278, 'zero dependencies.', 19, c.fg2)}
 
-  <g>
-    <rect x="680" y="112" width="456" height="404" fill="${ink.panel}" stroke="${ink.line2}"/>
-    <rect x="680" y="112" width="456" height="34" fill="${ink.bg}" stroke="${ink.line2}"/>
-    ${line(700, 134, 'wr — article', 14, ink.dim, mono)}
-    ${line(1116, 134, '100 × 30', 14, ink.dim, mono, 400, 'text-anchor="end"')}
+  <rect x="64" y="312" width="670" height="156" fill="none" stroke="${c.line2}"/>
+  ${text(76, 338, '╭─ go', 17, c.dim)}
+  ${text(76, 368, '│ func main() {', 18, c.fg)}
+  ${text(76, 394, '│     srv := forum.New(cfg)', 18, c.fg)}
+  ${text(76, 420, '│     log.Fatal(srv.ListenTLS())', 18, c.fg)}
+  ${text(76, 446, '╰─', 17, c.dim)}
 
-    ${line(708, 190, '<tspan fill="' + ink.accent + '">▍</tspan>Building a Realtime Forum in Go', 17, ink.fg, sans, 600)}
-    <rect x="708" y="204" width="400" height="2" fill="${ink.accent}" opacity="0.85"/>
+  ${text(760, 338, '⣿', 18, c.accent)}
+  ${text(792, 338, 'Start page', 17, c.fg)}
+  ${text(760, 368, '⡇', 18, c.accent)}
+  ${text(792, 368, 'The guide', 17, c.fg)}
+  ${text(760, 398, '⣀', 18, c.accent)}
+  ${text(792, 398, 'Performance', 17, c.fg)}
+  ${text(760, 428, '⠿', 18, c.accent)}
+  ${text(792, 428, 'Architecture', 17, c.fg)}
 
-    ${line(708, 240, 'Build a 100% CLI realtime forum in Go: TCP,', 14, ink.fg2, sans)}
-    ${line(708, 262, 'TLS, deduplicated broadcast and resilient', 14, ink.fg2, sans)}
-    ${line(708, 284, 'reconnects, zero dependencies.', 14, ink.fg2, sans)}
+  ${text(64, 520, '<tspan fill="' + c.accent + '">o</tspan> open  <tspan fill="' + c.accent + '">/</tspan> search  <tspan fill="' + c.accent + '">H</tspan> back  <tspan fill="' + c.accent + '">L</tspan> fwd  <tspan fill="' + c.accent + '">f</tspan> links  <tspan fill="' + c.accent + '">t</tspan> index  <tspan fill="' + c.accent + '">m</tspan> menu', 17, c.dim)}
 
-    <rect x="708" y="306" width="400" height="128" fill="${ink.bg}" stroke="${ink.line2}"/>
-    ${line(724, 334, '// main.go', 13, ink.dim, mono)}
-    ${line(724, 358, '<tspan fill="' + ink.accent + '">func</tspan> main() {', 13, ink.fg2, mono)}
-    ${line(724, 382, '    srv := forum.New(cfg)', 13, ink.fg2, mono)}
-    ${line(724, 406, '    log.Fatal(srv.ListenTLS())', 13, ink.fg2, mono)}
-    ${line(724, 430, '}', 13, ink.fg2, mono)}
+  ${text(1128, 520, '⣷⣀⣀⣀⣀⣀  6%', 17, c.dim, 400, 'text-anchor="end"')}
+  ${text(64, 580, 'wr v' + version + ' · MIT · github.com/sazardev/wr', 16, c.dim)}
+  ${text(1128, 580, 'Linux · macOS · one static binary', 16, c.dim, 400, 'text-anchor="end"')}
 
-    <rect x="708" y="452" width="400" height="1" fill="${ink.line2}"/>
-    ${line(708, 480, '<tspan fill="' + ink.accent + '">o</tspan> open   <tspan fill="' + ink.accent + '">/</tspan> search   <tspan fill="' + ink.accent + '">H</tspan> back   <tspan fill="' + ink.accent + '">f</tspan> links   <tspan fill="' + ink.accent + '">m</tspan> menu', 13, ink.dim, mono)}
-  </g>
+  ${rule(40, 600, 300, '⣀', c.line2)}
+  ${rule(356, 600, 300, '⣀', c.accent)}
+  ${rule(672, 600, 488, '⣀', c.alt)}
 </svg>`;
 
 await sharp(Buffer.from(svg)).png({ compressionLevel: 9 }).toFile(out);

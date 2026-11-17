@@ -4,12 +4,9 @@ import { shortcutGroups } from '../../../lib/reference';
 import { cellText, tableUnderHeading } from '../../../lib/tables';
 import { readReadme } from '../../../lib/repo';
 import { repo, withBase } from '../../../lib/urls';
-import Icon from '../../../components/Icon.astro';
 
 // /docs/reference/shortcuts/ — every default key binding, grouped like the
-// program's shortcuts panel, parsed from keys.go. The mouse table comes from
-// the README. Both are the sources the program is built from.
-
+// program's shortcuts panel, parsed from keys.go.
 const groups = shortcutGroups();
 const mouse = tableUnderHeading(readReadme(), 'Mouse');
 const total = groups.reduce((sum, group) => sum + group.items.length, 0);
@@ -23,46 +20,38 @@ const all = total + (mouse?.rows.length ?? 0);
   summary={`${total} actions in ${groups.length} groups, plus the mouse. Generated from keys.go — the same file the program binds keys from.`}
   source={{ label: 'keys.go', href: repo.file('keys.go') }}
 >
-  <div class="tools-row">
-    <label class="filter">
-      <Icon name="search" />
-      <input type="search" data-filter-input placeholder="Filter: back, search, ctrl…" aria-label="Filter the shortcuts" autocomplete="off" spellcheck="false" />
-      <span class="count" data-filter-count aria-live="polite">{all}</span>
-    </label>
-  </div>
+  <p class="wr-note">{all} bindings · press <kbd>/</kbd> to search this page.</p>
 
-  <div class="ref-grid">
+  <div class="wr-keys">
     {groups.map((group) => (
-      <div class="ref-group" data-filter-group>
-        <h2><span>{group.group}</span><span class="count">{group.items.length}</span></h2>
+      <section class="wr-keygroup">
+        <h2>{group.group}</h2>
         {group.items.map((item) => (
-          <div class="ref-row" data-filter-row>
-            <div class="keys">
-              {item.keys.map((key) => <kbd>{key}</kbd>)}
-              {item.keys.length === 0 && <span class="aid">no default key</span>}
-            </div>
-            <div class="label">{item.label}<span class="aid">{item.id}</span></div>
+          <div class="wr-keyrow">
+            <span class="keys">
+              {item.keys.length ? item.keys.map((key) => <kbd>{key}</kbd>) : <span class="aid">no default key</span>}
+            </span>
+            <span class="label">{item.label}<span class="aid">{item.id}</span></span>
           </div>
         ))}
-      </div>
+      </section>
     ))}
 
     {mouse && (
-      <div class="ref-group" data-filter-group>
-        <h2><span>Mouse</span><span class="count">{mouse.rows.length}</span></h2>
+      <section class="wr-keygroup">
+        <h2>Mouse</h2>
         {mouse.rows.map((row) => (
-          <div class="ref-row" data-filter-row>
-            <div class="keys">{(row[0] ?? '').split(/\s*\/\s*/).map((key) => <kbd>{cellText(key)}</kbd>)}</div>
-            <div class="label">{cellText(row[1] ?? '')}</div>
+          <div class="wr-keyrow">
+            <span class="keys">{(row[0] ?? '').split(/\s*\/\s*/).map((key) => <kbd>{cellText(key)}</kbd>)}</span>
+            <span class="label">{cellText(row[1] ?? '')}</span>
           </div>
         ))}
-      </div>
+      </section>
     )}
   </div>
-  <div class="ref-empty" data-filter-empty hidden>No binding matches that. Try a shorter word.</div>
 
-  <p class="note-line">
-    Rebind any of them from the menu (<kbd>m</kbd>) or the shortcuts panel (<kbd>,</kbd>):
+  <p class="wr-note">
+    Rebind any of them from the menu (<kbd>m</kbd>) or the shortcuts panel (<kbd>?</kbd>):
     see <a href={withBase('/docs/guide/rebinding-keys/')}>Rebinding keys</a>.
   </p>
 </Page>

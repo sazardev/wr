@@ -3,56 +3,49 @@ import Page from '../../../layouts/Page.astro';
 import { settingRows, shortcutGroups } from '../../../lib/reference';
 import { repo, withBase } from '../../../lib/urls';
 
-// /docs/reference/ — the generated pages: shortcuts, settings and the paths wr
-// keeps things in. None of this is typed by hand; each page is built from the
-// file the program itself uses.
-
 const shortcuts = shortcutGroups().reduce((sum, group) => sum + group.items.length, 0);
 const settings = settingRows().length;
 
 const pages = [
-  { no: '01', title: 'Shortcuts', href: withBase('/docs/reference/shortcuts/'), text: `All ${shortcuts} default key bindings, grouped like the program’s shortcuts panel, with a live filter.`, source: 'keys.go' },
-  { no: '02', title: 'Settings', href: withBase('/docs/reference/settings/'), text: `All ${settings} options of config.toml with their defaults and what each one does.`, source: 'README.md' },
-  { no: '03', title: 'Where wr keeps things', href: withBase('/docs/reference/settings/#where-things-live'), text: 'The config file, the page cache, the history and the bookmarks — and how to clear them.', source: 'README.md' },
+  { label: 'Shortcuts', href: withBase('/docs/reference/shortcuts/'), desc: `All ${shortcuts} default key bindings, grouped like the program’s shortcuts panel.`, meta: 'keys.go' },
+  { label: 'Settings', href: withBase('/docs/reference/settings/'), desc: `All ${settings} options of config.toml with their defaults and what each one does.`, meta: 'README.md' },
+  { label: 'Where wr keeps things', href: withBase('/docs/reference/settings/#where-things-live'), desc: 'The config, the page cache, the history and the bookmarks — and how to clear them.', meta: 'README.md' },
 ];
 ---
 
 <Page
   title="Reference"
   description="Generated reference of wr: every key binding from keys.go and every setting from the README."
-  summary="Three pages the site builds for you from the program’s own files, so they cannot fall behind it."
+  summary="Pages the site builds for you from the program’s own files, so they cannot fall behind it."
   source={{ label: 'keys.go + README.md', href: repo.url }}
 >
-  <div class="ref-cards">
-    {pages.map((page, i) => (
-      <a class="ref-card rv" style={`--d:${i}`} href={page.href}>
-        <span class="no">{page.no}<small>{page.source}</small></span>
-        <h2>{page.title}</h2>
-        <p>{page.text}</p>
-        <span class="go">open <span class="arr">→</span></span>
+  <h2>Generated pages</h2>
+  <div class="wr-linklist">
+    {pages.map((page) => (
+      <a href={page.href}>
+        <span class="glyph" aria-hidden="true">⣶</span>
+        <span class="label">{page.label}</span>
+        <span class="desc">{page.desc} · {page.meta}</span>
       </a>
     ))}
   </div>
 
-  <div class="sub-h"><h2>Read it in the guide</h2><span>the same topics, explained</span></div>
-  <div class="ref-cards">
-    <a class="ref-card rv" href={withBase('/docs/guide/rebinding-keys/')}>
-      <span class="no">guide<small>docs/GUIDE.md</small></span>
-      <h2>Rebinding keys</h2>
-      <p>Change any binding from inside the program, or in config.toml under [keys].</p>
-      <span class="go">read <span class="arr">→</span></span>
+  <h2>Read it in the guide</h2>
+  <div class="wr-linklist">
+    <a href={withBase('/docs/guide/rebinding-keys/')}>
+      <span class="glyph" aria-hidden="true">⣿</span>
+      <span class="label">Rebinding keys</span>
+      <span class="desc">Change any binding from inside the program, or in config.toml under [keys].</span>
     </a>
-    <a class="ref-card rv" style="--d:1" href={withBase('/docs/guide/make-it-yours/')}>
-      <span class="no">guide<small>docs/GUIDE.md</small></span>
-      <h2>Make it yours</h2>
-      <p>The settings panel: about thirty options applied live and saved for you.</p>
-      <span class="go">read <span class="arr">→</span></span>
+    <a href={withBase('/docs/guide/make-it-yours/')}>
+      <span class="glyph" aria-hidden="true">⣿</span>
+      <span class="label">Make it yours</span>
+      <span class="desc">The settings panel: the options, applied live and saved for you.</span>
     </a>
-    <a class="ref-card rv" style="--d:2" href={withBase('/docs/guide/troubleshooting/')}>
-      <span class="no">guide<small>docs/GUIDE.md</small></span>
-      <h2>Troubleshooting</h2>
-      <p>When something does not look right: the usual causes and their fixes.</p>
-      <span class="go">read <span class="arr">→</span></span>
+    <a href={withBase('/docs/guide/troubleshooting/')}>
+      <span class="glyph" aria-hidden="true">⣿</span>
+      <span class="label">Troubleshooting</span>
+      <span class="desc">When something does not look right: the usual causes and their fixes.</span>
     </a>
   </div>
 </Page>

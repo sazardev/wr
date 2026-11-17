@@ -1,45 +1,47 @@
 ---
 import Base from '../../layouts/Base.astro';
-import Icon from '../../components/Icon.astro';
 
-// /docs/search/?q=&scope= — one static page whose state is the query string.
-// The island reads ?q= and ?scope= from the URL and keeps them in sync while
-// you type, so a search is a link: shareable, bookmarkable, back-buttonable.
-
-const scopes = ['all', 'guide', 'design', 'changelog', 'reference'];
+// /docs/search/?q= — a TUI search page. The index is the same JSON the address
+// bar uses; the query lives in the URL so a search is a link.
 ---
 
 <Base
   title="Search — wr docs"
-  description="Search the wr documentation: the guide, the design language, the changelog and the generated reference."
+  description="Search the wr documentation: the guide, the design notes, performance, architecture, the changelog and the reference."
+  path={Astro.url.pathname}
+  bar="search"
   current="search"
 >
-  <div class="sp" id="search">
-    <div class="hero-tags" style="display:flex;gap:8px;margin-bottom:22px"><span class="tag">full-text · in your browser</span></div>
-    <h1>Search</h1>
-    <form class="sbox" data-search-form role="search">
-      <Icon name="search" />
+  <div class="wr-doc" data-search-page>
+    <header class="wr-doc-head">
+      <p class="wr-kicker">search</p>
+      <h1>Search</h1>
+      <p class="wr-meta">full-text · in your browser · every page of the documentation</p>
+    </header>
+
+    <form class="wr-searchform" data-search-form role="search">
+      <span class="wr-prompt" aria-hidden="true">/</span>
       <input
-        type="search"
+        class="wr-input"
+        type="text"
         name="q"
         data-search-input
-        placeholder="links, keys, cache, bookmarks…"
+        placeholder="links, keys, cache, install…"
         aria-label="Search the documentation"
         autocomplete="off"
         spellcheck="false"
         autofocus
-      />
-      <span class="count" data-search-status aria-live="polite">…</span>
+      >
+      <span class="wr-find-count" data-search-status aria-live="polite"></span>
     </form>
-    <div class="scopes" role="group" aria-label="Scope">
-      {scopes.map((scope) => <button type="button" data-scope={scope} aria-pressed={scope === 'all'}>{scope}</button>)}
-    </div>
-    <p class="shint">
-      <kbd>↑</kbd> <kbd>↓</kbd> choose · <kbd>↵</kbd> open · the query lives in the address bar:
-      <code>/docs/search/?q=links&amp;scope=guide</code>
+
+    <p class="wr-note">
+      <kbd>↑</kbd> <kbd>↓</kbd> choose · <kbd>enter</kbd> open · <kbd>esc</kbd> clear.
+      The same index opens with <kbd>o</kbd> from any page.
     </p>
-    <div class="results" data-search-results aria-live="polite">
-      <div class="empty"><b>Search the docs</b><span>Type a word: links, keys, cache, install…</span></div>
+
+    <div class="wr-results" data-search-results aria-live="polite">
+      <div class="wr-empty">Type a word: links, keys, cache, install…</div>
     </div>
   </div>
 </Base>
