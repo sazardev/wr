@@ -16,6 +16,33 @@ agent reads is what you see. Nothing is exported from `package main`, and the
 server is a mode of the binary for that reason: `load`, `renderDoc`, `newModel`
 and the store stay private, and there is a single binary to ship.
 
+## Protocol versions
+
+The server speaks both eras of MCP:
+
+- **2026-07-28 (current, stateless).** Every request carries its version and
+  client capabilities in `_meta`; there is no handshake. `server/discover`
+  advertises the supported version, capabilities and server identity, and every
+  result carries `resultType: "complete"` plus the server identity in `_meta`.
+  Tool lists are cacheable (`ttlMs` and `cacheScope`).
+- **2025-11-25 and earlier (legacy).** The `initialize` /
+  `notifications/initialized` handshake still works, and the old responses are
+  left exactly as they were.
+
+A modern client starts with:
+
+```json
+{"jsonrpc":"2.0","id":1,"method":"server/discover","params":{"_meta":{
+  "io.modelcontextprotocol/protocolVersion":"2026-07-28",
+  "io.modelcontextprotocol/clientInfo":{"name":"example","version":"1"},
+  "io.modelcontextprotocol/clientCapabilities":{}
+}}}
+```
+
+A client that does not send `_meta` is treated as legacy and may continue to
+call `initialize`. Unknown modern versions get the standard
+`UnsupportedProtocolVersionError` (`-32022`) with the supported list.
+
 ## Connect it
 
 **opencode** (`opencode.json` at the project root, or `~/.config/opencode/`):
@@ -61,6 +88,18 @@ cache, history, bookmarks) follows:
 XDG_CONFIG_HOME=/tmp/agent/config XDG_CACHE_HOME=/tmp/agent/cache \
 XDG_STATE_HOME=/tmp/agent/state wr --mcp
 ```
+
+For a client that should not change anything, start the server read-only:
+
+```sh
+WR_MCP_READONLY=1 wr --mcp
+```
+
+That hides the tools that write history, bookmarks, cache or config, rejects
+direct calls to them, stops sessions from recording history and bookmarks, and
+keeps page data out of the cache. Reads keep working; `wr_cache_stats`,
+`wr_config_get`, `wr_history` and `wr_bookmarks` still show what is there. The
+server also honors the normal `cache` and `history` settings in `config.toml`.
 
 > Script-drawn pages are rendered through an installed headless Chromium/Chrome
 > (a few seconds) in MCP sessions too, as long as `render_js` is on in your
@@ -143,8 +182,8 @@ The harness is also how a QA agent works the page corpus in `scripts/qa/`:
    ```
 
 2. **`scripts/qa/mcp_smoke.py`**: a client-side smoke of the protocol itself
-   (handshake, tools/list, read, links, a whole session) against any `wr`
-   binary, with no Go toolchain:
+   (modern discover, legacy handshake, tools/list, read, links, a whole session)
+   against any `wr` binary, with no Go toolchain:
 
    ```sh
    WR=$PWD/wr python3 scripts/qa/mcp_smoke.py
@@ -161,7 +200,8 @@ The harness is also how a QA agent works the page corpus in `scripts/qa/`:
 - Sessions live in process memory: closing the server closes them; ids restart
   on the next run.
 - `wr_read`/`wr_render`/`wr_links` always fetch fresh (the pipe-mode contract:
-  no cache reads); they do write the cache for next time when it is enabled.
+  no cache reads); they do write the cache for next time when it is enabled and
+  the server is not read-only.
 - One client at a time per process: the stdio server is single-threaded per
   request, sessions run their loads concurrently.
 - The screen is the model rendered headless: identical to the terminal at the

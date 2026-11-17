@@ -100,7 +100,7 @@ allocations, and a cached page open stays 2 ms. Those were never the problem.
 
 The optimization pass of 2026-10-11 attacked the three hot paths the profiles
 had found, in order of cost. Every change keeps the output byte-identical: the
-unit tests, `wr --eval` (107 checks) and the MCP smoke verify it.
+unit tests, `wr --eval` (108 checks) and the MCP smoke verify it.
 
 **1. Extraction — the cleanup, not the parse (medium: -37%).** The HTML parse
 alone was 6% of a large conversion; the rest was the Markdown writer plus our
