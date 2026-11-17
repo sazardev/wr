@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.1](https://github.com/sazardev/wr/compare/v0.13.0...v0.13.1) (2026-11-17)
+
+
+### Bug Fixes
+
+* **web:** add MP4 fallback and aspect hints to media ([#52](https://github.com/sazardev/wr/issues/52)) ([61ce0f8](https://github.com/sazardev/wr/commit/61ce0f8c25bf61b4012770a4800b2948e27501cf))
+
 ## [0.13.0](https://github.com/sazardev/wr/compare/v0.12.0...v0.13.0) (2026-11-17)
 
 
