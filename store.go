@@ -103,6 +103,9 @@ func readHistory() []Visit {
 }
 
 func writeHistory(vs []Visit) error {
+	if mcpReadOnly {
+		return errReadOnly
+	}
 	path, err := statePath("history.jsonl")
 	if err != nil {
 		return err
@@ -122,6 +125,9 @@ func writeHistory(vs []Visit) error {
 // historyAdd records a visit. Visiting the same page again right away only
 // refreshes its title; the file is trimmed to `limit` entries when it grows.
 func historyAdd(url, title string, limit int) error {
+	if mcpReadOnly {
+		return nil // keep the session out of the user's history
+	}
 	vs := readHistory()
 	if n := len(vs); n > 0 && vs[n-1].URL == url {
 		if title != "" && vs[n-1].Title != title {
@@ -178,6 +184,9 @@ func historyDelete(url string) error {
 }
 
 func historyClear() error {
+	if mcpReadOnly {
+		return errReadOnly
+	}
 	path, err := statePath("history.jsonl")
 	if err != nil {
 		return err
@@ -213,6 +222,9 @@ func readBookmarks() []Visit {
 }
 
 func writeBookmarks(vs []Visit) error {
+	if mcpReadOnly {
+		return errReadOnly
+	}
 	path, err := statePath("bookmarks.json")
 	if err != nil {
 		return err

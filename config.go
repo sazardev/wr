@@ -156,6 +156,9 @@ func loadConfig() (Config, error) {
 
 // saveConfig writes the whole configuration (with comments) atomically.
 func saveConfig(c Config) error {
+	if mcpReadOnly {
+		return errReadOnly
+	}
 	path, err := configPath()
 	if err != nil {
 		return err

@@ -69,6 +69,9 @@ func cacheGet(src string) (md string, saved time.Time, ok bool) {
 // cachePut writes atomically (temp file + rename), so an interrupted refresh
 // never leaves a half-written entry.
 func cachePut(src, md string) error {
+	if mcpReadOnly {
+		return nil // a read-only agent must not write page data to disk
+	}
 	dir, err := cacheDir()
 	if err != nil {
 		return err
@@ -105,6 +108,9 @@ func pruneCache(dir string) {
 }
 
 func cacheClear() error {
+	if mcpReadOnly {
+		return errReadOnly
+	}
 	dir, err := cacheDir()
 	if err != nil {
 		return err
@@ -114,6 +120,9 @@ func cacheClear() error {
 
 // cacheDelete removes the entry for one URL.
 func cacheDelete(src string) error {
+	if mcpReadOnly {
+		return errReadOnly
+	}
 	dir, err := cacheDir()
 	if err != nil {
 		return err

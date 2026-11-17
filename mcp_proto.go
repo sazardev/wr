@@ -11,12 +11,27 @@ import "encoding/json"
 // debug log goes to stderr and only when WR_MCP_DEBUG is set.
 
 const (
-	mcpProtocolVersion = "2025-06-18"
+	// The current revision has no initialize handshake: every request carries
+	// its version and client capabilities in _meta. The server also speaks the
+	// older initialize-based revisions, so existing clients keep working.
+	mcpProtocolVersion = "2026-07-28"
+	mcpLegacyVersion   = "2025-11-25"
 	mcpServerName      = "wr"
+)
 
-	// supported protocol versions, newest first: the client's is echoed back
-	// when known, so old clients keep working.
-	mcpCompatVersions = "2024-11-05, 2025-03-26, 2025-06-18"
+// supported protocol versions, newest first: modern clients negotiate through
+// server/discover, legacy clients through initialize.
+var (
+	mcpModernVersions = []string{mcpProtocolVersion}
+	mcpLegacyVersions = []string{mcpLegacyVersion, "2025-06-18", "2025-03-26", "2024-11-05"}
+)
+
+// Per-request protocol metadata introduced by the 2026-07-28 revision.
+const (
+	metaProtocolVersion    = "io.modelcontextprotocol/protocolVersion"
+	metaClientInfo         = "io.modelcontextprotocol/clientInfo"
+	metaClientCapabilities = "io.modelcontextprotocol/clientCapabilities"
+	metaServerInfo         = "io.modelcontextprotocol/serverInfo"
 )
 
 // JSON-RPC 2.0 envelope.
@@ -47,6 +62,9 @@ const (
 	rpcMethodNotFound = -32601
 	rpcInvalidParams  = -32602
 	rpcInternalError  = -32603
+
+	// 2026-07-28 reserves -32020..-32099 for the specification.
+	rpcUnsupportedProtocolVersion = -32022
 )
 
 // MCP initialize.
@@ -69,6 +87,25 @@ type initializeResult struct {
 	Instructions    string         `json:"instructions,omitempty"`
 }
 
+// requestMeta is the per-request metadata of the stateless protocol. A modern
+// request must carry the version and the client capabilities; the identity is
+// optional.
+type requestMeta struct {
+	ProtocolVersion    string          `json:"io.modelcontextprotocol/protocolVersion"`
+	ClientInfo         *mcpClientInfo  `json:"io.modelcontextprotocol/clientInfo,omitempty"`
+	ClientCapabilities json.RawMessage `json:"io.modelcontextprotocol/clientCapabilities"`
+}
+
+// discoverResult tells a modern client which versions, capabilities and
+// identity this server has, before it sends anything else.
+type discoverResult struct {
+	SupportedVersions []string       `json:"supportedVersions"`
+	Capabilities      map[string]any `json:"capabilities"`
+	Instructions      string         `json:"instructions,omitempty"`
+	TTLMs             int            `json:"ttlMs"`
+	CacheScope        string         `json:"cacheScope"`
+}
+
 // MCP tools.
 
 type toolDef struct {
@@ -78,7 +115,9 @@ type toolDef struct {
 }
 
 type toolsListResult struct {
-	Tools []toolDef `json:"tools"`
+	Tools      []toolDef `json:"tools"`
+	TTLMs      int       `json:"ttlMs,omitempty"`
+	CacheScope string    `json:"cacheScope,omitempty"`
 }
 
 type toolCallParams struct {

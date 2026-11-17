@@ -93,6 +93,27 @@ def main():
     rep = Report()
     c = Client()
     try:
+        # Modern, stateless 2026-07-28: discover first, no initialize.
+        meta = {
+            "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+            "io.modelcontextprotocol/clientInfo": {"name": "mcp_smoke", "version": "0"},
+            "io.modelcontextprotocol/clientCapabilities": {},
+        }
+        disc = c.call("server/discover", {"_meta": meta})
+        rep.check("modern discover type", disc.get("resultType") == "complete", disc)
+        rep.check("modern versions", "2026-07-28" in disc.get("supportedVersions", []), disc)
+        rep.check("modern serverInfo", disc.get("_meta", {}).get(
+            "io.modelcontextprotocol/serverInfo", {}).get("name") == "wr", disc)
+        rep.check("modern cache hints", disc.get("ttlMs", 0) > 0 and disc.get("cacheScope") == "public", disc)
+        modern_list = c.call("tools/list", {"_meta": meta})
+        rep.check("modern tools type", modern_list.get("resultType") == "complete", modern_list)
+        rep.check("modern tools cacheable", modern_list.get("ttlMs", 0) > 0, modern_list)
+        modern_call = c.call("tools/call", {"name": "wr_resolve_input",
+                                            "arguments": {"input": "example.com"}, "_meta": meta})
+        rep.check("modern tool call", modern_call.get("resultType") == "complete" and
+                  modern_call.get("structuredContent", {}).get("url") == "https://example.com", modern_call)
+
+        # Legacy handshake in the same process.
         init = c.call("initialize", {"protocolVersion": "2025-06-18",
                                      "clientInfo": {"name": "mcp_smoke", "version": "0"}})
         c.notify("notifications/initialized")

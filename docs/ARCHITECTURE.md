@@ -139,7 +139,7 @@ and benchmarks redirect all three with environment variables and nothing else
 | QA corpora (`scripts/qa/`) | 460+ real URLs in 10 categories, chroma lexers, synthetic cases, PTY copy — output in `qa-out/` | `CORPUS=corpus python3 scripts/qa/harness.py` etc. |
 | QA scenario tests (`qa_scenarios_test.go`) | every finding in `docs/QA-FINDINGS.md` has a test; a meta-test keeps the three in sync | `go test -race ./...` (`WR_QA_STRICT=1` asserts open findings) |
 | `--eval` | 9 deterministic offline scenarios (input, extraction, render, links, session navigation, search, store, cache, config) as JSON, exit 1 on failure | `go run . --eval` |
-| MCP smoke (`scripts/qa/mcp_smoke.py`) | the agent protocol end to end against any binary: handshake, tools/list, reading tools, a full session, config | `WR=./wr python3 scripts/qa/mcp_smoke.py` |
+| MCP smoke (`scripts/qa/mcp_smoke.py`) | the agent protocol end to end against any binary: modern `server/discover`, legacy handshake, tools/list, reading tools, a full session, config | `WR=./wr python3 scripts/qa/mcp_smoke.py` |
 | Benchmarks (`bench_test.go`) | extraction, render, load path (cache vs no cache), interaction, store, search — local, deterministic, with allocations | `go test -run '^$' -bench . -benchmem` |
 
 Two properties hold across the automated ones: **no network** (loopback
