@@ -141,7 +141,8 @@ const menu: MenuGroup[] = [
     items: [
       { label: 'Open address or search', key: 'o', action: 'omni', desc: 'Type a page, a section or words; the index suggests the rest.' },
       { label: 'Keyboard shortcuts', key: '?', action: 'help', desc: 'Every key the web edition understands.' },
-      { label: 'Settings', key: ',', action: 'settings', desc: 'Accent, width, spacing, rules, frames and braille.' },
+      { label: 'Settings', key: ',', action: 'settings', desc: 'Accent, width, spacing, rules, frames, braille and media.' },
+      { label: 'Clear media cache', action: 'clear-media-cache', desc: 'Forget the images and video posters cached by this browser.' },
       { label: 'Back', key: 'H', action: 'back', desc: 'Return to the previous page at the same spot.' },
       { label: 'Forward', key: 'L', action: 'forward', desc: 'Go forward in the history.' },
       { label: 'Reload', key: 'r', action: 'reload', desc: 'Fetch this page again.' },
@@ -153,7 +154,7 @@ const rule = '⣀'.repeat(420);
 ---
 
 <!doctype html>
-<html lang="en" data-accent="blue" data-width="normal" data-spacing="1" data-heading-rules="on" data-code-frames="on" data-braille="on" data-center="on">
+<html lang="en" data-accent="blue" data-width="normal" data-spacing="1" data-heading-rules="on" data-code-frames="on" data-braille="on" data-center="on" data-images="off" data-videos="off" data-media-fit="contain" data-media-width="full" data-video-autoplay="off" data-video-loop="off" data-video-muted="on" data-video-controls="on">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -198,6 +199,14 @@ const rule = '⣀'.repeat(420);
       if (typeof s.codeFrames === 'boolean') root.dataset.codeFrames = s.codeFrames ? 'on' : 'off';
       if (typeof s.braille === 'boolean') root.dataset.braille = s.braille ? 'on' : 'off';
       if (typeof s.center === 'boolean') root.dataset.center = s.center ? 'on' : 'off';
+      if (typeof s.images === 'boolean') root.dataset.images = s.images ? 'on' : 'off';
+      if (typeof s.videos === 'boolean') root.dataset.videos = s.videos ? 'on' : 'off';
+      if (s.imageFit) root.dataset.mediaFit = s.imageFit;
+      if (s.imageWidth) root.dataset.mediaWidth = s.imageWidth;
+      if (typeof s.videoAutoplay === 'boolean') root.dataset.videoAutoplay = s.videoAutoplay ? 'on' : 'off';
+      if (typeof s.videoLoop === 'boolean') root.dataset.videoLoop = s.videoLoop ? 'on' : 'off';
+      if (typeof s.videoMuted === 'boolean') root.dataset.videoMuted = s.videoMuted ? 'on' : 'off';
+      if (typeof s.videoControls === 'boolean') root.dataset.videoControls = s.videoControls ? 'on' : 'off';
     } catch (e) {}
   })();
 `} />

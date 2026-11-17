@@ -21,6 +21,14 @@ interface Settings {
   codeFrames: boolean;
   braille: boolean;
   center: boolean;
+  images: boolean;
+  videos: boolean;
+  imageFit: 'contain' | 'cover';
+  imageWidth: 'full' | 'wide' | 'half';
+  videoAutoplay: boolean;
+  videoLoop: boolean;
+  videoMuted: boolean;
+  videoControls: boolean;
 }
 
 const STORAGE = 'wr-web-settings';
@@ -36,6 +44,14 @@ const DEFAULTS: Settings = {
   codeFrames: true,
   braille: true,
   center: true,
+  images: false,
+  videos: false,
+  imageFit: 'contain',
+  imageWidth: 'full',
+  videoAutoplay: false,
+  videoLoop: false,
+  videoMuted: true,
+  videoControls: true,
 };
 const HINT_ALPHABET = 'asdfghjkl';
 const INSTALL = 'curl -fsSL https://raw.githubusercontent.com/sazardev/wr/main/install.sh | sh';
@@ -144,12 +160,317 @@ function applySettings(): void {
   root.dataset.codeFrames = s.codeFrames ? 'on' : 'off';
   root.dataset.braille = s.braille ? 'on' : 'off';
   root.dataset.center = s.center ? 'on' : 'off';
+  root.dataset.images = s.images ? 'on' : 'off';
+  root.dataset.videos = s.videos ? 'on' : 'off';
+  root.dataset.mediaFit = s.imageFit;
+  root.dataset.mediaWidth = s.imageWidth;
+  root.dataset.videoAutoplay = s.videoAutoplay ? 'on' : 'off';
+  root.dataset.videoLoop = s.videoLoop ? 'on' : 'off';
+  root.dataset.videoMuted = s.videoMuted ? 'on' : 'off';
+  root.dataset.videoControls = s.videoControls ? 'on' : 'off';
   try {
     localStorage.setItem(STORAGE, JSON.stringify(s));
   } catch {
     /* private mode: the settings still apply for this page */
   }
   updateChrome();
+  scheduleMediaRefresh();
+}
+
+
+// ---------------------------------------------------------------- media
+
+const MEDIA_CACHE = 'wr-media-v1';
+const MEDIA_MANIFEST = 'wr-web-media-cache';
+const MEDIA_MAX_IMAGE = 8 << 20;
+
+let mediaObserver: IntersectionObserver | null = null;
+let mediaRefreshTimer = 0;
+const mediaObjectUrls = new Map<HTMLElement, string[]>();
+
+function humanBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function mediaCacheManifest(): Record<string, number> {
+  try {
+    return JSON.parse(localStorage.getItem(MEDIA_MANIFEST) || '{}') as Record<string, number>;
+  } catch {
+    return {};
+  }
+}
+
+function mediaCacheSummary(): { count: number; bytes: number } {
+  const values = Object.values(mediaCacheManifest());
+  return { count: values.length, bytes: values.reduce((sum, n) => sum + (Number(n) || 0), 0) };
+}
+
+function recordMedia(url: string, size: number): void {
+  const manifest = mediaCacheManifest();
+  manifest[url] = size;
+  try {
+    localStorage.setItem(MEDIA_MANIFEST, JSON.stringify(manifest));
+  } catch {
+    /* private mode */
+  }
+  updateMediaCacheRow();
+}
+
+function updateMediaCacheRow(): void {
+  const node = el<HTMLElement>('[data-media-cache-value]');
+  if (!node) return;
+  const { count, bytes } = mediaCacheSummary();
+  node.textContent = count ? `${count} images · ${humanBytes(bytes)}` : 'empty';
+}
+
+function scheduleMediaRefresh(): void {
+  if (mediaRefreshTimer) return;
+  mediaRefreshTimer = window.setTimeout(() => {
+    mediaRefreshTimer = 0;
+    refreshMedia();
+  }, 40);
+}
+
+function mediaKind(node: HTMLElement): 'image' | 'video' | '' {
+  const kind = node.dataset.media;
+  return kind === 'image' || kind === 'video' ? kind : '';
+}
+
+function mediaAllowed(node: HTMLElement): boolean {
+  const kind = mediaKind(node);
+  return kind === 'image' ? state.settings.images : kind === 'video' ? state.settings.videos : false;
+}
+
+function disposeMedia(node: HTMLElement): void {
+  const video = node.querySelector('video');
+  if (video) {
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+  }
+  for (const url of mediaObjectUrls.get(node) ?? []) URL.revokeObjectURL(url);
+  mediaObjectUrls.delete(node);
+  node.querySelector('.wr-media-frame')?.remove();
+  const off = node.querySelector<HTMLElement>('.wr-media-off');
+  if (off) off.hidden = false;
+  node.dataset.state = 'off';
+}
+
+function refreshMedia(): void {
+  mediaObserver?.disconnect();
+  mediaObserver = null;
+  const body = bodyEl();
+  const nodes = els<HTMLElement>('.wr-media');
+  if (!nodes.length) return;
+  for (const node of nodes) {
+    if (!mediaAllowed(node)) {
+      if (node.dataset.state !== 'off') disposeMedia(node);
+      continue;
+    }
+    if (node.dataset.state === 'loaded' || node.dataset.state === 'loading') continue;
+    if (!('IntersectionObserver' in window)) {
+      void hydrateMedia(node);
+      continue;
+    }
+    if (!mediaObserver) {
+      mediaObserver = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting) continue;
+            mediaObserver?.unobserve(entry.target);
+            void hydrateMedia(entry.target as HTMLElement);
+          }
+        },
+        { root: body, rootMargin: '520px 0px' },
+      );
+    }
+    mediaObserver.observe(node);
+  }
+  updateVideoSettings();
+}
+
+function span(className: string, value = ''): HTMLSpanElement {
+  const node = document.createElement('span');
+  node.className = className;
+  if (value) node.textContent = value;
+  return node;
+}
+
+async function getCachedImage(src: string): Promise<string | null> {
+  if (!('caches' in window) || !src) return null;
+  try {
+    const url = new URL(src, window.location.href).href;
+    const cache = await caches.open(MEDIA_CACHE);
+    const response = await cache.match(url);
+    if (!response) return null;
+    const blob = await response.blob();
+    return URL.createObjectURL(blob);
+  } catch {
+    return null;
+  }
+}
+
+async function cacheImage(src: string): Promise<void> {
+  if (!('caches' in window) || !src) return;
+  try {
+    const url = new URL(src, window.location.href).href;
+    const cache = await caches.open(MEDIA_CACHE);
+    if (await cache.match(url)) return;
+    const response = await fetch(url, { credentials: 'same-origin' });
+    if (!response.ok) return;
+    const type = response.headers.get('content-type') || '';
+    if (!type.startsWith('image/') && !/\.(svg|png|jpe?g|gif|webp|avif)(\?|$)/i.test(url)) return;
+    const blob = await response.clone().blob();
+    if (blob.size > MEDIA_MAX_IMAGE) return;
+    await cache.put(url, response);
+    recordMedia(url, blob.size);
+  } catch {
+    /* cross-origin, private mode or no Cache API: the direct URL still works */
+  }
+}
+
+async function hydrateMedia(node: HTMLElement): Promise<void> {
+  const kind = mediaKind(node);
+  if (!kind) return;
+  if (kind === 'image' && !state.settings.images) return;
+  if (kind === 'video' && !state.settings.videos) return;
+  if (node.dataset.state === 'loading' || node.dataset.state === 'loaded') return;
+  node.dataset.state = 'loading';
+  const src = node.dataset.src || '';
+  if (!src) {
+    node.dataset.state = 'off';
+    return;
+  }
+  const off = node.querySelector<HTMLElement>('.wr-media-off');
+  if (off) off.hidden = true;
+
+  const frame = span('wr-media-frame');
+  const head = span('wr-media-head');
+  const body = span('wr-media-body');
+  const foot = span('wr-media-foot', '╰─');
+  const urls: string[] = [];
+  mediaObjectUrls.set(node, urls);
+
+  const open = document.createElement('a');
+  open.href = src;
+  open.target = '_blank';
+  open.rel = 'noopener noreferrer';
+  open.textContent = 'open ↗';
+
+  if (kind === 'image') {
+    const alt = node.dataset.alt || 'image';
+    head.textContent = `╭─ image · ${alt}`;
+    const img = document.createElement('img');
+    img.alt = alt;
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    img.fetchPriority = 'low';
+    if (node.dataset.width) img.width = Number(node.dataset.width);
+    if (node.dataset.height) img.height = Number(node.dataset.height);
+    const cached = await getCachedImage(src);
+    if (!mediaAllowed(node) || node.dataset.state !== 'loading') return;
+    if (cached) {
+      img.src = cached;
+      urls.push(cached);
+    } else {
+      await cacheImage(src);
+      if (!mediaAllowed(node) || node.dataset.state !== 'loading') return;
+      const stored = await getCachedImage(src);
+      if (stored) {
+        img.src = stored;
+        urls.push(stored);
+      } else {
+        img.src = src;
+      }
+    }
+    img.addEventListener('load', () => {
+      foot.textContent = `╰─ ${img.naturalWidth}×${img.naturalHeight} · `;
+      foot.append(open);
+    });
+    img.addEventListener('error', () => {
+      head.textContent = '╭─ image · unavailable';
+      img.replaceWith(span('wr-media-error', 'the image could not be loaded'));
+      foot.textContent = '╰─ ';
+      foot.append(open);
+    });
+    body.append(img);
+    if (!img.width) body.classList.add('wr-media-skeleton');
+    img.addEventListener('load', () => body.classList.remove('wr-media-skeleton'));
+    img.addEventListener('error', () => body.classList.remove('wr-media-skeleton'));
+  } else {
+    const label = node.dataset.label || 'video';
+    head.textContent = `╭─ video · ${label}`;
+    const video = document.createElement('video');
+    if (node.dataset.width) video.width = Number(node.dataset.width);
+    if (node.dataset.height) video.height = Number(node.dataset.height);
+    video.src = src;
+    video.controls = state.settings.videoControls;
+    video.loop = state.settings.videoLoop;
+    video.muted = state.settings.videoMuted || state.settings.videoAutoplay;
+    video.autoplay = state.settings.videoAutoplay;
+    video.playsInline = true;
+    video.preload = 'metadata';
+    const poster = node.dataset.poster || '';
+    if (poster) {
+      video.poster = poster;
+      const cachedPoster = await getCachedImage(poster);
+      if (cachedPoster) {
+        video.poster = cachedPoster;
+        urls.push(cachedPoster);
+      } else {
+        void cacheImage(poster);
+      }
+    }
+    video.addEventListener('loadedmetadata', () => {
+      const mins = Math.floor(video.duration / 60);
+      const secs = Math.round(video.duration % 60);
+      foot.textContent = `╰─ ${mins}:${String(secs).padStart(2, '0')} · stream · `;
+      foot.append(open);
+    });
+    video.addEventListener('error', () => {
+      head.textContent = '╭─ video · unavailable';
+      video.replaceWith(span('wr-media-error', 'the video could not be loaded'));
+      foot.textContent = '╰─ ';
+      foot.append(open);
+    });
+    body.append(video);
+  }
+
+  if (!mediaAllowed(node) || node.dataset.state !== 'loading') return;
+  frame.append(head, body, foot);
+  node.append(frame);
+  node.dataset.state = 'loaded';
+}
+
+function updateVideoSettings(): void {
+  const videos = els<HTMLVideoElement>('.wr-media video');
+  for (const video of videos) {
+    video.controls = state.settings.videoControls;
+    video.loop = state.settings.videoLoop;
+    video.muted = state.settings.videoMuted || state.settings.videoAutoplay;
+    if (state.settings.videoAutoplay) void video.play().catch(() => undefined);
+  }
+}
+
+async function clearMediaCache(): Promise<void> {
+  try {
+    if ('caches' in window) {
+      const cache = await caches.open(MEDIA_CACHE);
+      const keys = await cache.keys();
+      await Promise.all(keys.map((key) => cache.delete(key)));
+    }
+  } catch {
+    /* no Cache API */
+  }
+  try {
+    localStorage.removeItem(MEDIA_MANIFEST);
+  } catch {
+    /* private mode */
+  }
+  updateMediaCacheRow();
+  toast('✓ media cache cleared');
 }
 
 // ---------------------------------------------------------------- footer
@@ -515,6 +836,10 @@ function runAction(action: string, row?: HTMLElement): void {
       closePanel();
       copyCodeBlock();
       break;
+    case 'clear-media-cache':
+      closePanel();
+      void clearMediaCache();
+      break;
     case 'reload':
       closePanel();
       window.location.reload();
@@ -584,13 +909,29 @@ function buildSettings(): void {
     settingRow('Code frames', s.codeFrames ? 'on' : 'off', 'The labelled frame around code blocks.', 'codeFrames'),
     settingRow('Braille', s.braille ? 'on' : 'off', 'Braille headings, scrollbar and progress bar.', 'braille'),
     settingRow('Center text', s.center ? 'on' : 'off', 'Center the reading column in a wide window.', 'center'),
+    settingRow('Images', s.images ? 'on' : 'off', 'Show page images in a lazy, cached frame. Off by default.', 'images'),
+    settingRow('Videos', s.videos ? 'on' : 'off', 'Show page videos with native controls. Off by default.', 'videos'),
+    settingRow('Image fit', s.imageFit, 'Contain keeps the whole image; cover fills the frame and crops.', 'imageFit'),
+    settingRow('Image width', s.imageWidth, 'How much of the reading column an image may take.', 'imageWidth'),
+    settingRow('Video autoplay', s.videoAutoplay ? 'on' : 'off', 'Play videos when they enter the viewport; always muted.', 'videoAutoplay'),
+    settingRow('Video loop', s.videoLoop ? 'on' : 'off', 'Restart a video when it ends.', 'videoLoop'),
+    settingRow('Video muted', s.videoMuted ? 'on' : 'off', 'Start videos without sound.', 'videoMuted'),
+    settingRow('Video controls', s.videoControls ? 'on' : 'off', 'Show the browser’s play, seek and volume controls.', 'videoControls'),
+    mediaCacheRow(),
     `<button type="button" class="wr-settings-row" data-setting="reset" data-desc="Put every option back to its default."><span class="s-label">Reset to defaults</span><span class="s-value">enter</span></button>`,
   );
   container.innerHTML = rows.join('');
+  updateMediaCacheRow();
 }
 
 function settingRow(label: string, value: string, desc: string, key: string): string {
   return `<button type="button" class="wr-settings-row" data-setting="${key}" data-desc="${escapeHtml(desc)}"><span class="s-label">${escapeHtml(label)}</span><span class="s-value">${escapeHtml(value)}</span></button>`;
+}
+
+function mediaCacheRow(): string {
+  const { count, bytes } = mediaCacheSummary();
+  const value = count ? `${count} images · ${humanBytes(bytes)}` : 'empty';
+  return `<button type="button" class="wr-settings-row" data-setting="mediaCache" data-desc="Images and video posters stored by this browser. Enter clears them."><span class="s-label">Media cache</span><span class="s-value" data-media-cache-value>${value}</span></button>`;
 }
 
 function cycleSetting(key: string): void {
@@ -631,6 +972,35 @@ function cycleSetting(key: string): void {
     case 'center':
       s.center = !s.center;
       break;
+    case 'images':
+      s.images = !s.images;
+      break;
+    case 'videos':
+      s.videos = !s.videos;
+      break;
+    case 'imageFit':
+      s.imageFit = s.imageFit === 'contain' ? 'cover' : 'contain';
+      break;
+    case 'imageWidth': {
+      const values: Settings['imageWidth'][] = ['full', 'wide', 'half'];
+      s.imageWidth = values[(values.indexOf(s.imageWidth) + 1) % values.length]!;
+      break;
+    }
+    case 'videoAutoplay':
+      s.videoAutoplay = !s.videoAutoplay;
+      break;
+    case 'videoLoop':
+      s.videoLoop = !s.videoLoop;
+      break;
+    case 'videoMuted':
+      s.videoMuted = !s.videoMuted;
+      break;
+    case 'videoControls':
+      s.videoControls = !s.videoControls;
+      break;
+    case 'mediaCache':
+      void clearMediaCache();
+      return;
     default:
       return;
   }
@@ -990,7 +1360,7 @@ function startSearchPage(): void {
 
 function isTyping(target: EventTarget | null): boolean {
   const node = target as HTMLElement | null;
-  return Boolean(node?.closest('input, textarea, select, [contenteditable="true"]'));
+  return Boolean(node?.closest('input, textarea, select, video, audio, [contenteditable="true"]'));
 }
 
 function onKeyDown(event: KeyboardEvent): void {
@@ -1370,6 +1740,10 @@ function bindOnce(): void {
       event.preventDefault();
       event.stopPropagation();
       if (state.mode === 'menu' || state.mode === 'toc') chooseSelection(state.mode);
+      else if (state.mode === 'settings') {
+        const row = panelRows('settings')[state.settingsIndex];
+        if (row?.dataset.setting) cycleSetting(row.dataset.setting);
+      }
     }
   });
 
