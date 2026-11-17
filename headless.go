@@ -47,6 +47,12 @@ var browserCandidates = []string{
 func findBrowser() string {
 	browserOnce.Do(func() {
 		if p := os.Getenv("WR_BROWSER"); p != "" {
+			// A plain path may contain spaces; try it as one executable first,
+			// then as a command line with arguments ("flatpak run org.chromium.Chromium").
+			if full, err := exec.LookPath(p); err == nil {
+				browserPath = full
+				return
+			}
 			fields := strings.Fields(p)
 			if len(fields) > 0 {
 				if full, err := exec.LookPath(fields[0]); err == nil {
