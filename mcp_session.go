@@ -54,6 +54,10 @@ func (s *mcpServer) openSession(target string, w, h int, fresh bool) (*agentSess
 func newAgentSession(target string, w, h int, fresh bool) (*agentSession, error) {
 	cfg, _ := loadConfig()
 	cfg.Animations = false
+	if mcpReadOnly {
+		cfg.History = false
+		cfg.Cache = false
+	}
 	src, _ := normalizeInput(target, cfg.SearchEngine)
 	if src == "" {
 		return nil, argError("target is required")

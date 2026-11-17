@@ -186,12 +186,125 @@ func TestMCPHandshake(t *testing.T) {
 }
 
 func TestMCPOldProtocolVersion(t *testing.T) {
-	resp := mcpTalk(t, `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05"}}`)
-	var init initializeResult
-	raw, _ := json.Marshal(resp[0].Result)
-	json.Unmarshal(raw, &init)
-	if init.ProtocolVersion != "2024-11-05" {
-		t.Errorf("client version not echoed: %q", init.ProtocolVersion)
+	for _, version := range []string{"2025-11-25", "2024-11-05"} {
+		resp := mcpTalk(t, `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"`+version+`"}}`)
+		var init initializeResult
+		raw, _ := json.Marshal(resp[0].Result)
+		json.Unmarshal(raw, &init)
+		if init.ProtocolVersion != version {
+			t.Errorf("client version not echoed: %q, want %q", init.ProtocolVersion, version)
+		}
+	}
+}
+
+// modernParams builds the per-request _meta of the stateless revision.
+func modernParams(extra string) string {
+	if extra != "" {
+		extra = "," + extra
+	}
+	return `"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28",` +
+		`"io.modelcontextprotocol/clientInfo":{"name":"test","version":"1"},` +
+		`"io.modelcontextprotocol/clientCapabilities":{}` + extra + `}`
+}
+
+func resultMap(t *testing.T, resp rpcResponse) map[string]any {
+	t.Helper()
+	if resp.Error != nil {
+		t.Fatalf("rpc error: %+v", resp.Error)
+	}
+	m, ok := resp.Result.(map[string]any)
+	if !ok {
+		t.Fatalf("result is %T, want an object", resp.Result)
+	}
+	return m
+}
+
+func TestMCPModernDiscover(t *testing.T) {
+	resp := mcpTalk(t, `{"jsonrpc":"2.0","id":1,"method":"server/discover","params":{`+modernParams("")+`}}`)
+	if len(resp) != 1 || resp[0].Error != nil {
+		t.Fatalf("discover: %+v", resp)
+	}
+	m := resultMap(t, resp[0])
+	if m["resultType"] != "complete" {
+		t.Errorf("resultType: %#v", m["resultType"])
+	}
+	versions, ok := m["supportedVersions"].([]any)
+	if !ok || len(versions) != 1 || versions[0] != "2026-07-28" {
+		t.Errorf("supportedVersions: %#v", m["supportedVersions"])
+	}
+	if caps, ok := m["capabilities"].(map[string]any); !ok || caps["tools"] == nil {
+		t.Errorf("capabilities: %#v", m["capabilities"])
+	}
+	meta, ok := m["_meta"].(map[string]any)
+	if !ok {
+		t.Fatalf("_meta: %#v", m["_meta"])
+	}
+	info, ok := meta["io.modelcontextprotocol/serverInfo"].(map[string]any)
+	if !ok || info["name"] != "wr" || info["version"] == "" {
+		t.Errorf("serverInfo: %#v", meta)
+	}
+	if m["ttlMs"].(float64) <= 0 || m["cacheScope"] != "public" {
+		t.Errorf("cache hints: ttl=%v scope=%v", m["ttlMs"], m["cacheScope"])
+	}
+}
+
+func TestMCPModernTools(t *testing.T) {
+	resp := mcpTalk(t,
+		`{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{`+modernParams("")+`}}`,
+		`{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"wr_resolve_input",`+
+			`"arguments":{"input":"example.com"},`+modernParams("")+`}}`,
+	)
+	list := resultMap(t, resp[0])
+	if list["resultType"] != "complete" || list["cacheScope"] != "public" {
+		t.Errorf("tools/list: %#v", list)
+	}
+	if _, ok := list["ttlMs"].(float64); !ok {
+		t.Errorf("tools/list has no ttlMs: %#v", list)
+	}
+	if tools, ok := list["tools"].([]any); !ok || len(tools) != len(toolNames) {
+		t.Errorf("tools: %#v", list["tools"])
+	}
+	call := resultMap(t, resp[1])
+	if call["resultType"] != "complete" {
+		t.Errorf("tools/call resultType: %#v", call["resultType"])
+	}
+	sc, ok := call["structuredContent"].(map[string]any)
+	if !ok || sc["url"] != "https://example.com" {
+		t.Errorf("tools/call: %#v", call)
+	}
+	if meta, ok := call["_meta"].(map[string]any); !ok || meta["io.modelcontextprotocol/serverInfo"] == nil {
+		t.Errorf("tools/call _meta: %#v", call["_meta"])
+	}
+}
+
+func TestMCPModernErrors(t *testing.T) {
+	badVersion := `{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{"_meta":{` +
+		`"io.modelcontextprotocol/protocolVersion":"1900-01-01",` +
+		`"io.modelcontextprotocol/clientCapabilities":{}}}}`
+	noCaps := `{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{"_meta":{` +
+		`"io.modelcontextprotocol/protocolVersion":"2026-07-28"}}}`
+	noMeta := `{"jsonrpc":"2.0","id":3,"method":"server/discover"}`
+	ping := `{"jsonrpc":"2.0","id":4,"method":"ping","params":{` + modernParams("") + `}}`
+	resp := mcpTalk(t, badVersion, noCaps, noMeta, ping)
+
+	if resp[0].Error == nil || resp[0].Error.Code != rpcUnsupportedProtocolVersion {
+		t.Fatalf("unsupported version: %+v", resp[0].Error)
+	}
+	data, ok := resp[0].Error.Data.(map[string]any)
+	if !ok || data["requested"] != "1900-01-01" {
+		t.Errorf("unsupported version data: %#v", resp[0].Error.Data)
+	}
+	if supported, ok := data["supported"].([]any); !ok || len(supported) != 1 || supported[0] != "2026-07-28" {
+		t.Errorf("supported versions: %#v", data["supported"])
+	}
+	if resp[1].Error == nil || resp[1].Error.Code != rpcInvalidParams {
+		t.Errorf("missing capabilities: %+v", resp[1].Error)
+	}
+	if resp[2].Error == nil || resp[2].Error.Code != rpcInvalidParams {
+		t.Errorf("discover without _meta: %+v", resp[2].Error)
+	}
+	if resp[3].Error == nil || resp[3].Error.Code != rpcMethodNotFound {
+		t.Errorf("modern ping: %+v", resp[3].Error)
 	}
 }
 
@@ -205,6 +318,57 @@ func TestMCPBadRequests(t *testing.T) {
 	tr := decodeTool(t, resp[0])
 	if !tr.IsError {
 		t.Error("calling an unknown tool must be a tool error")
+	}
+}
+
+func TestMCPReadOnly(t *testing.T) {
+	isolateAll(t)
+	old := mcpReadOnly
+	mcpReadOnly = true
+	oldCache := cacheOn
+	cacheOn = true
+	t.Cleanup(func() { mcpReadOnly = old; cacheOn = oldCache })
+
+	resp := mcpTalk(t,
+		`{"jsonrpc":"2.0","id":1,"method":"tools/list"}`,
+		call(t, "wr_config_set", map[string]any{"settings": map[string]any{"width": 90}}),
+		call(t, "wr_bookmark_toggle", map[string]any{"target": "https://a.test"}),
+	)
+	list := resultMap(t, resp[0])
+	listed, _ := list["tools"].([]any)
+	for _, raw := range listed {
+		tool, _ := raw.(map[string]any)
+		name, _ := tool["name"].(string)
+		if mcpWriteTools[name] {
+			t.Errorf("read-only mode listed a writing tool: %s", name)
+		}
+	}
+	if !decodeTool(t, resp[1]).IsError {
+		t.Error("wr_config_set must be refused in read-only mode")
+	}
+	if !decodeTool(t, resp[2]).IsError {
+		t.Error("wr_bookmark_toggle must be refused in read-only mode")
+	}
+
+	// The core helpers are guarded too, so a headless session cannot write
+	// through a key or a menu entry.
+	if err := cachePut("https://a.test", "body"); err != nil {
+		t.Errorf("cachePut: %v", err)
+	}
+	if _, _, ok := cacheGet("https://a.test"); ok {
+		t.Error("read-only mode must not write page data to the cache")
+	}
+	if err := historyAdd("https://a.test", "A", 100); err != nil {
+		t.Errorf("historyAdd: %v", err)
+	}
+	if n := len(readHistory()); n != 0 {
+		t.Errorf("read-only mode wrote %d history entries", n)
+	}
+	if _, err := bookmarkToggle("https://a.test", "A"); err != errReadOnly {
+		t.Errorf("bookmarkToggle: %v", err)
+	}
+	if err := saveConfig(defaultConfig()); err != errReadOnly {
+		t.Errorf("saveConfig: %v", err)
 	}
 }
 
