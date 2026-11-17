@@ -40,6 +40,8 @@ const (
 	actPrevLink  action = "prev_link"
 	actActivate  action = "activate"
 	actYank      action = "yank"
+	actCopyCode  action = "copy_code"
+	actCopyPage  action = "copy_page"
 	actMenu      action = "menu"
 	actSettings  action = "settings"
 	actUpdate    action = "update"
@@ -82,6 +84,8 @@ var actionList = []actionInfo{
 	{actNextMatch, "Reading", "Next match"},
 	{actPrevMatch, "Reading", "Previous match"},
 	{actYank, "Reading", "Copy the selection"},
+	{actCopyCode, "Reading", "Copy the code block on screen"},
+	{actCopyPage, "Reading", "Copy the page as Markdown"},
 	{actMenu, "Interface", "Menu"},
 	{actSettings, "Interface", "Settings"},
 	{actUpdate, "Interface", "Update wr / what's new"},
@@ -117,6 +121,8 @@ var defaultKeys = map[action][]string{
 	actPrevLink:  {"shift+tab"},
 	actActivate:  {"enter"},
 	actYank:      {"y"},
+	actCopyCode:  {"Y"},
+	actCopyPage:  {"ctrl+y"},
 	actMenu:      {"m", "?"},
 	actSettings:  {","},
 	actUpdate:    {"U"},

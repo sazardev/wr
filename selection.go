@@ -248,6 +248,111 @@ func (m *model) copyIfSet() tea.Cmd {
 	return m.copySelection()
 }
 
+// ---- code blocks ----
+
+func isCodeLine(k LineKind) bool {
+	return k == kindCodeTop || k == kindCodeBody || k == kindCodeBottom
+}
+
+// codeBlockAt returns the range of a whole code block when line touches one.
+// The reading position is the top line of the screen, so "copy the code here"
+// means the block you have in front of you.
+func (m *model) codeBlockAt(line int) (from, to int, ok bool) {
+	if m.doc == nil || line < 0 || line >= len(m.doc.Meta) || !isCodeLine(m.doc.Meta[line].Kind) {
+		return 0, 0, false
+	}
+	from, to = line, line
+	for from > 0 && isCodeLine(m.doc.Meta[from-1].Kind) {
+		from--
+	}
+	for to+1 < len(m.doc.Meta) && isCodeLine(m.doc.Meta[to+1].Kind) {
+		to++
+	}
+	return from, to, true
+}
+
+// visibleCodeBlock finds the block under the reading position, else the first
+// one visible on screen, else the closest one below. It is what Y copies.
+func (m *model) visibleCodeBlock() (from, to int, ok bool) {
+	if m.doc == nil {
+		return 0, 0, false
+	}
+	if m.mouseSel.active {
+		if f, t, ok := m.codeBlockAt(m.mouseSel.a.line); ok {
+			return f, t, true
+		}
+	}
+	if f, t, ok := m.codeBlockAt(m.y); ok {
+		return f, t, true
+	}
+	_, _, bodyH, _ := m.geometry()
+	start := max(m.viewY(), 0)
+	end := min(start+bodyH, len(m.doc.Meta))
+	for i := start; i < end; i++ {
+		if f, t, ok := m.codeBlockAt(i); ok {
+			return f, t, true
+		}
+	}
+	for i := max(end, 0); i < len(m.doc.Meta); i++ {
+		if f, t, ok := m.codeBlockAt(i); ok {
+			return f, t, true
+		}
+	}
+	return 0, 0, false
+}
+
+// codeText extracts a block the way it was written: no frame, no gutter, and
+// long source lines re-joined from their screen wraps.
+func (m *model) codeText(from, to int) (string, int) {
+	var out []string
+	for l := from; l <= to; l++ {
+		mt := m.doc.Meta[l]
+		if mt.Kind == kindCodeTop || mt.Kind == kindCodeBottom {
+			continue
+		}
+		r := []rune(m.doc.Plain[l])
+		cut := min(max(mt.Gutter+2, 0), len(r))
+		text := string(r[cut:])
+		if mt.Soft && len(out) > 0 {
+			out[len(out)-1] += text
+			continue
+		}
+		out = append(out, text)
+	}
+	for len(out) > 0 && strings.TrimSpace(out[len(out)-1]) == "" {
+		out = out[:len(out)-1]
+	}
+	return strings.Join(out, "\n"), len(out)
+}
+
+// copyCodeBlock copies the code block in front of you (Y). It is the keyboard
+// counterpart of dragging over a block: the frame and the gutter never go to
+// the clipboard.
+func (m *model) copyCodeBlock() tea.Cmd {
+	from, to, ok := m.visibleCodeBlock()
+	if !ok {
+		return m.setToast("no code block on this screen", true)
+	}
+	text, lines := m.codeText(from, to)
+	if text == "" {
+		return m.setToast("this code block is empty", true)
+	}
+	word := "lines"
+	if lines == 1 {
+		word = "line"
+	}
+	return tea.Batch(clipboardCopy(text), m.setToast(fmt.Sprintf("✓ copied code block · %d %s", lines, word), false))
+}
+
+// copyPageMarkdown copies the extracted Markdown, which is what you want when
+// the article is going into an editor, a note or a model.
+func (m *model) copyPageMarkdown() tea.Cmd {
+	if m.md == "" {
+		return m.setToast("there is no page to copy", true)
+	}
+	return tea.Batch(clipboardCopy(m.md), m.setToast(fmt.Sprintf("✓ copied page as Markdown · %s", humanSize(int64(len(m.md)))), false))
+}
+
 func abs(n int) int {
 	if n < 0 {
 		return -n
@@ -260,9 +365,20 @@ func abs(n int) int {
 // clipboardExternal is swapped out in tests.
 var clipboardExternal = copyExternal
 
-// copySelection copies the selection two ways: OSC 52 (works through SSH and in
-// most modern terminals) and a system clipboard tool (works where the terminal
+// clipboardCopy sends text to both paths: OSC 52 (works through SSH and in most
+// modern terminals) and a system clipboard tool (works where the terminal
 // ignores OSC 52).
+func clipboardCopy(text string) tea.Cmd {
+	if text == "" {
+		return nil
+	}
+	return tea.Batch(
+		tea.SetClipboard(text),
+		func() tea.Msg { _ = clipboardExternal(text); return nil },
+	)
+}
+
+// copySelection copies the mouse selection.
 func (m *model) copySelection() tea.Cmd {
 	text := m.selectedText()
 	if text == "" {
@@ -273,11 +389,7 @@ func (m *model) copySelection() tea.Cmd {
 	if n == 1 {
 		word = "character"
 	}
-	return tea.Batch(
-		tea.SetClipboard(text),
-		func() tea.Msg { _ = clipboardExternal(text); return nil },
-		m.setToast(fmt.Sprintf("✓ copied %d %s", n, word), false),
-	)
+	return tea.Batch(clipboardCopy(text), m.setToast(fmt.Sprintf("✓ copied %d %s", n, word), false))
 }
 
 type clipTool struct {

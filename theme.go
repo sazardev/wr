@@ -134,8 +134,12 @@ func setAccent(name string) {
 	if !terminalDark {
 		sh = a.light
 	}
+	heads := headColors(a, sh)
+	if accentFG != sh.fg || accentBG != sh.bg || accentDim != sh.dim || accentAlt != sh.alt || headColor != heads {
+		bumpPalette() // rendered documents in the memory cache carry the old colors
+	}
 	accentFG, accentBG, accentDim, accentAlt = sh.fg, sh.bg, sh.dim, sh.alt
-	headColor = headColors(a, sh)
+	headColor = heads
 }
 
 // headColors walks the accent, its partner and then the hues that are left,

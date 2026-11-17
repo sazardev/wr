@@ -44,7 +44,7 @@ func textWeight(n *nethtml.Node) int {
 // a small fragment of the page (a banner, a lone card) is not trusted either.
 // It reports whether the root is an <article>.
 func pickRoot(doc *goquery.Document) (*goquery.Selection, bool) {
-	container := doc.Find("main").First()
+	container := doc.Find("main, [role=main]").First()
 	if container.Length() == 0 {
 		container = doc.Find("body").First()
 	}
@@ -536,7 +536,7 @@ func dropLeadingCrumbs(text string) string {
 // until their script shows it.
 func dropHidden(root *goquery.Selection) {
 	total := textWeight(root.Nodes[0])
-	root.Find(`[hidden],[style*="display:none"],[style*="display: none"],[style*="visibility:hidden"],[style*="visibility: hidden"]`).Each(func(_ int, el *goquery.Selection) {
+	root.Find(`[hidden],[aria-hidden="true"],[aria-hidden=true],[style*="display:none"],[style*="display: none"],[style*="visibility:hidden"],[style*="visibility: hidden"]`).Each(func(_ int, el *goquery.Selection) {
 		if v, ok := el.Attr("hidden"); ok && strings.EqualFold(v, "until-found") {
 			return // collapsed but real content, the browser finds it on search
 		}

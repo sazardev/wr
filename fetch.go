@@ -54,12 +54,23 @@ func loadFrom(src string, get finalFetcher) (string, error) {
 		return "", err
 	}
 	if isShellPage(md) {
-		// a script-drawn page may advertise a text version of itself
-		if alt := alternateLink(body, final); alt != "" && alt != final {
-			if b2, c2, f2, err := get(alt); err == nil {
-				if md2, err := convert(b2, f2, c2); err == nil && bodyWords(md2) > bodyWords(md) {
-					md = md2
-				}
+		// a script-drawn page may advertise a text or AMP version of itself:
+		// both are cheaper than starting a browser, and both are real content
+		for _, find := range []func([]byte, string) string{alternateLink, ampLink} {
+			alt := find(body, final)
+			if alt == "" || alt == final {
+				continue
+			}
+			b2, c2, f2, err := get(alt)
+			if err != nil {
+				continue
+			}
+			md2, err := convert(b2, f2, c2)
+			if err == nil && bodyWords(md2) > bodyWords(md) {
+				md = md2
+			}
+			if !isShellPage(md) {
+				break
 			}
 		}
 	}

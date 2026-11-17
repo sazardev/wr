@@ -42,13 +42,31 @@ export const DOCS: readonly DocMeta[] = [
     order: 2,
   },
   {
+    id: 'performance',
+    label: 'Performance',
+    glyph: '⣀',
+    blurb: 'Where the milliseconds go: the benchmark suite, the measured baseline and the three hot paths wr keeps fast.',
+    file: 'docs/BENCHMARKS.md',
+    firstSection: 'the-table',
+    order: 3,
+  },
+  {
+    id: 'architecture',
+    label: 'Architecture',
+    glyph: '⠿',
+    blurb: 'The map of the project: the pipeline, every file’s job, the state on disk and how each claim is checked.',
+    file: 'docs/ARCHITECTURE.md',
+    firstSection: 'the-pipeline',
+    order: 4,
+  },
+  {
     id: 'changelog',
     label: 'Changelog',
     glyph: '⣄',
     blurb: 'Every release, written by release-please from the repository history.',
     file: 'CHANGELOG.md',
     firstSection: 'latest',
-    order: 3,
+    order: 5,
   },
 ];
 

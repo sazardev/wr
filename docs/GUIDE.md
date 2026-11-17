@@ -67,11 +67,13 @@ That is the whole command line. `wr` decides what you mean:
 Press `q` to quit. `Ctrl+C` always quits too, no matter which panel is open.
 
 **The menu is the map.** Press `m` (or `?`) and you get everything the program
-can do, with the key beside each entry: open an address, go back and forward,
-history, bookmarks, the section index, reload, settings, the key bindings,
-update wr and see what is new, open the page in your real browser, clear the
-cache, edit the config file, quit. The title of the menu carries the version
-you are running. Press `/` to find an entry by typing (see
+can do, grouped the way you use it — *Navigate*, *This page*, *wr*, *Tools* —
+with the key beside each entry and a one-line explanation for the selected one:
+open an address, go back and forward, history, bookmarks, the section index,
+reload, settings, the key bindings, update wr and see what is new, open the page
+in your real browser, copy the code block or the page as Markdown, clear the
+cache, edit the config file, quit. The title carries the version and the page
+you are on. Press `/` to find an entry by typing (see
 [Finding an option](#finding-an-option)). If
 you forget a key, this list tells you.
 
@@ -159,11 +161,13 @@ language* off keeps only what the page declares, and *Code frames* off removes
 the label and frame if you want the page tighter.
 
 **What is left out.** Besides menus, footers and cookie walls, `wr` drops what
-the page itself hides (the `hidden` attribute, `display:none`), permalink anchors
-in headings (`¶`, `#`), "skip to content" links, the navigation strips that sit
-above a title (breadcrumbs, section labels, `Next:/Up:`), and empty links. A
-link that wraps a title and a description (a card) shows the title as the link
-and the description under it.
+the page itself hides (the `hidden` attribute, `display:none`, `aria-hidden`),
+permalink anchors in headings (`¶`, `#`), "skip to content" links, the navigation
+strips above a title (breadcrumbs, section labels, `Next:/Up:`), and empty
+links. A link that wraps a title and a description (a card) shows the title as
+the link and the description under it. `<main>` and `[role=main]` are both
+recognised as the article container, which covers sites that never use the
+element.
 
 **Width.** By default the text column is 100 columns wide and centered, which is
 comfortable to read on a wide terminal. *Reading width* in Settings offers the
@@ -209,10 +213,11 @@ Notes:
 | your mouse's back / forward buttons | back / forward |
 
 Going back puts you at **exactly the spot you left**, and it is instant because
-the page comes from the cache — the whole point of reading a reference: jump
-into a link, read the paragraph you needed, `H`, and you are back where you
-were. Opening something new from a page you went back to discards the "forward"
-pages, as in any browser.
+the page comes from the cache — in fact, the pages of the session stay in
+memory, so there is not even a disk read. The whole point of reading a
+reference: jump into a link, read the paragraph you needed, `H`, and you are
+back where you were. Opening something new from a page you went back to
+discards the "forward" pages, as in any browser.
 
 ## The address bar and searching the web
 
@@ -320,6 +325,13 @@ Copying is smart about the two things terminal readers usually get wrong:
   single line they were written as.
 
 A notice says how much was copied (`✓ copied 57 characters`).
+
+**Without the mouse.** `Y` copies the whole code block in front of you: the one
+under the reading position if there is one, otherwise the first block on screen.
+The frame, the gutter and the screen wraps all stay out. `Ctrl+Y` copies the
+whole extracted article as Markdown, which is what you want when it is going
+into an editor, a note or a model. The menu has the same two entries under
+*Tools*, so both are one keypress away from a keyboard-only session.
 
 Copying happens over two routes at once: the standard terminal clipboard
 sequence (OSC 52, which also works over SSH) and a system tool when there is one
@@ -490,8 +502,9 @@ script on a bare page, or a page with scripts and hardly any text.
 (`<link rel="alternate" type="text/markdown">`), `wr` reads that.
 
 **3. It renders the page, if it can.** With a Chromium or Chrome installed
-(`chromium`, `chromium-browser`, `google-chrome`, `brave-browser`,
-`microsoft-edge`… on your `PATH`, or the one named in `WR_BROWSER`), `wr` loads
+(`chromium`, `chromium-browser`, `chromium-freeworld`, `google-chrome`,
+`brave-browser`, `microsoft-edge`, `vivaldi`… on your `PATH`, or the one named
+in `WR_BROWSER`), `wr` loads
 the page in a headless instance and reads the result like any other page. The
 loading screen and the footer say *rendering with the browser…*; it takes a few
 seconds and is cut off after 30. The browser runs with its sandbox on and a
@@ -761,6 +774,8 @@ shows the keys you actually have.
 | `/` | search in the page |
 | `n` / `N` | next / previous match |
 | `y` | copy the selection |
+| `Y` | copy the code block on screen |
+| `Ctrl+Y` | copy the page as Markdown |
 
 **Links**
 
@@ -838,7 +853,7 @@ lacks the color you want.
 |---|---|
 | `NO_COLOR`, `TERM=dumb` | the printed render (`wr URL \| less`) has no colors; the interactive reader always uses them |
 | `COLUMNS` | width of the printed render (`COLUMNS=60 wr URL \| less -R`) |
-| `WR_BROWSER` | the Chromium or Chrome used to render pages drawn by JavaScript (a name or a path; `/nonexistent` means none) |
+| `WR_BROWSER` | the Chromium or Chrome used to render pages drawn by JavaScript (a name, a path, or a command with arguments; `/nonexistent` means none) |
 | `WR_NO_UPDATE_CHECK` | any value turns off the background check for a newer wr |
 | `VISUAL`, `EDITOR` | the editor opened by *Edit the config file…* (default `vi`) |
 | `XDG_CONFIG_HOME`, `XDG_STATE_HOME`, `XDG_CACHE_HOME` | where wr keeps its config, its state (history, bookmarks, update memory) and its cache |

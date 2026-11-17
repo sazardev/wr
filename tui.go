@@ -122,6 +122,14 @@ type model struct {
 	searchY int // position when search typing began (to cancel)
 
 	mouseSel selection // mouse selection (copied to the clipboard on release)
+
+	pages    map[string]memoPage // pages of this session, so back/forward is instant
+	memSeq   uint64
+	memBytes int
+
+	cacheStatAt    time.Time
+	cacheStatPages int
+	cacheStatBytes int64
 }
 
 func newModel(src string, cfg Config, fresh bool, cfgErr error) *model {
@@ -283,7 +291,7 @@ func (m *model) rebuild() {
 	if m.doc != nil && len(m.doc.Lines) > 0 {
 		frac = float64(m.y) / float64(len(m.doc.Lines))
 	}
-	m.doc = renderDoc(m.md, cw, m.cfg)
+	m.doc = renderDocCached(m.md, cw, m.cfg)
 	m.docW = cw
 	m.y = int(frac * float64(len(m.doc.Lines)))
 	m.clampY()
@@ -386,11 +394,13 @@ func (m *model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.setToast("offline: showing the saved version", true)
 		case msg.apply || m.doc == nil:
 			m.md, m.fromCache, m.saved, m.newer = msg.md, false, time.Now(), ""
+			m.rememberPage(m.src, m.md, m.saved)
 			m.rebuild()
 			m.revealStart = m.now
 			return m, m.setToast("✓ page reloaded", false)
 		case msg.md != m.md:
 			m.newer = msg.md
+			m.rememberPage(m.src, msg.md, time.Now())
 			return m, m.setToast("● a newer version is ready: press "+keyHint(&m.cfg, actReload)+" to view it", false)
 		}
 		return m, nil // already up to date: no need to announce it
@@ -522,6 +532,8 @@ func (m *model) keyConfirm(k string) (tea.Model, tea.Cmd) {
 		}
 		pages, _ := cacheStats()
 		_ = cacheClear()
+		m.forgetAllPages()
+		m.forgetCacheInfo()
 		return m, m.setToast(fmt.Sprintf("✓ cache cleared (%d pages)", pages), false)
 	}
 	if m.confirm == confirmHistory { // came from the history panel: go back to it
@@ -596,6 +608,10 @@ func (m *model) keyRead(k string) (tea.Model, tea.Cmd) {
 		return m, m.openUpdate()
 	case actYank:
 		return m, m.copySelection()
+	case actCopyCode:
+		return m, m.copyCodeBlock()
+	case actCopyPage:
+		return m, m.copyPageMarkdown()
 	case actOpen:
 		m.openOmni()
 	case actBack:
@@ -698,6 +714,7 @@ func (m *model) reload() tea.Cmd {
 	}
 	if m.newer != "" {
 		m.md, m.fromCache, m.saved, m.newer = m.newer, false, time.Now(), ""
+		m.rememberPage(m.src, m.md, m.saved)
 		m.rebuild()
 		m.revealStart = m.now
 		return m.setToast("✓ newer version applied", false)
@@ -1110,9 +1127,10 @@ func (m *model) hintsText(room int) string {
 	if m.cfg.Mouse {
 		all = append(all, h{11, "drag", "copy"})
 	}
+	all = append(all, h{12, keyHint(&m.cfg, actCopyCode), "code"})
 	keep := map[int]bool{}
 	used := 0
-	for p := 0; p <= 11; p++ {
+	for p := 0; p <= 12; p++ {
 		for i, it := range all {
 			if it.prio != p || it.key == "" {
 				continue

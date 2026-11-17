@@ -44,6 +44,20 @@ func TestHeadlessDOMRejectsNonDocuments(t *testing.T) {
 	}
 }
 
+func TestHeadlessDOMFallsBackToTheLegacyFlag(t *testing.T) {
+	fakeBrowser(t, `for a in "$@"; do
+  if [ "$a" = "--headless=new" ]; then
+    echo "unknown flag: --headless=new"
+    exit 1
+  fi
+done
+echo '<html><body><p>legacy headless worked</p></body></html>'`)
+	dom, err := headlessDOM("https://t.test/")
+	if err != nil || !strings.Contains(string(dom), "legacy headless worked") {
+		t.Errorf("dom=%q err=%v", dom, err)
+	}
+}
+
 func TestHeadlessTimeoutKillsTheWholeProcessGroup(t *testing.T) {
 	// the "browser" forks a child that would outlive it, like Chromium's renderers
 	marker := fmt.Sprintf("%d", 40000+rand.Intn(9999)) // a sleep nobody else runs

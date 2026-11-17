@@ -197,6 +197,26 @@ func isShellPage(md string) bool { return strings.Contains(md, shellHead) }
 // alternateLink finds a text version a page advertises about itself
 // (<link rel="alternate" type="text/markdown">), resolved against src.
 func alternateLink(page []byte, src string) string {
+	return alternateHref(page, src, func(l *goquery.Selection) bool {
+		switch mediaType(l.AttrOr("type", "")) {
+		case "text/markdown", "text/x-markdown", "text/plain":
+			return !strings.HasPrefix(path.Base(l.AttrOr("href", "")), "llms") // a site index, not this page
+		}
+		return false
+	})
+}
+
+// ampLink finds an AMP version of the page. AMP documents are server-rendered,
+// so on a script-drawn page they are often the cheapest way to the article
+// before borrowing a browser.
+func ampLink(page []byte, src string) string {
+	return alternateHref(page, src, func(l *goquery.Selection) bool {
+		return strings.Contains(" "+l.AttrOr("rel", "")+" ", " amphtml ")
+	})
+}
+
+// alternateHref resolves the first <link rel=alternate> that pick accepts.
+func alternateHref(page []byte, src string, pick func(*goquery.Selection) bool) string {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(string(page)))
 	if err != nil {
 		return ""
@@ -206,28 +226,26 @@ func alternateLink(page []byte, src string) string {
 		return ""
 	}
 	var found string
-	doc.Find(`link[rel~="alternate"][href]`).EachWithBreak(func(_ int, l *goquery.Selection) bool {
-		switch mediaType(l.AttrOr("type", "")) {
-		case "text/markdown", "text/x-markdown", "text/plain":
-			if strings.HasPrefix(path.Base(l.AttrOr("href", "")), "llms") {
-				return true // llms.txt indexes the whole site; it is not this page
-			}
-			if ref, err := url.Parse(l.AttrOr("href", "")); err == nil {
-				abs := base.ResolveReference(ref)
-				// A web page may advertise its own text version, but not a
-				// local file or a service on the reader's machine: following
-				// that automatically would read data the page should not see.
-				if abs.Scheme != "http" && abs.Scheme != "https" {
-					return true
-				}
-				if isLocalURL(abs) && !isLocalURL(base) {
-					return true
-				}
-				found = abs.String()
-				return false
-			}
+	doc.Find(`link[rel~="alternate"][href], link[rel~="amphtml"][href]`).EachWithBreak(func(_ int, l *goquery.Selection) bool {
+		if !pick(l) {
+			return true
 		}
-		return true
+		ref, err := url.Parse(l.AttrOr("href", ""))
+		if err != nil {
+			return true
+		}
+		abs := base.ResolveReference(ref)
+		// An alternate is a page, never a local file, javascript: or data:
+		// URL; and a remote page may not make wr read this machine or its
+		// private network.
+		if abs.Scheme != "http" && abs.Scheme != "https" {
+			return true
+		}
+		if isLocalURL(abs) && !isLocalURL(base) {
+			return true
+		}
+		found = abs.String()
+		return false
 	})
 	return found
 }
