@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/sazardev/wr/compare/v0.11.0...v0.12.0) (2026-11-17)
+
+
+### Features
+
+* **web:** rebuild the site as the reader's TUI ([#47](https://github.com/sazardev/wr/issues/47)) ([e4ac20a](https://github.com/sazardev/wr/commit/e4ac20af8b78fee4f9664cf1b1fdc21da2a276c9))
+
 ## [0.11.0](https://github.com/sazardev/wr/compare/v0.10.0...v0.11.0) (2026-11-17)
 
 
