@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/sazardev/wr/compare/v0.12.0...v0.13.0) (2026-11-17)
+
+
+### Features
+
+* **web:** configurable images and video in the reader ([#50](https://github.com/sazardev/wr/issues/50)) ([fb8458b](https://github.com/sazardev/wr/commit/fb8458b36a1c15675f33fd0a15d2206a3366890e))
+
 ## [0.12.0](https://github.com/sazardev/wr/compare/v0.11.0...v0.12.0) (2026-11-17)
 
 
