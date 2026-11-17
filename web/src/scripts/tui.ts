@@ -405,7 +405,22 @@ async function hydrateMedia(node: HTMLElement): Promise<void> {
     const video = document.createElement('video');
     if (node.dataset.width) video.width = Number(node.dataset.width);
     if (node.dataset.height) video.height = Number(node.dataset.height);
-    video.src = src;
+    let sources: string[] = [src];
+    try {
+      const parsed = JSON.parse(node.dataset.sources || '[]') as unknown;
+      if (Array.isArray(parsed) && parsed.length) sources = parsed.map(String);
+    } catch {
+      /* use the main src */
+    }
+    for (const sourceUrl of sources) {
+      const source = document.createElement('source');
+      source.src = sourceUrl;
+      if (sourceUrl.endsWith('.webm')) source.type = 'video/webm';
+      else if (sourceUrl.endsWith('.mp4')) source.type = 'video/mp4';
+      else if (sourceUrl.endsWith('.ogg') || sourceUrl.endsWith('.ogv')) source.type = 'video/ogg';
+      video.append(source);
+    }
+    video.load();
     video.controls = state.settings.videoControls;
     video.loop = state.settings.videoLoop;
     video.muted = state.settings.videoMuted || state.settings.videoAutoplay;

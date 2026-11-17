@@ -60,11 +60,12 @@ function mediaPlaceholder(node) {
   }
 
   if (node.tagName === 'video') {
-    const sources = Array.isArray(node.children) ? node.children : [];
-    const source = sources.find((child) => isElement(child) && child.tagName === 'source');
-    const src =
-      (typeof props.src === 'string' && props.src) ||
-      (source && typeof source.properties?.src === 'string' ? source.properties.src : '');
+    const children = Array.isArray(node.children) ? node.children : [];
+    const sourceUrls = children
+      .filter((child) => isElement(child) && child.tagName === 'source')
+      .map((child) => (typeof child.properties?.src === 'string' ? child.properties.src : ''))
+      .filter(Boolean);
+    const src = (typeof props.src === 'string' && props.src) || sourceUrls[0] || '';
     if (!src) return null;
     const title =
       (typeof props.title === 'string' && props.title.trim()) ||
@@ -81,6 +82,7 @@ function mediaPlaceholder(node) {
         'data-src': src,
         'data-poster': poster,
         'data-label': title,
+        'data-sources': JSON.stringify(sourceUrls.length ? sourceUrls : [src]),
         'data-width': width || undefined,
         'data-height': height || undefined,
       },

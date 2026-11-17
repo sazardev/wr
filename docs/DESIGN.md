@@ -170,7 +170,10 @@ to muted because browsers require it.
 
 <img src="/assets/wr-preview.png" alt="The reader, captured in the terminal" width="1800" height="1170">
 
-<video src="/media/reader-demo.webm" poster="/media/reader-demo-poster.png" title="The reader, recorded" width="960" height="540"></video>
+<video poster="/media/reader-demo-poster.png" title="The reader, recorded" width="960" height="540">
+  <source src="/media/reader-demo.webm" type="video/webm">
+  <source src="/media/reader-demo.mp4" type="video/mp4">
+</video>
 
 ## Responsive and print
 
