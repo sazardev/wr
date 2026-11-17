@@ -70,6 +70,13 @@ README.md ────┼─▶ src/lib/reference.ts ─▶ /docs/reference/… 
   link labels, address bar, history, settings and the reading position.
 - **`src/lib/tui.ts`** — the pure braille math (progress bar, scrollbar) with
   its unit test.
+- **`src/lib/rehype-media.mjs`** — turns Markdown images and `<video>` blocks
+  into inert placeholders. Nothing is downloaded until the reader turns on
+  Images or Videos in Settings.
+- **`src/scripts/tui.ts`** — also owns the media layer: lazy hydration with
+  `IntersectionObserver`, the TUI frame, image/poster Cache Storage with its
+  size in Settings, and the clear action.
+- **`public/media/`** — the demo image/video used by the Design → Media page.
 - **`docs/DESIGN.md`** — *The web edition: wr's TUI in a browser*.
 
 ## Conventions

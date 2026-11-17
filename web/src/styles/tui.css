@@ -742,3 +742,48 @@ html[data-center="off"] .wr-doc { margin-inline: 0; }
 
 /* Key groups inside prose do not need the h2 rule twice. */
 .prose .wr-keys h2::after { display: none; }
+
+/* ---------------------------------------------------------------- media */
+.wr-media { display: block; margin: 1.1em 0; }
+.wr-media-off { color: var(--dim); }
+.wr-media-off a, .wr-media-foot a { color: var(--bright-cyan); text-decoration: underline dotted; }
+.wr-media-off a:hover, .wr-media-foot a:hover { background: var(--accent); color: var(--on-accent); text-decoration: none; }
+.wr-media-frame {
+  display: block;
+  padding-left: 1ch;
+  border-left: 1px solid var(--line-2);
+}
+.wr-media-head, .wr-media-foot {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--dim);
+}
+.wr-media-body { display: block; margin: .2em 0; }
+.wr-media img, .wr-media video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  max-height: min(62vh, 560px);
+  object-fit: contain;
+  background: var(--panel);
+  border: 0;
+}
+.prose .wr-media img { filter: none; }
+html[data-media-fit="contain"] .wr-media img { width: auto; height: auto; max-height: min(62vh, 560px); }
+html[data-media-fit="cover"] .wr-media img { width: 100%; height: min(52vh, 420px); object-fit: cover; }
+html[data-media-width="wide"] .wr-media-body { max-width: 84ch; }
+html[data-media-width="half"] .wr-media-body { max-width: 52ch; }
+.wr-media video { width: 100%; }
+.wr-media-skeleton { min-height: 14ch; border: 1px dashed var(--line-2); }
+.wr-media-skeleton::before { content: "loading image…"; display: block; padding: .3em .8ch; color: var(--dim); }
+.wr-media-error { display: block; padding: .3em .8ch; color: var(--bright-red); }
+@media (max-width: 720px) {
+  .wr-media-body, html[data-media-width="wide"] .wr-media-body, html[data-media-width="half"] .wr-media-body { max-width: none; }
+  html[data-media-fit="cover"] .wr-media img { height: min(38vh, 320px); }
+}
+@media print {
+  .wr-media video { display: none; }
+  .wr-media-frame { border-left: 0; padding-left: 0; }
+}

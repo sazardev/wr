@@ -15,6 +15,7 @@ site header. What you see is what `wr` draws.
 - [Content](#content)
 - [Panels](#panels)
 - [Keyboard](#keyboard)
+- [Media](#media)
 - [Responsive and print](#responsive-and-print)
 
 ## Rules
@@ -145,6 +146,31 @@ links still work.
 
 The keys never fire while a field has focus. The full, generated list is at
 [Shortcuts](/docs/reference/shortcuts/).
+
+
+## Media
+
+Images and video are **off by default**. A page that carries media prints the
+same dim line the reader prints when a protocol is unavailable:
+
+```
+[image: the reader, captured] open ↗
+[video: the reader, recorded] open ↗
+```
+
+Open Settings (`,`) and turn on **Images** or **Videos** under *Media*. Images
+are fetched lazily when they come near the viewport, decoded off the main
+thread, and stored in the browser's media cache; **Media cache** in the same
+panel shows the count and size and clears it. Videos stream with
+`preload="metadata"`; their posters use the same image cache.
+
+The image fit (contain / cover), column width, video autoplay, loop, mute and
+native controls are all settings, persisted with the rest. Autoplay is forced
+to muted because browsers require it.
+
+<img src="/assets/wr-preview.png" alt="The reader, captured in the terminal" width="1800" height="1170">
+
+<video src="/media/reader-demo.webm" poster="/media/reader-demo-poster.png" title="The reader, recorded" width="960" height="540"></video>
 
 ## Responsive and print
 
