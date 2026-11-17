@@ -15,8 +15,9 @@ you unless you prefer otherwise.
 `wr` renders untrusted web pages in a terminal, so anything that lets a page
 escape the reader is a security bug: terminal escape-sequence injection,
 path traversal in the cache or config, following links that should be refused
-(`javascript:`, `file:` from remote pages), or leaking history/cache contents.
-The guarantees the reader relies on are described in the README's
+(`javascript:`, `file:` from remote pages, a remote page's advertised alternate
+pointing at a local file or a private address), or leaking history/cache
+contents. The guarantees the reader relies on are described in the README's
 [Security](README.md#security) section.
 
 ## Supported versions

@@ -165,9 +165,34 @@ func resolveLink(base, href string) (string, bool) {
 		}
 		return r.String(), true
 	case "file":
+		// A page fetched from the web must never be able to read the local
+		// filesystem, not even when the reader clicks the link. Local pages
+		// (and the start page) may still link to other local files.
+		if isHTTP(base) {
+			return "", false
+		}
 		return r.String(), true
 	}
 	return "", false
+}
+
+// isLocalURL reports an address that points at this machine or its private
+// network. Unlike isLocalHost it takes a parsed URL, so IPv6 literals and
+// hostnames are handled correctly. A remote page may not make wr probe these
+// addresses on its own.
+func isLocalURL(u *url.URL) bool {
+	if u == nil {
+		return false
+	}
+	host := strings.ToLower(u.Hostname())
+	switch {
+	case host == "localhost", strings.HasSuffix(host, ".localhost"),
+		strings.HasSuffix(host, ".local"), strings.HasSuffix(host, ".test"),
+		strings.HasSuffix(host, ".internal"), strings.HasSuffix(host, ".lan"):
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && (ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast())
 }
 
 // slugify matches a heading to a "#fragment" the way sites do (lowercase,
