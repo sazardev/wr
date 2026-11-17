@@ -252,6 +252,20 @@ func BenchmarkRenderReRender(b *testing.B) {
 	}
 }
 
+// BenchmarkRenderCached is the "go back" path: the same document at the same
+// width and options comes straight from the in-memory cache, without parsing,
+// wrapping or highlighting anything.
+func BenchmarkRenderCached(b *testing.B) {
+	md := benchProse(400, 80)
+	cfg := benchConfig()
+	_ = renderDocCached(md, 100, cfg) // warm it
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		renderDocCached(md, 100, cfg)
+	}
+}
+
 // BenchmarkRenderLinksFootnotes vs inline: the link mode changes the work.
 func BenchmarkRenderLinkModes(b *testing.B) {
 	md := "# L\n\n" + strings.Repeat("A [link](https://ex.test/x) here.\n\n", 300)
@@ -426,12 +440,19 @@ func BenchmarkModelSearch(b *testing.B) {
 	}
 }
 
+// coldRender empties the rendered-document cache so a benchmark measures the
+// first open of a page (parse, wrap, highlight), not the warm reopen.
+func coldRender() {
+	renderedDocs = newRenderCache(renderCacheDocs, renderCacheSize)
+}
+
 // BenchmarkModelNavigate: following a link (load the next page, render it).
 func BenchmarkModelNavigate(b *testing.B) {
 	src := benchSite(b)
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
+		coldRender()
 		m := benchModel(b, src)
 		m.Update(tea.KeyPressMsg{Code: tea.KeyTab}) // focus the first link
 		_, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -442,12 +463,26 @@ func BenchmarkModelNavigate(b *testing.B) {
 	}
 }
 
-// BenchmarkModelLongDoc: a very long page (section index, jumps, end).
+// BenchmarkModelReopen: going back to a page already rendered at this width.
+func BenchmarkModelReopen(b *testing.B) {
+	src := benchPage(b, benchProse(300, 80))
+	m := benchModel(b, src)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		m.doc = nil
+		m.rebuild()
+	}
+}
+
+// BenchmarkModelLongDoc: a very long page (section index, jumps, end). The
+// render cache is cleared each iteration: this is the cost of opening it cold.
 func BenchmarkModelLongDoc(b *testing.B) {
 	src := benchPage(b, benchProse(1500, 120))
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
+		coldRender()
 		m := benchModel(b, src)
 		m.Update(tea.KeyPressMsg{Code: tea.KeyEnd}) // G
 		m.Update(tea.KeyPressMsg{Code: ']'})        // next section x3

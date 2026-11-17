@@ -237,8 +237,32 @@ func toMarkdown(page []byte, src string) (string, error) {
 // leadingRule is the thematic break some generators leave right under the title.
 var leadingRule = regexp.MustCompile(`\A((?:#[^\n]*\n\n)?)(?:(?:\* \* \*|---)\n\n)+`)
 
-var controlChars = regexp.MustCompile(`[\x00-\x08\x0b-\x1f\x7f-\x9f]`)
-
 // sanitize strips control characters (ESC, etc.). It is also applied to what
-// comes from the cache, in case the file was tampered with.
-func sanitize(s string) string { return controlChars.ReplaceAllString(s, "") }
+// comes from the cache, in case the file was tampered with. The common case is
+// a page with nothing to strip, so the function scans runes first and returns
+// the string untouched; only when it finds something does it rebuild it. This
+// keeps the validation exact (a U+0080 looks like two harmless bytes) without
+// paying for a new string on every page.
+func sanitize(s string) string {
+	bad := func(r rune) bool {
+		return r != '\t' && r != '\n' && (r < 0x20 || (r >= 0x7f && r <= 0x9f))
+	}
+	clean := true
+	for _, r := range s {
+		if bad(r) {
+			clean = false
+			break
+		}
+	}
+	if clean {
+		return s
+	}
+	var b strings.Builder
+	b.Grow(len(s))
+	for _, r := range s {
+		if !bad(r) {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}

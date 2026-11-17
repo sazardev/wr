@@ -57,7 +57,8 @@ wr                          # the start page: your bookmarks and recent pages
 - **Select and copy.** Drag to select; it is copied when you let go. Double click
   selects a word, triple click a line. Code blocks copy **without** their frame
   and margin, and paragraphs wrapped on screen come out as the single line they
-  were written as.
+  were written as. `Y` copies the whole code block in front of you without
+  touching the mouse; the menu also copies the page as Markdown.
 
 ### Browsing
 
@@ -67,7 +68,8 @@ wr                          # the start page: your bookmarks and recent pages
   needed.
 - **Back and forward** (`H` / `L`, `Backspace`, `Alt+←/→`, or your mouse's back
   and forward buttons). Going back returns you to the exact spot you left, and
-  it is instant because pages are cached.
+  it is instant because pages are cached — the pages of the session stay in
+  memory, so there is not even a disk read.
 - **An address bar** (`o`). Type an address, a local file, or plain words:
   words search the web (DuckDuckGo by default; Wikipedia, GitHub or your own
   engine are one setting away). It suggests your bookmarks and history as you
@@ -94,6 +96,10 @@ wr                          # the start page: your bookmarks and recent pages
 
 Everything below is changed **from the menu**, live, and saved for you:
 
+- **A menu that explains itself** (`m`): entries are grouped by what you are
+  doing (*Navigate*, *This page*, *wr*, *Tools*), each with its shortcut on the
+  right, and the selected one has a line of help underneath. The title shows the
+  version and the page you are on; `/` filters the whole list.
 - **Settings** (`,` or menu → Settings): over 30 options in groups — layout
   (width, centering, spacing, heading rules, code frames, guessing code
   languages, links mode, braille, accent color), footer and scrollbar (each part
@@ -238,9 +244,10 @@ document and exits, with no interface. `NO_COLOR` (or `TERM=dumb`) makes that
 print uncolored, and `COLUMNS` sets its width.
 
 Environment: `WR_BROWSER` (the Chromium/Chrome used for pages drawn by
-JavaScript), `WR_NO_UPDATE_CHECK`, `NO_COLOR`, `COLUMNS`, `VISUAL`/`EDITOR` (for
-*Edit the config file…*) and the `XDG_*_HOME` directories. The guide has the
-[full list](docs/GUIDE.md#environment-variables).
+JavaScript; it may include arguments, as in `WR_BROWSER="flatpak run
+org.chromium.Chromium"`), `WR_NO_UPDATE_CHECK`, `NO_COLOR`, `COLUMNS`,
+`VISUAL`/`EDITOR` (for *Edit the config file…*) and the `XDG_*_HOME`
+directories. The guide has the [full list](docs/GUIDE.md#environment-variables).
 
 ### Shortcuts
 
@@ -265,6 +272,8 @@ These are the defaults; every one can be rebound.
 | `n` `N` | next / previous match |
 | `r` | reload (or apply the newer version already downloaded) |
 | `y` | copy the current selection again |
+| `Y` | copy the code block on screen, without its frame |
+| `Ctrl+Y` | copy the page as Markdown |
 | `,` | settings |
 | `U` | update wr / what's new |
 | `m` | menu (`1`–`9` and `0` pick an entry directly) |
@@ -390,13 +399,15 @@ which suits a dark one.
    a timeout retried once), checks its type and converts it to UTF-8. Relative
    links are resolved against the address the page really came from after any
    redirect.
-2. Takes `<article>` (or `<main>`, or `<body>`) and drops menus, footers, forms,
-   scripts, what the page hides, heading permalinks, empty and skip links,
-   navigation above the title, and rows that are just links.
-3. If the result is nearly empty and the page looks drawn by JavaScript, it looks
-   for a text version, renders the page in a headless Chromium/Chrome when one is
-   installed, or falls back to the page's own summary (`<noscript>`,
-   description, JSON-LD) with a notice.
+2. Takes `<article>` (or `<main>`/`[role=main]`, or `<body>`) and drops menus,
+   footers, forms, scripts, what the page hides (including `aria-hidden`),
+   heading permalinks, empty and skip links, navigation above the title, and
+   rows that are just links.
+3. If the result is nearly empty and the page looks drawn by JavaScript, it
+   tries the page's advertised text version, then its AMP version, then renders
+   it in a headless Chromium/Chrome when one is installed, and finally falls
+   back to the page's own summary (`<noscript>`, description, JSON-LD) with a
+   notice.
 4. Reads each block's language (or guesses it, labelled, when it is sure) and
    converts to Markdown with
    [html-to-markdown](https://github.com/JohannesKaufmann/html-to-markdown).

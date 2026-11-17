@@ -82,6 +82,15 @@ func (m *model) startNav(kind navKind, target string, y int, fresh bool) tea.Cmd
 	m.pending = &navReq{id: m.navID, src: page, kind: kind, y: y, frag: frag, leaving: navEntry{m.src, m.y}}
 	m.loading = true
 	m.loadErr = nil
+	if !fresh && m.cfg.Cache && isHTTP(page) {
+		if p, ok := m.recallPage(page); ok {
+			id := m.navID
+			stale := m.now.Sub(p.saved) > pageMemoryFresh
+			return func() tea.Msg {
+				return loadedMsg{id: id, src: page, md: p.md, fromCache: stale, saved: p.saved}
+			}
+		}
+	}
 	return loadCmd(m.navID, page, fresh, m.cfg)
 }
 
@@ -160,6 +169,7 @@ func (m *model) commitNav(msg loadedMsg) tea.Cmd {
 	newPage := msg.src != m.src || req.kind != navReplace
 	m.src = msg.src
 	m.md, m.fromCache, m.saved = msg.md, msg.fromCache, msg.saved
+	m.rememberPage(msg.src, msg.md, msg.saved)
 	if newPage {
 		m.query, m.matches, m.newer = "", nil, ""
 		m.mouseSel.clear()

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -83,8 +84,26 @@ func cachePut(src, md string) error {
 	if err := writeAtomic(cachePath(dir, src), []byte(data)); err != nil {
 		return err
 	}
-	pruneCache(dir)
+	maybePruneCache(dir)
 	return nil
+}
+
+// Pruning walks the whole cache directory. Doing that after every saved page
+// would put a directory scan in the middle of loading; once an hour is enough
+// to keep the disk bounded, and the age check is by file time, not by count.
+var (
+	pruneMu   sync.Mutex
+	lastPrune time.Time
+)
+
+func maybePruneCache(dir string) {
+	pruneMu.Lock()
+	defer pruneMu.Unlock()
+	if time.Since(lastPrune) < time.Hour {
+		return
+	}
+	lastPrune = time.Now()
+	pruneCache(dir)
 }
 
 // pruneCache deletes entries older than cacheMaxAge and orphaned temp files.
@@ -115,6 +134,9 @@ func cacheClear() error {
 	if err != nil {
 		return err
 	}
+	pruneMu.Lock()
+	lastPrune = time.Time{}
+	pruneMu.Unlock()
 	return os.RemoveAll(dir)
 }
 

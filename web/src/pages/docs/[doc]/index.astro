@@ -21,7 +21,7 @@ const entries = await docEntries(doc);
 <Doc doc={doc} section="index">
   <Fragment slot="after">
     <SectionCards doc={doc} entries={entries} />
-    {doc !== 'changelog' && (
+    {doc !== 'changelog' && doc !== 'performance' && doc !== 'architecture' && (
       <>
         <div class="slist-h" style="margin-top:72px"><span>The UI, recorded</span><span>scripts/capture.sh</span></div>
         <SceneGallery />

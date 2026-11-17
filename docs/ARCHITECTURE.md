@@ -34,15 +34,17 @@ target ─► normalizeInput ─► load ─► toMarkdown ─► renderDoc ─�
    dispatches by media type: HTML → `toMarkdown`, Markdown passes through
    `sanitize`, JSON/XML/plain is fenced. A page that came out as a *JS shell*
    (see `shell.go`) is retried in order: its advertised text version
-   (`alternateLink`), then `renderedMarkdown` (`headless.go`: an installed
-   Chromium/Chrome run headless, its own profile, the whole process group
-   killed on timeout, output capped, skipped when `render_js` is off), else the
-   page's own summary under a notice. On success it writes the cache when it is
+   (`alternateLink`), its AMP version (`ampLink`), then `renderedMarkdown`
+   (`headless.go`: an installed Chromium/Chrome run headless, its own profile,
+   the whole process group killed on timeout, output capped, images off,
+   skipped when `render_js` is off), else the page's own summary under a
+   notice. On success it writes the cache when it is
    an http page, except for a bare shell.
 3. **Extract.** `toMarkdown` (`convert.go`): `collectHints` first saves what a
    shell page says outside its body (`<noscript>`, description, JSON-LD); then
-   `pickRoot` scores `<article>`/`<main>`/`<body>` by text weight, `dropTags`
-   removes `<form>` and friends, `dropHidden` what the page hides,
+   `pickRoot` scores `<article>`/`<main>`/`[role=main]`/`<body>` by text weight,
+   `dropTags` removes `<form>` and friends, `dropHidden` what the page hides
+   (including `aria-hidden`),
    `dropHeaders`/`dropChrome` strip the page chrome (with a 50% size guard so a
    chrome-shaped document is not emptied), `flattenCodeLines` turns block-line
    code (Expressive Code) into text, code blocks keep their language
@@ -60,11 +62,16 @@ target ─► normalizeInput ─► load ─► toMarkdown ─► renderDoc ─�
    `Lines`, `Plain`, `Heads`, `Links` (as `LinkSpan` + `URLs`), per-line
    `Meta` for selection. Invisible APC markers placed during rendering are
    scanned into link spans afterwards, so links keep their screen positions.
+   `renderDocCached` (`render_cache.go`) wraps it in a bounded LRU keyed by the
+   Markdown, the width, the layout options and the palette, so resizing back and
+   going back do not parse or highlight again.
 5. **Interact.** The Bubble Tea v2 model (tui.go): keys, mouse, resize, spring
    scrolling (harmonica), search, selection, toasts, panels (the update window
    is one more: `update_ui.go`). Navigation
    (`browse.go`) keeps `back`/`fwd` stacks of `navEntry` and runs every load
-   through `startNav`/`loadCmd`; an overtaken load is dropped by id, and a
+   through `startNav`/`loadCmd`; the pages of the session also live in a small
+   in-memory LRU (`page_memory.go`), so back and forward do not touch the disk.
+   An overtaken load is dropped by id, and a
    failed load never replaces the page on screen. `newModel` + `Update` +
    `render()` work with no terminal at all — that single property is what makes
    the deterministic UI tests and the agent sessions in `mcp_session.go`
@@ -105,10 +112,11 @@ maintain.
 | `tui.go` | the model: `Update`, `View`/`render`, geometry, scroll, footer, toasts |
 | `keys.go` | actions, default bindings, keymap build/override |
 | `search.go` | in-page search (smart-case) and highlight spans |
-| `selection.go` | mouse selection, OSC 52 + external clipboard |
+| `selection.go` | mouse selection, `Y` code-block copy, OSC 52 + external clipboard |
 | `overlays.go`, `settings.go`, `theme.go`, `style.go`, `anim.go`, `braille.go` | panels, live settings, palette, SGR, springs, glyphs |
 | `panelfilter.go` | the `/` filter shared by the menu, Settings, shortcuts and the section index (`m.sel` stays the real index; the selection steps over hidden entries) |
 | `store.go`, `cache.go` | history/bookmarks JSON; the sha256-keyed Markdown cache |
+| `page_memory.go`, `render_cache.go` | the session page LRU and the rendered-document LRU |
 | `mcp*.go`, `eval.go` | the agent harness: MCP server, headless sessions, eval scenarios |
 | `web/` | the docs site (Astro, separate build) |
 | `docs/` | guide, design system, QA reports, benchmarks, this file |
@@ -152,17 +160,19 @@ and `go build ./...`; the git hooks repeat the fast ones on commit and push.
 ## The performance scenario
 
 The measured baseline, the hot paths and the bottlenecks live in
-[docs/BENCHMARKS.md](BENCHMARKS.md). The short version after the optimization
+[docs/BENCHMARKS.md](docs/BENCHMARKS.md). The short version after the optimization
 pass: extraction was the slowest stage (~4 MB/s on a 300 KB article, mostly the
 Markdown writer and our own regexp cleanups) and is now ~30–37% faster with a
 one-pass cleaner; in-page search dropped 48% (and 42% end to end, allocations
 x100 down) once the matcher stopped using the regexp engine; renders are ~15%
-faster since `Plain` stopped paying for the full ANSI parser; the cache turns a
-15.8 ms miss into a 2.1 ms hit; and the interactive path is ~100 ns per key
-with zero allocations. The budget every change should keep:
+faster since `Plain` stopped paying for the full ANSI parser; the memory pass
+turned a cache hit from 2.4 ms into 0.12 ms and a re-render from 12.5 ms into a
+map lookup; and the interactive path is ~100 ns per key with zero allocations.
+The budget every change should keep:
 
 - a keypress stays in the microsecond range and allocates nothing;
-- a cached page open stays a single-digit millisecond;
+- a cached page opens in well under a millisecond;
+- a page already rendered at this width is reused, never drawn again;
 - no benchmark regresses more than 25% in ns/op (`scripts/bench.sh compare`).
 
 ## Changing something big

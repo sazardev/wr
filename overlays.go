@@ -26,6 +26,7 @@ func boolInt(b bool) int {
 func box(title string, rows []boxRow, sel, width int) []string {
 	inner := width - 4
 	border := "\x1b[" + accentFG + "m"
+	title = ansi.Truncate(title, max(width-7, 1), "…")
 	titleStr := " " + title + " "
 	top := border + "╭─\x1b[1m" + titleStr + "\x1b[22m" +
 		strings.Repeat("─", max(width-3-ansi.StringWidth(titleStr), 0)) + "╮\x1b[0m"
@@ -120,45 +121,51 @@ func helpRows(text string, inner int) []boxRow {
 // ---- menu ----
 
 type menuItem struct {
-	label, hint string
-	run         func(m *model) tea.Cmd
+	group, label, hint, desc string
+	run                      func(m *model) tea.Cmd
 }
 
 func (m *model) menuItems() []menuItem {
-	pages, size := cacheStats()
+	pages, size := m.cacheInfo()
 	k := func(a action) string { return keyHint(&m.cfg, a) }
 	bookmark := "Bookmark this page"
+	bookmarkDesc := "Star this page so it waits for you on the start page."
 	if m.bookmarked {
 		bookmark = "Remove bookmark"
+		bookmarkDesc = "Unstar this page; it stays in your history."
 	}
 	return []menuItem{
-		{"Open address or search…", k(actOpen), func(m *model) tea.Cmd { m.openOmni(); return nil }},
-		{"Back", k(actBack), func(m *model) tea.Cmd { return m.goBack() }},
-		{"Forward", k(actForward), func(m *model) tea.Cmd { return m.goForward() }},
-		{"History…", k(actHistory), func(m *model) tea.Cmd { return m.openList(listHistory) }},
-		{"Bookmarks…", k(actBookmarks), func(m *model) tea.Cmd { return m.openList(listBookmarks) }},
-		{bookmark, k(actBookmark), func(m *model) tea.Cmd { return m.toggleBookmark() }},
-		{"Section index", k(actIndex), func(m *model) tea.Cmd { return m.openTOC() }},
-		{"Reload page", k(actReload), func(m *model) tea.Cmd { return m.reload() }},
-		{"Settings…", k(actSettings), func(m *model) tea.Cmd { m.mode, m.sel = modeSettings, 0; return nil }},
-		{"Keyboard shortcuts…", "", func(m *model) tea.Cmd { m.mode, m.sel = modeKeys, 0; return nil }},
-		{"Update wr / what's new…", m.updateMenuHint(), func(m *model) tea.Cmd { return m.openUpdate() }},
-		{"Open in your browser", k(actExternal), func(m *model) tea.Cmd { return m.openExternalNow() }},
-		{"Clear cache for this page", "", func(m *model) tea.Cmd {
+		{"Navigate", "Open address or search…", k(actOpen), "Type an address, a local file, or words to search the web.", func(m *model) tea.Cmd { m.openOmni(); return nil }},
+		{"Navigate", "Back", k(actBack), "Return to the previous page at the exact spot you left.", func(m *model) tea.Cmd { return m.goBack() }},
+		{"Navigate", "Forward", k(actForward), "Go to the page you came back from.", func(m *model) tea.Cmd { return m.goForward() }},
+		{"Navigate", "History…", k(actHistory), "Everything you have read. Filter it, open it, remove it.", func(m *model) tea.Cmd { return m.openList(listHistory) }},
+		{"Navigate", "Bookmarks…", k(actBookmarks), "The pages you starred, ready to open.", func(m *model) tea.Cmd { return m.openList(listBookmarks) }},
+		{"This page", bookmark, k(actBookmark), bookmarkDesc, func(m *model) tea.Cmd { return m.toggleBookmark() }},
+		{"This page", "Section index", k(actIndex), "Jump by heading without scrolling.", func(m *model) tea.Cmd { return m.openTOC() }},
+		{"This page", "Reload page", k(actReload), "Fetch this page again, or apply the newer version waiting.", func(m *model) tea.Cmd { return m.reload() }},
+		{"wr", "Settings…", k(actSettings), "Layout, footer, mouse, motion, browsing and cache — all live.", func(m *model) tea.Cmd { m.mode, m.sel = modeSettings, 0; return nil }},
+		{"wr", "Keyboard shortcuts…", "", "Rebind any action. a adds a key, d restores the defaults.", func(m *model) tea.Cmd { m.mode, m.sel = modeKeys, 0; return nil }},
+		{"wr", "Update wr / what's new…", m.updateMenuHint(), "See what changed and update without leaving the reader.", func(m *model) tea.Cmd { return m.openUpdate() }},
+		{"Tools", "Open in your browser", k(actExternal), "Hand this page to your real browser.", func(m *model) tea.Cmd { return m.openExternalNow() }},
+		{"Tools", "Copy code block", k(actCopyCode), "Copy the code block at the top of the screen, without its frame.", func(m *model) tea.Cmd { return m.copyCodeBlock() }},
+		{"Tools", "Copy page as Markdown", k(actCopyPage), "Copy the whole extracted article as Markdown, ready to paste.", func(m *model) tea.Cmd { return m.copyPageMarkdown() }},
+		{"Tools", "Clear cache for this page", "", "Forget the saved copy; the next visit fetches it again.", func(m *model) tea.Cmd {
 			if !isHTTP(m.src) {
 				return m.setToast("nothing is cached for this page", true)
 			}
 			if err := cacheDelete(m.src); err != nil {
 				return m.setToast(err.Error(), true)
 			}
+			m.forgetPage(m.src)
+			m.forgetCacheInfo()
 			return m.setToast("✓ cache cleared for this page", false)
 		}},
-		{"Clear all cache", fmt.Sprintf("%d pages · %s", pages, humanSize(size)), func(m *model) tea.Cmd {
+		{"Tools", "Clear all cache", fmt.Sprintf("%d pages · %s", pages, humanSize(size)), "Start empty: remove every saved page from disk and memory.", func(m *model) tea.Cmd {
 			m.mode, m.confirm = modeConfirm, confirmCache
 			return nil
 		}},
-		{"Edit the config file…", "", func(m *model) tea.Cmd { return m.openConfig() }},
-		{"Quit", k(actQuit), func(m *model) tea.Cmd { return tea.Quit }},
+		{"Tools", "Edit the config file…", "", "Open config.toml in $VISUAL or $EDITOR.", func(m *model) tea.Cmd { return m.openConfig() }},
+		{"Tools", "Quit", k(actQuit), "Leave wr. Your settings, bookmarks and cache stay.", func(m *model) tea.Cmd { return tea.Quit }},
 	}
 }
 
@@ -166,9 +173,13 @@ func (m *model) menuBox() []string {
 	items := m.menuItems()
 	vis := m.visibleEntries()
 	m.snapSel(vis)
-	rows := make([]boxRow, 0, len(vis))
-	selRow := 0
+	rows := make([]boxRow, 0, len(vis)+4)
+	selRow, group := 0, ""
 	for p, i := range vis {
+		if items[i].group != group {
+			group = items[i].group
+			rows = append(rows, boxRow{accBold("  " + group), ""})
+		}
 		label := "   " + items[i].label
 		if p < 10 && !m.filterOpen() { // 1-9 then 0: the number is the shortcut
 			label = fmt.Sprintf("%d  %s", (p+1)%10, items[i].label)
@@ -178,7 +189,15 @@ func (m *model) menuBox() []string {
 		}
 		rows = append(rows, boxRow{label, items[i].hint})
 	}
-	return m.filteredBox("wr "+shortVersion(), rows, selRow, nil, m.panelWidth(58))
+	var help []boxRow
+	if len(vis) > 0 && m.bodyH() >= 18 {
+		help = helpRows(items[m.sel].desc, m.panelWidth(64)-4)
+	}
+	title := "wr " + shortVersion() + " · " + m.host()
+	if m.src == "" {
+		title = "wr " + shortVersion() + " · start page"
+	}
+	return m.filteredBox(title, rows, selRow, help, m.panelWidth(64))
 }
 
 func (m *model) keyMenu(k string) (tea.Model, tea.Cmd) {

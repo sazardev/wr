@@ -80,7 +80,7 @@ func runEval() error {
 		start := time.Now()
 		r := &evalRun{}
 		sc.run(r)
-		s := evalScenario{Name: sc.name, Checks: r.checks, MS: time.Since(start).Milliseconds()}
+		s := evalScenario{Name: sc.name, OK: true, Checks: r.checks, MS: time.Since(start).Milliseconds()}
 		for _, c := range r.checks {
 			if c.OK {
 				report.Passed++
@@ -89,7 +89,6 @@ func runEval() error {
 				s.OK = false
 			}
 		}
-		s.OK = s.OK || len(r.checks) == 0
 		report.Scenarios = append(report.Scenarios, s)
 	}
 	out, err := json.MarshalIndent(report, "", "  ")
@@ -122,8 +121,8 @@ func evalResolveInput(r *evalRun) {
 	}{
 		{"https://a.test/x", "https://a.test/x", false},
 		{"http://a.test", "http://a.test", false},
-		{"a.test", "http://a.test", false},
-		{"localhost:8080/x", "http://localhost:8080/x", false},
+		{"a.test", "http://a.test", false},                     // .test is a local name: plain http
+		{"localhost:8080/x", "http://localhost:8080/x", false}, // a dev server on this machine
 		{"go concurrency book", "", true},
 		{"", "", false},
 	} {

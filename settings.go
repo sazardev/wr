@@ -202,6 +202,9 @@ func (m *model) applyConfig(rebuild bool) tea.Cmd {
 	m.cfg.normalize()
 	m.keymap = buildKeymap(&m.cfg)
 	applyRuntime(m.cfg)
+	if !m.cfg.Cache {
+		m.forgetAllPages()
+	}
 	if rebuild {
 		m.rebuild()
 	}

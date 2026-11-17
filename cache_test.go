@@ -120,3 +120,34 @@ func TestSanitizeStripsEscapes(t *testing.T) {
 		t.Fatalf("got %q", got)
 	}
 }
+
+func TestSanitizeKeepsUTF8AndStripsC1Controls(t *testing.T) {
+	in := "niño, acción — \u00a0 fine \u0085 \u009f done"
+	got := sanitize(in)
+	if !strings.Contains(got, "niño, acción — \u00a0 fine") || !strings.Contains(got, "done") {
+		t.Errorf("valid UTF-8 was damaged: %q", got)
+	}
+	if strings.ContainsAny(got, "\u0085\u009f") {
+		t.Errorf("C1 controls survived: %q", got)
+	}
+	if got := sanitize("clean page"); got != "clean page" {
+		t.Errorf("the fast path changed a clean page: %q", got)
+	}
+}
+
+func TestCacheInfoIsMemoizedAndInvalidated(t *testing.T) {
+	isolate(t)
+	m := &model{cfg: defaultConfig()}
+	m.now = time.Now()
+	if n, _ := m.cacheInfo(); n != 0 {
+		t.Fatalf("empty cache reports %d pages", n)
+	}
+	_ = cachePut("https://a.test/x", "body")
+	if n, _ := m.cacheInfo(); n != 0 {
+		t.Error("a redraw inside the time-to-live must not rescan the directory")
+	}
+	m.forgetCacheInfo()
+	if n, _ := m.cacheInfo(); n != 1 {
+		t.Errorf("after invalidation: %d pages", n)
+	}
+}

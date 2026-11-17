@@ -129,6 +129,43 @@ large-document render on lines that wr itself painted with SGR and APC markers
 CSI sequences and OSC/DCS strings directly, and returns the line untouched
 when it has no ESC at all.
 
+## The memory pass of 2026-11-16
+
+The second optimization pass attacked the cost of *reopening* what is already
+known: going back, resizing, and reading a cached page. No output changed; the
+unit tests, `--eval` and the MCP smoke still verify the same bytes.
+
+| Benchmark | Before | After | Δ |
+|---|---|---|---|
+| **cache hit (disk, cached page)** | 2.43 ms | **0.12 ms** | **~20x** |
+| cache put+get | 170 µs | 98 µs | -42% |
+| extraction, medium article | 13.9 ms | 8.2 ms | **-41%** |
+| **re-render of a large document** | 12.5 ms | **4–8 µs** | **~2000x** |
+| menu redraw (cache stats) | one directory scan per frame | memoized | no disk I/O per key |
+
+What changed:
+
+1. **The session page cache** (`page_memory.go`). The disk cache already made a
+   page you read open in ~2 ms; the new in-memory layer removes the read too, so
+   back and forward do no filesystem work. It is bounded to 24 pages / 24 MB and
+   respects the `cache` setting.
+2. **The rendered-document cache** (`render_cache.go`). `renderDoc` is the most
+   expensive stage after extraction, and it was repeated for every resize and
+   every return to a page. Rendered documents are now kept in a 12-entry /
+   48 MB LRU keyed by the Markdown, the width, the layout options and the palette
+   generation; a hit is a map lookup (`BenchmarkRenderCached`).
+3. **A one-pass `sanitize`**. The control-character regexp ran over every page,
+   including every cache hit. It now takes a byte fast path and only rebuilds
+   the string rune by rune when it must.
+4. **Memoized cache stats**. The menu asked the cache directory for its page and
+   byte counts on every redraw and once per filter entry. The numbers are now
+   refreshed at most every two seconds and invalidated when the cache changes.
+5. **Pruning once an hour**. `cachePut` walked the whole cache directory after
+   every saved page; with thousands of pages that is a visible delay on the
+   fetch path. The age-based prune is now throttled to one walk per hour (and
+   reset when the cache is cleared), which keeps the disk bounded without
+   taxing every page load.
+
 ## What the profiles no longer show
 
 Before, the top of a render was `ansi.wrap`, `bytes.Buffer.WriteByte` and
@@ -138,7 +175,9 @@ the html-to-markdown library instead of our own regexps. What is left, in
 descending order of expected win:
 
 1. **Pool or reuse the line buffers in the renderer**: 50 K allocations per
-   large render is the GC pressure during resize.
+   large render is the GC pressure when the width is genuinely new. Returning to
+   a width already rendered is now a cache hit, so this only pays on the first
+   draw at each width.
 2. **A cheaper highlight path for in-page search**: only the matched lines
    need repainting, but today the whole screen is rebuilt per keystroke (this
    is now the dominant cost of a search, ~31 ms).

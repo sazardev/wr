@@ -62,7 +62,7 @@ func (m *model) panelHay(i int) string {
 	switch m.mode {
 	case modeMenu:
 		it := m.menuItems()[i]
-		return it.label + " " + it.hint
+		return it.label + " " + it.hint + " " + it.desc
 	case modeSettings:
 		o := m.settingsOptions()[i]
 		return o.label + " " + o.group + " " + o.help

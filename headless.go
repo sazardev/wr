@@ -32,20 +32,32 @@ var (
 
 	browserOnce sync.Once
 	browserPath string
+	browserArgs []string // WR_BROWSER may carry arguments ("flatpak run …")
 )
 
 // browserCandidates are tried in order, by name on PATH. WR_BROWSER overrides.
 var browserCandidates = []string{
-	"chromium", "chromium-browser", "google-chrome", "google-chrome-stable",
-	"chrome", "brave-browser", "microsoft-edge", "microsoft-edge-stable",
+	"chromium", "chromium-browser", "chromium-freeworld", "ungoogled-chromium",
+	"google-chrome", "google-chrome-stable", "chrome", "chrome-headless-shell",
+	"chromium-headless-shell", "brave-browser", "brave", "microsoft-edge",
+	"microsoft-edge-stable", "vivaldi", "vivaldi-stable",
 }
 
 // findBrowser returns the headless-capable browser to use, or "".
 func findBrowser() string {
 	browserOnce.Do(func() {
 		if p := os.Getenv("WR_BROWSER"); p != "" {
+			// A plain path may contain spaces; try it as one executable first,
+			// then as a command line with arguments ("flatpak run org.chromium.Chromium").
 			if full, err := exec.LookPath(p); err == nil {
 				browserPath = full
+				return
+			}
+			fields := strings.Fields(p)
+			if len(fields) > 0 {
+				if full, err := exec.LookPath(fields[0]); err == nil {
+					browserPath, browserArgs = full, fields[1:]
+				}
 			}
 			return
 		}
@@ -61,6 +73,47 @@ func findBrowser() string {
 
 // canRender reports whether script-drawn pages can be rendered here.
 func canRender() bool { return jsRender && findBrowser() != "" }
+
+// headlessArgs builds the browser command line. mode is "new" for the modern
+// headless implementation or "" for the legacy flag, which older Chromium
+// builds understand when they do not know --headless=new.
+func headlessArgs(profile, mode, src string) []string {
+	args := append([]string{}, browserArgs...)
+	if mode == "" {
+		args = append(args, "--headless")
+	} else {
+		args = append(args, "--headless="+mode)
+	}
+	return append(args,
+		"--disable-gpu", "--user-data-dir="+profile,
+		"--no-first-run", "--no-default-browser-check", "--disable-extensions",
+		"--disable-background-networking", "--disable-sync", "--mute-audio",
+		"--hide-scrollbars", "--disable-dev-shm-usage",
+		"--disable-background-timer-throttling", "--disable-renderer-backgrounding",
+		"--disable-backgrounding-occluded-windows",
+		"--blink-settings=imagesEnabled=false", // text is all wr reads
+		"--window-size=1280,2000",              // enough height for below-the-fold lazy content
+		"--user-agent="+userAgent,
+		"--virtual-time-budget=10000",
+		"--dump-dom", src)
+}
+
+// runHeadless runs one browser attempt and returns the DOM it printed.
+func runHeadless(ctx context.Context, bin string, args []string) ([]byte, error) {
+	cmd := exec.CommandContext(ctx, bin, args...)
+	ownGroup(cmd)
+	cmd.WaitDelay = 3 * time.Second // do not hang on a pipe a stray child still holds
+	out := &cappedBuffer{max: maxBytes}
+	cmd.Stdout = out
+	if err := cmd.Run(); err != nil && out.Len() == 0 {
+		return nil, err
+	}
+	return out.Bytes(), nil
+}
+
+func looksLikeHTML(dom []byte) bool {
+	return bytes.Contains(bytes.ToLower(dom[:min(len(dom), 4096)]), []byte("<html"))
+}
 
 // headlessDOM loads src in a headless browser and returns the DOM it ends up with.
 func headlessDOM(src string) ([]byte, error) {
@@ -78,26 +131,20 @@ func headlessDOM(src string) ([]byte, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), renderTimeout)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, bin,
-		"--headless=new", "--disable-gpu", "--user-data-dir="+profile,
-		"--no-first-run", "--no-default-browser-check", "--disable-extensions",
-		"--disable-background-networking", "--disable-sync", "--mute-audio",
-		"--hide-scrollbars", "--disable-dev-shm-usage",
-		"--user-agent="+userAgent,
-		"--virtual-time-budget=10000",
-		"--dump-dom", src)
-	ownGroup(cmd)
-	cmd.WaitDelay = 3 * time.Second // do not hang on a pipe a stray child still holds
-	out := &cappedBuffer{max: maxBytes}
-	cmd.Stdout = out
-	if err := cmd.Run(); err != nil && out.Len() == 0 {
+	dom, err := runHeadless(ctx, bin, headlessArgs(profile, "new", src))
+	if (err != nil || !looksLikeHTML(dom)) && ctx.Err() == nil {
+		// an older Chromium may not know --headless=new: try the legacy flag
+		if dom2, err2 := runHeadless(ctx, bin, headlessArgs(profile, "", src)); err2 == nil && looksLikeHTML(dom2) {
+			dom, err = dom2, nil
+		}
+	}
+	if err != nil {
 		if ctx.Err() != nil {
 			return nil, errors.New("rendering timed out")
 		}
 		return nil, err
 	}
-	dom := out.Bytes()
-	if !bytes.Contains(bytes.ToLower(dom[:min(len(dom), 4096)]), []byte("<html")) {
+	if !looksLikeHTML(dom) {
 		return nil, errors.New("the browser returned no document")
 	}
 	return toUTF8(dom, "text/html; charset=utf-8"), nil
