@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.10.0](https://github.com/sazardev/wr/compare/v0.9.1...v0.10.0) (2026-11-17)
+
+
+### Features
+
+* **mcp:** speak the 2026-07-28 stateless protocol ([#44](https://github.com/sazardev/wr/issues/44)) ([402c807](https://github.com/sazardev/wr/commit/402c807d66b0887ba040573cf442132613236a1e))
+
+
+### Bug Fixes
+
+* **deps:** bump the go-dependencies group across 1 directory with 3 updates ([#36](https://github.com/sazardev/wr/issues/36)) ([71eee79](https://github.com/sazardev/wr/commit/71eee794f884bd924b50190f4dd71b1f26b09bc4))
+* **security:** stop remote pages from reading local files ([#43](https://github.com/sazardev/wr/issues/43)) ([dbf8c5a](https://github.com/sazardev/wr/commit/dbf8c5a45f1ab48941b4d16923ba2319f6646af4))
+* **web:** upgrade Astro to 7 and clear every open Dependabot alert ([1311032](https://github.com/sazardev/wr/commit/13110322a12fdf1b12580f398f1bc91ad7c40fed))
+
 ## [0.9.1](https://github.com/sazardev/wr/compare/v0.9.0...v0.9.1) (2026-10-29)
 
 
